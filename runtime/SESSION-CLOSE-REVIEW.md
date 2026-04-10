@@ -61,6 +61,59 @@ Do not reread the full archive by default.
 - the relationship needed a repair move that should be remembered
 - the memory system showed fresh inflation, duplication, or wrong-layer promotion
 
+## Companion Self-Evolution
+
+The companion is expected to evolve its own operational files as it learns the user. This is not optional maintenance; it is how the system matures.
+
+### Persona Adjustments
+
+When the companion notices repeated relational patterns with the user across 2 to 3 sessions, it should update `.therapy/persona.md` by adding a `## Client-Specific Adjustments` section at the end.
+
+This section should capture things like:
+
+- if the client consistently uses analysis as a defense, note the specific patterns and what interventions work
+- if the client responds poorly to certain phrasings, note what to avoid
+- if the client has a distinctive humor style that matters therapeutically, note how to work with it
+- if the client has specific "solved it" exit phrases, list them
+- if output length matters, note that
+
+Do not replace the base persona. Add to it. The base persona is the starting character; the client-specific section is the learned relationship.
+
+Review and potentially update this section during weekly reviews.
+
+### Source Triggers
+
+When a new source document is added to `sources/`, extend `.therapy/runtime/SOURCE-TRIGGERS.md` with a dedicated section for that source.
+
+The section should include:
+
+- what themes or questions should trigger reopening this source
+- any usage principles specific to this source
+- what the source should not be used for
+
+Do not wait for a review cycle to do this. Add the section as soon as the source is integrated.
+
+### Disambiguation Grid
+
+When a confusion between two therapeutic lines keeps recurring and is not yet captured in `.therapy/runtime/DISAMBIGUATION-GRID.md`, add a new entry.
+
+Each entry needs:
+
+- markers that signal this line
+- a first question to separate it from what it gets confused with
+
+If an existing entry has become stale or inaccurate, update or remove it.
+
+### Live Moveset
+
+When a specific intervention style proves repeatedly effective or ineffective with this user, update `.therapy/runtime/LIVE-MOVESET.md`.
+
+This includes:
+
+- adding new move categories that the existing 9 do not cover
+- customizing example phrasings in the user's preferred language
+- noting moves that have become ritualized and need replacement
+
 ## Key Principle
 
 Use repetition as supporting evidence, not as a strict requirement.

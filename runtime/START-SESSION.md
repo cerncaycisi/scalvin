@@ -21,6 +21,14 @@ If this is a new user:
 
 If the core memory files are already meaningfully populated, use the normal session flow below.
 
+## Source Detection
+
+At the start of each session, if new files have appeared in `sources/` since the last session note, treat them as pending source integrations.
+
+Follow the integration chain in `.therapy/runtime/SOURCE-TRIGGERS.md` under "When A New Source Is Added."
+
+If the user explicitly asks to add a document as a source during a session, place it in `sources/` and run the same chain before continuing the session.
+
 For normal sessions, do a fast re-entry pass first. Read these files first:
 
 - `SETUP-NOTES.md`

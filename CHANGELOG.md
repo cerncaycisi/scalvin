@@ -4,6 +4,21 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.3.0] - 2026-04-10
+
+### Added
+
+- companion self-evolution protocol: persona adjustments, source triggers, disambiguation grid, and live moveset now grow organically as the companion learns the user
+- automatic source integration chain: new sources trigger reading, `SOURCE-TRIGGERS` extension, profile/theme assessment, and optional interim review
+- source detection at session start for files added between sessions
+- self-evolution audit section in weekly review output template
+
+### Fixed
+
+- removed residual `__pycache__` files from the repo and confirmed they are not tracked
+
+---
+
 ## [0.2.0] - 2026-04-10
 
 ### Added
