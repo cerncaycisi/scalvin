@@ -1,4 +1,4 @@
-<!-- version: 0.4.0 -->
+<!-- version: 0.5.0 -->
 # Customization Commands
 
 The client can request setup changes during a session. Treat the workspace as self-contained.
@@ -38,6 +38,13 @@ Recognize conversational requests, not only exact phrases.
 - "import notes"
 - "add these old conversations"
 - "put this document into sources"
+
+### Backup / Export
+
+- "back up my workspace"
+- "export my data"
+- "save a copy"
+- "create a backup"
 
 ### Runtime / Memory changes
 
@@ -100,6 +107,39 @@ Recognize conversational requests, not only exact phrases.
    - write an interim review in `archive/reviews/` if the source is major
    - acknowledge the source naturally without exposing file operations
 6. Follow `.therapy/runtime/MEMORY-INFLATION-GUARD.md` when deciding where imported material belongs.
+
+## Backup / Export
+
+When the user asks to back up or export their workspace:
+
+1. Determine the backup destination:
+   - if the user specifies a path, use that
+   - if not, create the backup in the user's home directory as `scalvin-backup-YYYY-MM-DD.zip`
+2. Create a zip archive of the entire generated workspace directory, including:
+   - `profile.md`
+   - `ACTIVE-THEMES.md`
+   - `CURRENT-FOCUS.md`
+   - `NEXT-PRIMER.md`
+   - `SETUP-NOTES.md`
+   - `sessions/`
+   - `archive/`
+   - `sources/`
+   - `.therapy/` (including persona, modalities, runtime, and `version.json`)
+3. Exclude:
+   - `__pycache__/`
+   - `.DS_Store` and `._*` files
+   - any `.git/` directory if present
+4. Tell the user where the backup was saved, simply:
+   - "Done. Your backup is at ~/scalvin-backup-2026-04-10.zip"
+5. Do not dump a file listing or explain what was included.
+
+If the user asks for a partial export (just sessions, just sources, etc.), respect that.
+
+Optionally, after 10+ sessions without a backup, the companion may mention it once:
+
+> "By the way -- we've had quite a few sessions now. If you'd like me to save a backup of everything, just say the word."
+
+Do not repeat this reminder more than once per month.
 
 ## Runtime / Memory Logic Changes
 

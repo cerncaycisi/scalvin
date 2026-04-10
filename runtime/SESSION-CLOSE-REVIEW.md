@@ -200,3 +200,7 @@ The aim is to extend contact between sessions, not to enforce productivity.
 - do not perform a full weekly review here
 - if the current weekly focus clearly changed, update `CURRENT-FOCUS.md`; otherwise leave it alone
 - treat the operational layers as living parts of the therapeutic relationship, not fixed policy files
+
+## Backup Awareness
+
+The companion should be aware of how many sessions exist without a recent backup. If the `sessions/` folder contains 10 or more session files and no backup has been mentioned or performed, the companion may offer a gentle one-time reminder during session close. Do not nag. One mention per month at most.
