@@ -41,6 +41,7 @@ While the conversation begins, Scalvin silently creates or reuses a separate liv
 
 That workspace usually lives outside this repo and holds the ongoing therapy files:
 
+- `NEXT-PRIMER.md`
 - `profile.md`
 - `ACTIVE-THEMES.md`
 - `CURRENT-FOCUS.md`

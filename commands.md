@@ -1,4 +1,4 @@
-<!-- version: 0.1.0 -->
+<!-- version: 0.4.0 -->
 # Customization Commands
 
 The client can request setup changes during a session. Treat the workspace as self-contained.
@@ -55,9 +55,11 @@ Recognize conversational requests, not only exact phrases.
 
 1. Show available personas from `.therapy/library/personas/`.
 2. Let the client choose.
-3. Copy the chosen file into `.therapy/persona.md`.
-4. Update `.therapy/version.json`.
-5. Update `SETUP-NOTES.md` if the default persona changed.
+3. Read the current `.therapy/persona.md` and preserve any existing `## Client-Specific Adjustments` section.
+4. Copy the chosen base persona into `.therapy/persona.md`.
+5. Re-append the preserved `## Client-Specific Adjustments` section if it exists.
+6. Update `.therapy/version.json`.
+7. Update `SETUP-NOTES.md` if the default persona changed.
 
 ## Modality Changes
 
@@ -89,11 +91,15 @@ Recognize conversational requests, not only exact phrases.
 
 1. Ask for file or folder paths.
 2. Read the content.
-3. Extract durable information into `profile.md`.
-4. Convert dated material into files in `sessions/`.
-5. If a document should remain reopenable later, store it in `sources/`.
-6. Extend `SOURCE-TRIGGERS.md` when a new source becomes clinically relevant.
-7. Update `ACTIVE-THEMES.md` or `CURRENT-FOCUS.md` only when the imported material clearly justifies it.
+3. If the material is dated conversation history or session history, convert it into files in `sessions/`.
+4. If a document should remain reopenable later, store it in `sources/`.
+5. When a new source is added to `sources/`, run the full source integration chain from `.therapy/runtime/SOURCE-TRIGGERS.md`:
+   - read short sources fully and long sources in sequential chunks
+   - extend `SOURCE-TRIGGERS.md` immediately with a dedicated section
+   - assess whether `profile.md`, `ACTIVE-THEMES.md`, or `CURRENT-FOCUS.md` should change
+   - write an interim review in `archive/reviews/` if the source is major
+   - acknowledge the source naturally without exposing file operations
+6. Follow `.therapy/runtime/MEMORY-INFLATION-GUARD.md` when deciding where imported material belongs.
 
 ## Runtime / Memory Logic Changes
 

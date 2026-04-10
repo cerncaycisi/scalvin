@@ -12,6 +12,7 @@ Current defaults:
 
 Main workspace:
 
+- `NEXT-PRIMER.md`
 - `profile.md`
 - `sessions/`
 - `ACTIVE-THEMES.md`

@@ -16,6 +16,7 @@ Each generated companion workspace includes several entry files:
 
 - `AGENTS.md`
 - `CLAUDE.md`
+- `NEXT-PRIMER.md`
 - `START-SESSION.md`
 - `START-CODEX-SESSION.md`
 - `START-CLAUDE-SESSION.md`
