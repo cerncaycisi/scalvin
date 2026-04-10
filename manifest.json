@@ -1,0 +1,103 @@
+{
+  "version": "0.2.0",
+  "description": "Scalvin components",
+  "base_url": "",
+  "components": {
+    "safety-protocol": {
+      "file": "safety-protocol.md",
+      "target": ".therapy/safety-protocol.md",
+      "required": true,
+      "description": "Crisis protocols and safety guidelines"
+    },
+    "commands": {
+      "file": "commands.md",
+      "target": ".therapy/commands.md",
+      "required": true,
+      "description": "Customization and update instructions"
+    }
+  },
+  "library": {
+    "personas": {
+      "target": ".therapy/library/personas/",
+      "description": "Communication style options",
+      "files": [
+        "personas/warm-4o.md",
+        "personas/direct-challenging.md",
+        "personas/warm-supportive.md",
+        "personas/coach.md",
+        "personas/grounded-real.md",
+        "personas/contemplative.md",
+        "personas/philosophical.md",
+        "personas/creative.md",
+        "personas/hazel.md"
+      ]
+    },
+    "modalities": {
+      "target": ".therapy/library/modalities/",
+      "description": "Therapeutic approach options",
+      "files": [
+        "modalities/cbt.md",
+        "modalities/act.md",
+        "modalities/cft.md",
+        "modalities/dbt-skills.md",
+        "modalities/ifs.md",
+        "modalities/lifespan-integration.md",
+        "modalities/motivational-interviewing.md",
+        "modalities/narrative.md",
+        "modalities/polyvagal.md",
+        "modalities/psychodynamic.md",
+        "modalities/sfbt.md",
+        "modalities/somatic-experiencing.md"
+      ]
+    },
+    "structures": {
+      "target": ".therapy/library/structures/",
+      "description": "Session structure options",
+      "files": [
+        "structures/structured.md",
+        "structures/moderate.md",
+        "structures/freeform.md"
+      ]
+    },
+    "runtime": {
+      "target": ".therapy/library/runtime/",
+      "description": "Living runtime templates and operational layers",
+      "files": [
+        "runtime/START-SESSION.md",
+        "runtime/SESSION-START-CHEATSHEET.md",
+        "runtime/MEMORY-INFLATION-GUARD.md",
+        "runtime/LIVE-MOVESET.md",
+        "runtime/DISAMBIGUATION-GRID.md",
+        "runtime/RUPTURE-AND-REPAIR.md",
+        "runtime/SESSION-NOTE-STANDARD.md",
+        "runtime/SESSION-CLOSE-REVIEW.md",
+        "runtime/WEEKLY-REVIEW.md",
+        "runtime/REVIEW-DUE-CHECK.md",
+        "runtime/SOURCE-TRIGGERS.md",
+        "runtime/profile.template.md",
+        "runtime/ACTIVE-THEMES.template.md",
+        "runtime/CURRENT-FOCUS.template.md",
+        "runtime/SETUP-NOTES.template.md",
+        "runtime/review_due_check.py"
+      ]
+    },
+    "adapters": {
+      "target": ".therapy/library/adapters/",
+      "description": "Workspace entry-file templates",
+      "files": [
+        "adapters/workspace/AGENTS.template.md",
+        "adapters/workspace/CLAUDE.template.md",
+        "adapters/workspace/START-CODEX-SESSION.template.md",
+        "adapters/workspace/START-CLAUDE-SESSION.template.md",
+        "adapters/workspace/STARTER.template.md"
+      ]
+    }
+  },
+  "workspace_templates": {
+    "files": [
+      "templates/archive/README.template.md",
+      "templates/archive/reviews/REVIEW-INDEX.template.md",
+      "templates/sources/README.template.md"
+    ]
+  }
+}
