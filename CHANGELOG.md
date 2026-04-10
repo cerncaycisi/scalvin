@@ -4,6 +4,25 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.5.0] - 2026-04-10
+
+### Added
+
+- backup and export command: users can ask to save a copy of their workspace as a zip archive
+- gentle backup reminder after 10+ sessions without a backup (once per month maximum)
+- profile template now includes growth guidance comments showing which sections to add and when
+- deep memory index, important sources, primary defense patterns, and therapeutic notes sections are guided in the template
+
+### Changed
+
+- fully rewrote all three session structure files (freeform, moderate, structured) with real therapeutic depth
+- freeform now includes guidance on when drift becomes avoidance
+- moderate now integrates `NEXT-PRIMER` follow-up and carry-forward into the flow
+- structured now includes deliberate technique application, single-thread focus, and specific homework approach
+- profile template upgraded from blank headings to a living growth document with staged section guidance
+
+---
+
 ## [0.4.0] - 2026-04-10
 
 ### Added
