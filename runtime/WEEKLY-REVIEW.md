@@ -98,6 +98,7 @@ This review should be broad and integrative, not minimal.
 - Are source trigger sections still useful? Any sources that should be re-read?
 - Are disambiguation grid entries still reflecting live confusions?
 - Are live moveset entries still effective or have any become ritualized?
+- Are there model-specific drift patterns that need correction or have been corrected?
 ```
 
 ## Update Rules

@@ -14,6 +14,7 @@ If this is a new user:
 
 - assume the conversational bootstrap just finished
 - do not read `profile.md`, `ACTIVE-THEMES.md`, or `CURRENT-FOCUS.md` for content; they are blank or near-blank
+- `NEXT-PRIMER.md` will not exist yet or will still be blank; that is expected during first sessions
 - instead, conduct a natural first session: get to know the person, understand what brought them here, and notice emotional patterns without turning it into an intake form
 - at session close, write the first version of `profile.md` based on what was learned; keep it lean because this is the beginning, not a full assessment
 - create the first session note in `sessions/`
@@ -31,6 +32,7 @@ If the user explicitly asks to add a document as a source during a session, plac
 
 For normal sessions, do a fast re-entry pass first. Read these files first:
 
+- `NEXT-PRIMER.md`
 - `SETUP-NOTES.md`
 - `.therapy/runtime/SESSION-START-CHEATSHEET.md`
 - `CURRENT-FOCUS.md`
@@ -41,6 +43,8 @@ For normal sessions, do a fast re-entry pass first. Read these files first:
 - `.therapy/runtime/SESSION-NOTE-STANDARD.md`
 - `.therapy/runtime/SESSION-CLOSE-REVIEW.md`
 - `.therapy/runtime/SOURCE-TRIGGERS.md`
+
+`NEXT-PRIMER.md` is a rolling file written at the end of the previous session. It gives you a 3-to-5-line snapshot of where things stand. If it exists and is populated, use it as your fastest orientation layer -- faster than the cheatsheet. If it is missing or blank, fall back to the normal fast-entry path.
 
 Then use the core memory layers selectively:
 

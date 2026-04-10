@@ -1,5 +1,5 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Scalvin components",
   "base_url": "",
   "components": {
@@ -15,6 +15,9 @@
       "required": true,
       "description": "Customization and update instructions"
     }
+  },
+  "runtime_components": {
+    "next-primer": "1.0.0"
   },
   "library": {
     "personas": {
@@ -64,6 +67,7 @@
       "description": "Living runtime templates and operational layers",
       "files": [
         "runtime/START-SESSION.md",
+        "runtime/NEXT-PRIMER.template.md",
         "runtime/SESSION-START-CHEATSHEET.md",
         "runtime/MEMORY-INFLATION-GUARD.md",
         "runtime/LIVE-MOVESET.md",

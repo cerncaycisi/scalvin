@@ -106,6 +106,7 @@ Create:
 
 ```text
 {workspace_path}/
+├── NEXT-PRIMER.md
 ├── AGENTS.md
 ├── CLAUDE.md
 ├── START-SESSION.md
@@ -161,6 +162,7 @@ cp "{repo_path}"/personas/*.md "{workspace_path}/.therapy/library/personas/"
 cp "{repo_path}"/modalities/*.md "{workspace_path}/.therapy/library/modalities/"
 cp "{repo_path}"/structures/*.md "{workspace_path}/.therapy/library/structures/"
 cp "{repo_path}"/runtime/*.md "{workspace_path}/.therapy/library/runtime/"
+cp "{repo_path}/runtime/NEXT-PRIMER.template.md" "{workspace_path}/.therapy/library/runtime/NEXT-PRIMER.template.md"
 cp "{repo_path}/runtime/review_due_check.py" "{workspace_path}/.therapy/library/runtime/review_due_check.py"
 cp "{repo_path}"/adapters/workspace/*.md "{workspace_path}/.therapy/library/adapters/"
 cp "{repo_path}/{selected_persona_file}" "{workspace_path}/.therapy/persona.md"
@@ -175,6 +177,7 @@ cp "{workspace_path}/.therapy/library/runtime/review_due_check.py" "{workspace_p
 Then create root living files from templates:
 
 ```bash
+cp "{workspace_path}/.therapy/library/runtime/NEXT-PRIMER.template.md" "{workspace_path}/NEXT-PRIMER.md"
 cp "{workspace_path}/.therapy/library/runtime/profile.template.md" "{workspace_path}/profile.md"
 cp "{workspace_path}/.therapy/library/runtime/ACTIVE-THEMES.template.md" "{workspace_path}/ACTIVE-THEMES.md"
 cp "{workspace_path}/.therapy/library/runtime/CURRENT-FOCUS.template.md" "{workspace_path}/CURRENT-FOCUS.md"

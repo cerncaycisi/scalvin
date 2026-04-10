@@ -4,6 +4,22 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.4.0] - 2026-04-10
+
+### Added
+
+- full between-session experiment protocol with `CARRY-FORWARD` tags, follow-up rules, and non-completion-as-data principle
+- rolling `NEXT-PRIMER.md` file: a 3-to-5-line handoff written at every session close, read first at every session start, giving the companion instant orientation without reading 15 files
+- `NEXT-PRIMER.template.md` added to runtime templates and workspace generation
+- model-specific drift awareness added to all persona files: GPT over-mirroring, Claude over-formulating, with instructions to note observed patterns in client-specific adjustments
+- model drift tracking added to self-evolution audit in weekly reviews
+
+### Changed
+
+- between-session experiments section in `SESSION-CLOSE-REVIEW.md` fully rewritten with format, follow-up, and quality guidelines
+
+---
+
 ## [0.3.0] - 2026-04-10
 
 ### Added
