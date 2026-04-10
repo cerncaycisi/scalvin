@@ -156,13 +156,34 @@ mkdir -p "{workspace_path}/sessions" \
   "{workspace_path}/.therapy/library/runtime" \
   "{workspace_path}/.therapy/library/adapters"
 
+cat > "{workspace_path}/.therapy/version.json" <<EOF
+{
+  "installed_from_version": "0.4.0",
+  "source_repo_path": "{repo_path}",
+  "source_url": "",
+  "components": {
+    "safety-protocol": "1.0.0",
+    "commands": "0.4.0"
+  },
+  "runtime_components": {
+    "next-primer": "1.0.0"
+  },
+  "libraries": {
+    "personas": "1.0.0",
+    "modalities": "1.0.0",
+    "structures": "1.0.0",
+    "runtime": "1.0.0",
+    "adapters": "1.0.0"
+  }
+}
+EOF
+
 cp "{repo_path}/safety-protocol.md" "{workspace_path}/.therapy/safety-protocol.md"
 cp "{repo_path}/commands.md" "{workspace_path}/.therapy/commands.md"
 cp "{repo_path}"/personas/*.md "{workspace_path}/.therapy/library/personas/"
 cp "{repo_path}"/modalities/*.md "{workspace_path}/.therapy/library/modalities/"
 cp "{repo_path}"/structures/*.md "{workspace_path}/.therapy/library/structures/"
 cp "{repo_path}"/runtime/*.md "{workspace_path}/.therapy/library/runtime/"
-cp "{repo_path}/runtime/NEXT-PRIMER.template.md" "{workspace_path}/.therapy/library/runtime/NEXT-PRIMER.template.md"
 cp "{repo_path}/runtime/review_due_check.py" "{workspace_path}/.therapy/library/runtime/review_due_check.py"
 cp "{repo_path}"/adapters/workspace/*.md "{workspace_path}/.therapy/library/adapters/"
 cp "{repo_path}/{selected_persona_file}" "{workspace_path}/.therapy/persona.md"

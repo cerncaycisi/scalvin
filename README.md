@@ -24,6 +24,7 @@ It started from the MIT-licensed [Inner Dialogue](https://github.com/ataglianett
 - the repo now centers on a single layered living-file runtime
 - the repo identity is client-agnostic rather than tool-specific
 - generated workspaces include user-specific living files such as:
+  - `NEXT-PRIMER.md`
   - `SETUP-NOTES.md`
   - `profile.md`
   - `ACTIVE-THEMES.md`
@@ -53,6 +54,7 @@ Generated companion workspaces also include:
 
 - `AGENTS.md`
 - `CLAUDE.md`
+- `NEXT-PRIMER.md`
 - `START-SESSION.md`
 - a named starter file like `hazel.md`
 

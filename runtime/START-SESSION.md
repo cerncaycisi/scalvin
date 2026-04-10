@@ -44,7 +44,7 @@ For normal sessions, do a fast re-entry pass first. Read these files first:
 - `.therapy/runtime/SESSION-CLOSE-REVIEW.md`
 - `.therapy/runtime/SOURCE-TRIGGERS.md`
 
-`NEXT-PRIMER.md` is a rolling file written at the end of the previous session. It gives you a 3-to-5-line snapshot of where things stand. If it exists and is populated, use it as your fastest orientation layer -- faster than the cheatsheet. If it is missing or blank, fall back to the normal fast-entry path.
+`NEXT-PRIMER.md` is a rolling file written at the end of the previous session. It gives you a 3-to-5-line snapshot of where things stand. If it exists and is populated, use it as your fastest orientation layer -- faster than the cheatsheet. If it is missing, blank, or still contains only untouched template labels such as `User:`, `Last session date:`, `Where we are:`, `What's live:`, and `Carry-forward:`, treat it as blank and fall back to the normal fast-entry path.
 
 Then use the core memory layers selectively:
 
