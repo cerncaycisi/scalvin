@@ -26,6 +26,8 @@ If the core memory files are already meaningfully populated, use the normal sess
 
 At the start of each session, if new files have appeared in `sources/` since the last session note, treat them as pending source integrations.
 
+Ignore `sources/README.md`, hidden metadata files such as `._*`, and companion retrieval maps when making this comparison. Only meaningful source documents should count as pending integrations.
+
 Follow the integration chain in `.therapy/runtime/SOURCE-TRIGGERS.md` under "When A New Source Is Added."
 
 If the user explicitly asks to add a document as a source during a session, place it in `sources/` and run the same chain before continuing the session.
