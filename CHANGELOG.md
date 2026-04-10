@@ -4,6 +4,25 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.5.1] - 2026-04-10
+
+### Fixed
+
+- `SETUP.md` version.json now correctly writes `0.5.1` as installed version
+- updated stale version tags on runtime files modified in v0.2.0 through v0.5.0
+- `manifest.json` `runtime_components` now lists all runtime files with correct versions
+- added missing version tags to template files
+- removed macOS metadata files from tracking
+
+### Changed
+
+- rewrote `README.md` to reflect the full v0.5 feature set including self-evolution, source integration, model awareness, backup, and session primer
+- updated `GETTING-STARTED.md` with backup instructions and expanded "Change Things Later" list
+- updated `CONTRIBUTING.md` with v0.2+ contribution areas
+- updated `SECURITY.md` with backup command reference
+
+---
+
 ## [0.5.0] - 2026-04-10
 
 ### Added

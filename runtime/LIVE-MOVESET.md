@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 # Live Moveset
 
 *This is a living operational layer. The companion may update it after sessions or reviews whenever a move is missing, stale, ritualized, or repeatedly effective.*

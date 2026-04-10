@@ -1,3 +1,4 @@
+<!-- version: 1.0.0 -->
 # Active Themes
 
 *This file tracks medium-term threads that are still alive, even if they are not the focus of every session. Keep it short, current, and revisit it often.*

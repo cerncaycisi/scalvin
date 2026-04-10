@@ -1,3 +1,4 @@
+<!-- version: 1.0.0 -->
 # Setup Notes
 
 This Scalvin workspace was prepared as a living therapeutic system.

@@ -40,7 +40,7 @@ What it does change is this:
 - use a password on your computer
 - turn on full-disk encryption
 - keep companion workspaces outside cloud-synced folders unless you understand the tradeoff
-- back up important workspaces safely
+- back up important workspaces regularly -- the companion can create backups on request (just say "back up my workspace")
 
 ## For Shared Computers
 
