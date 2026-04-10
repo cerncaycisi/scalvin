@@ -158,7 +158,7 @@ mkdir -p "{workspace_path}/sessions" \
 
 cat > "{workspace_path}/.therapy/version.json" <<EOF
 {
-  "installed_from_version": "0.4.0",
+  "installed_from_version": "0.5.1",
   "source_repo_path": "{repo_path}",
   "source_url": "",
   "components": {

@@ -1,3 +1,4 @@
+<!-- version: 1.0.0 -->
 # Current Focus
 
 *This file holds the short working focus for the current phase of therapy. It should stay brief, practical, and easy to reread at the start of sessions.*

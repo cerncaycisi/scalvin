@@ -70,6 +70,15 @@ Scalvin can still:
 - change session structure
 - switch language
 - import notes or source documents
+- back up the workspace on request
 - recalibrate its own runtime guardrails
 
 That last part matters: Scalvin is built so the operational layers can evolve with use, not stay frozen.
+
+## Back Up Your Workspace
+
+After a few sessions, your workspace will hold meaningful personal material. You can ask the companion to back it up at any time:
+
+> "Back up my workspace"
+
+The companion will create a zip archive and tell you where it was saved. It may also remind you once if you've had 10+ sessions without a backup.

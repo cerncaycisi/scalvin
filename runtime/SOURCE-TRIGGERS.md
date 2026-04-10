@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 # Source Triggers
 
 *This file explains when the companion should reopen source materials from `sources/`. It is a living file and should be extended as new source documents are added.*

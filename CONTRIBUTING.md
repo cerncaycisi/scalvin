@@ -20,12 +20,16 @@ It is:
 
 ## High-Value Contribution Areas
 
-- bootstrap flow clarity
+- bootstrap flow clarity and edge-case handling
 - client-adapter improvements that keep the core system generic
 - clinically grounded modality additions or refinements
 - safer source/archive/review behavior
 - memory hygiene improvements
+- self-evolution logic: how the companion grows persona adjustments, source triggers, disambiguation entries, and live moves
+- model-specific drift detection and correction patterns
 - documentation that helps people use the system without leaking private data
+- backup, export, and workspace portability improvements
+- session structure refinements grounded in real therapeutic practice
 
 ## Do Not Contribute
 

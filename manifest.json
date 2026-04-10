@@ -1,5 +1,5 @@
 {
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Scalvin components",
   "base_url": "",
   "components": {
@@ -17,7 +17,23 @@
     }
   },
   "runtime_components": {
-    "next-primer": "1.0.0"
+    "start-session": "2.0.0",
+    "next-primer": "1.0.0",
+    "session-start-cheatsheet": "1.0.0",
+    "memory-inflation-guard": "1.0.0",
+    "live-moveset": "2.0.0",
+    "disambiguation-grid": "1.0.0",
+    "rupture-and-repair": "1.0.0",
+    "session-note-standard": "1.0.0",
+    "session-close-review": "2.0.0",
+    "weekly-review": "2.0.0",
+    "review-due-check": "1.0.0",
+    "source-triggers": "2.0.0",
+    "profile-template": "2.0.0",
+    "active-themes-template": "1.0.0",
+    "current-focus-template": "1.0.0",
+    "setup-notes-template": "1.0.0",
+    "review-due-check-py": "1.0.0"
   },
   "library": {
     "personas": {
