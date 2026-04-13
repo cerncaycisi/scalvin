@@ -35,6 +35,8 @@ By default, Scalvin quietly starts with:
 
 You do not need to pick these up front unless you want to.
 
+If you use Claude Code, you can also start a session by double-clicking `start-session.command` (Mac/Linux) or `start-session.bat` (Windows) in your workspace folder.
+
 ## What Happens In The Background
 
 While the conversation begins, Scalvin silently creates or reuses a separate living workspace for the user.

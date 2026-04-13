@@ -1,4 +1,4 @@
-<!-- version: 0.5.0 -->
+<!-- version: 0.6.5 -->
 # Customization Commands
 
 The client can request setup changes during a session. Treat the workspace as self-contained.
@@ -45,6 +45,8 @@ Recognize conversational requests, not only exact phrases.
 - "export my data"
 - "save a copy"
 - "create a backup"
+- "migrate my workspace"
+- "upgrade my workspace"
 
 ### Runtime / Memory changes
 
@@ -141,6 +143,27 @@ Optionally, after 10+ sessions without a backup, the companion may mention it on
 
 Do not repeat this reminder more than once per month.
 
+## Workspace Migration
+
+When the user asks to migrate or upgrade their workspace:
+
+1. Create a full backup of the current workspace first (follow Backup / Export).
+2. Create a fresh workspace at a new path (or the same path with a `-v2` suffix) using the normal bootstrap in `SETUP.md`, but carry forward the old workspace's current setup defaults:
+   - companion name and default language from `SETUP-NOTES.md`
+   - base persona choice from `SETUP-NOTES.md` or the old `.therapy/persona.md` with any `## Client-Specific Adjustments` section stripped out
+   - active modalities from `.therapy/modalities/`
+   - session structure from `.therapy/session-structure.md`
+3. Copy user data from old to new:
+   - `profile.md`, `ACTIVE-THEMES.md`, `CURRENT-FOCUS.md`, `NEXT-PRIMER.md` (as-is)
+   - `sessions/` (all files)
+   - `archive/` (all files)
+   - `sources/` (all files)
+   - from `.therapy/persona.md`: copy only the `## Client-Specific Adjustments` section if it exists, then append it to the new persona file
+4. Do not copy old runtime files. The new workspace should keep its updated runtime versions.
+5. Update the repo-root `SETUP-NOTES.md` to point to the new workspace path.
+6. Tell the user simply: "Migrated. Your sessions, profile, and sources are in the new workspace. Runtime files have been updated. Your persona adjustments have been preserved."
+7. Suggest verifying the new workspace, then optionally deleting the old one.
+
 ## Runtime / Memory Logic Changes
 
 If the client asks to change how the system works, update the relevant living file directly:
@@ -159,16 +182,37 @@ Do not treat these as fixed doctrine.
 ## Update Flow
 
 1. Read `.therapy/version.json`.
-2. Resolve the source in this order:
-   - local workspace libraries if the requested file already exists there
-   - `source_repo_path` if it still exists locally
-   - `source_url` if configured
-3. Read the source `manifest.json`.
-4. Compare installed versions against source versions.
-5. Show updates grouped by:
+2. If `source_url` is configured and non-empty, fetch the remote `manifest.json` from `{source_url}/manifest.json` using web fetch.
+3. If `source_url` is empty but `source_repo_path` exists locally, read `manifest.json` from that local path.
+4. If neither works, ask the user for the repo URL or local path.
+5. Compare installed versions against source versions.
+6. Show updates grouped by:
    - core components
    - library files
    - runtime files
    - adapter files
-6. Always recommend safety updates.
+
+### Merge Strategy
+
+Before applying any update to a runtime or persona file, check whether the workspace copy has been modified:
+
+1. For `.therapy/persona.md`: if a `## Client-Specific Adjustments` section exists, preserve it. Apply the base persona update, then re-append the preserved adjustments.
+
+2. For runtime files (`.therapy/runtime/*.md`): compare both the workspace file content and the version tag against the incoming file.
+   - If the workspace file content matches the incoming file exactly: safe to overwrite.
+   - If the version tags match but the content differs: assume the companion may have customized the file without a version bump. Ask the user.
+   - If the workspace version is higher or different: the companion may have modified it. Ask the user:
+     "This file has been customized during your sessions. Do you want to:
+     a) Keep your version
+     b) Take the new version (customizations will be lost)
+     c) Take the new version and I'll try to re-apply your customizations"
+
+3. Never overwrite: `profile.md`, `ACTIVE-THEMES.md`, `CURRENT-FOCUS.md`, `NEXT-PRIMER.md`, `sessions/`, `archive/`, `sources/`
+
+4. Always overwrite without asking: `.therapy/safety-protocol.md` (safety updates are non-negotiable)
+
 7. Apply only approved updates.
+
+Always recommend safety updates.
+
+For remote fetching, use web fetch to get `{base_url}/{file_path}` for each file that needs updating.

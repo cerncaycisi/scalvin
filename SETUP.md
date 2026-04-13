@@ -113,6 +113,8 @@ Create:
 ├── START-CODEX-SESSION.md
 ├── START-CLAUDE-SESSION.md
 ├── susan.md
+├── start-session.command
+├── start-session.bat
 ├── SETUP-NOTES.md
 ├── profile.md
 ├── ACTIVE-THEMES.md
@@ -158,15 +160,31 @@ mkdir -p "{workspace_path}/sessions" \
 
 cat > "{workspace_path}/.therapy/version.json" <<EOF
 {
-  "installed_from_version": "0.6.0",
+  "installed_from_version": "0.6.5",
   "source_repo_path": "{repo_path}",
-  "source_url": "",
+  "source_url": "https://raw.githubusercontent.com/cerncaycisi/scalvin/main/",
   "components": {
     "safety-protocol": "1.0.0",
-    "commands": "0.4.0"
+    "commands": "0.6.5"
   },
   "runtime_components": {
-    "next-primer": "1.0.0"
+    "start-session": "3.0.0",
+    "next-primer": "1.0.0",
+    "session-start-cheatsheet": "1.0.0",
+    "memory-inflation-guard": "1.0.0",
+    "live-moveset": "2.0.0",
+    "disambiguation-grid": "1.0.0",
+    "rupture-and-repair": "1.0.0",
+    "session-note-standard": "1.0.0",
+    "session-close-review": "2.0.0",
+    "weekly-review": "2.0.0",
+    "review-due-check": "1.0.0",
+    "source-triggers": "2.0.0",
+    "profile-template": "2.0.0",
+    "active-themes-template": "1.0.0",
+    "current-focus-template": "1.0.0",
+    "setup-notes-template": "1.0.0",
+    "review-due-check-py": "1.0.0"
   },
   "libraries": {
     "personas": "1.0.0",
@@ -219,6 +237,27 @@ Create these in the generated workspace by reading the matching template from `.
 - `susan.md`
 
 Also create `START-SESSION.md` by copying from `.therapy/runtime/START-SESSION.md`.
+
+### Create Launcher Scripts
+
+Create platform-appropriate Claude Code launcher scripts in the generated workspace so the user can double-click to start a session if they use Claude Code.
+
+These launchers assume `claude` is installed and available on the user's PATH. If the user mainly works in Codex or another client, they can ignore these launchers and keep opening the workspace normally.
+
+macOS/Linux:
+
+```bash
+printf '#!/bin/bash\ncd "%s"\nclaude\n' "{workspace_path}" > "{workspace_path}/start-session.command"
+chmod +x "{workspace_path}/start-session.command"
+```
+
+Windows:
+
+```bash
+printf '@echo off\r\ncd /d "%s"\r\nclaude\r\n' "{workspace_path}" > "{workspace_path}/start-session.bat"
+```
+
+Create both by default. The user can delete whichever does not apply to their platform.
 
 ### Populate Generated Workspace `SETUP-NOTES.md`
 
