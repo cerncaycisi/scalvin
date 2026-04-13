@@ -1,4 +1,4 @@
-<!-- version: 0.6.5 -->
+<!-- version: 0.6.6 -->
 # Customization Commands
 
 The client can request setup changes during a session. Treat the workspace as self-contained.
@@ -185,8 +185,9 @@ Do not treat these as fixed doctrine.
 2. If `source_url` is configured and non-empty, fetch the remote `manifest.json` from `{source_url}/manifest.json` using web fetch.
 3. If `source_url` is empty but `source_repo_path` exists locally, read `manifest.json` from that local path.
 4. If neither works, ask the user for the repo URL or local path.
-5. Compare installed versions against source versions.
-6. Show updates grouped by:
+5. Read `base_url` from the source `manifest.json`. If `base_url` is missing or empty, use `source_url` as the remote fetch base.
+6. Compare installed versions against source versions.
+7. Show updates grouped by:
    - core components
    - library files
    - runtime files
@@ -196,22 +197,19 @@ Do not treat these as fixed doctrine.
 
 Before applying any update to a runtime or persona file, check whether the workspace copy has been modified:
 
-1. For `.therapy/persona.md`: if a `## Client-Specific Adjustments` section exists, preserve it. Apply the base persona update, then re-append the preserved adjustments.
+- For `.therapy/persona.md`: if a `## Client-Specific Adjustments` section exists, preserve it. Apply the base persona update, then re-append the preserved adjustments.
+- For runtime files (`.therapy/runtime/*.md`): compare both the workspace file content and the version tag against the incoming file.
+  - If the workspace file content matches the incoming file exactly: safe to overwrite.
+  - If the version tags match but the content differs: assume the companion may have customized the file without a version bump. Ask the user.
+  - If the workspace version is higher or different: the companion may have modified it. Ask the user:
+    "This file has been customized during your sessions. Do you want to:
+    a) Keep your version
+    b) Take the new version (customizations will be lost)
+    c) Take the new version and I'll try to re-apply your customizations"
+- Never overwrite: `profile.md`, `ACTIVE-THEMES.md`, `CURRENT-FOCUS.md`, `NEXT-PRIMER.md`, `sessions/`, `archive/`, `sources/`
+- Always overwrite without asking: `.therapy/safety-protocol.md` (safety updates are non-negotiable)
 
-2. For runtime files (`.therapy/runtime/*.md`): compare both the workspace file content and the version tag against the incoming file.
-   - If the workspace file content matches the incoming file exactly: safe to overwrite.
-   - If the version tags match but the content differs: assume the companion may have customized the file without a version bump. Ask the user.
-   - If the workspace version is higher or different: the companion may have modified it. Ask the user:
-     "This file has been customized during your sessions. Do you want to:
-     a) Keep your version
-     b) Take the new version (customizations will be lost)
-     c) Take the new version and I'll try to re-apply your customizations"
-
-3. Never overwrite: `profile.md`, `ACTIVE-THEMES.md`, `CURRENT-FOCUS.md`, `NEXT-PRIMER.md`, `sessions/`, `archive/`, `sources/`
-
-4. Always overwrite without asking: `.therapy/safety-protocol.md` (safety updates are non-negotiable)
-
-7. Apply only approved updates.
+8. Apply only approved updates.
 
 Always recommend safety updates.
 
