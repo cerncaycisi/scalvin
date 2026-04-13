@@ -4,7 +4,59 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.6.5] - 2026-04-13
+
+### Fixed
+
+- generated workspace `.therapy/version.json` now writes current package metadata, including `0.6.5` install version, `commands` component version, and the full runtime component map
+- `commands.md` merge strategy now treats same-version runtime files as potentially customized when content differs, preventing silent overwrite of living runtime edits
+- workspace migration now preserves the old workspace's setup defaults before moving user data into the fresh workspace
+- launcher docs now clarify that `start-session.command` and `start-session.bat` are Claude Code launchers, avoiding mismatch with the repo's generic client support
+
+---
+
+## [0.6.4] - 2026-04-13
+
+### Added
+
+- workspace migration flow in `commands.md`, including backup-first upgrade handling, selective user-data copying, runtime refresh, and persona-adjustment preservation
+- natural-language recognition for "migrate my workspace" and "upgrade my workspace"
+
+---
+
+## [0.6.3] - 2026-04-13
+
+### Changed
+
+- `commands.md` update flow now includes an explicit merge strategy for persona and runtime files, protecting client memory files and preserving customized workspace behavior during updates
+
+---
+
+## [0.6.2] - 2026-04-13
+
+### Changed
+
+- `manifest.json` now publishes the raw GitHub `base_url` for remote update fetching
+- `commands.md` update flow now prefers `source_url`, falls back to local `source_repo_path`, and uses web fetch for remote file updates
+- generated workspace `.therapy/version.json` now includes the raw GitHub `source_url` by default
+
+---
+
+## [0.6.1] - 2026-04-13
+
+### Added
+
+- workspace launcher script generation in `SETUP.md`: generated workspaces now include `start-session.command` and `start-session.bat` so sessions can be launched by double-click
+- `GETTING-STARTED.md` note explaining launcher script use from the workspace folder
+
+---
+
 ## [0.6.0] - 2026-04-13
+
+### Added
+
+- modality switching guidance in `runtime/START-SESSION.md`, mapping live moments to installed modalities and clarifying seamless pivots, blending, and somatic-first timing
+- ethical guidelines in `runtime/START-SESSION.md`, covering therapeutic boundaries, harmful validation, cultural humility, autonomy, and honesty about limitations
 
 ### Changed
 

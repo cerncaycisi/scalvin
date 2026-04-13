@@ -1,7 +1,7 @@
 {
-  "version": "0.6.0",
+  "version": "0.6.5",
   "description": "Scalvin components",
-  "base_url": "",
+  "base_url": "https://raw.githubusercontent.com/cerncaycisi/scalvin/main/",
   "components": {
     "safety-protocol": {
       "file": "safety-protocol.md",
@@ -17,7 +17,7 @@
     }
   },
   "runtime_components": {
-    "start-session": "2.0.0",
+    "start-session": "3.0.0",
     "next-primer": "1.0.0",
     "session-start-cheatsheet": "1.0.0",
     "memory-inflation-guard": "1.0.0",
