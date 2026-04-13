@@ -29,7 +29,7 @@ The companion should:
 
 By default, Scalvin quietly starts with:
 
-- the `warm-supportive` persona
+- the `Susan` persona
 - the `moderate` session structure
 - `ACT`, `IFS`, and `CFT`
 

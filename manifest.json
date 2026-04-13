@@ -1,5 +1,5 @@
 {
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Scalvin components",
   "base_url": "",
   "components": {
@@ -48,7 +48,7 @@
         "personas/contemplative.md",
         "personas/philosophical.md",
         "personas/creative.md",
-        "personas/hazel.md"
+        "personas/susan.md"
       ]
     },
     "modalities": {

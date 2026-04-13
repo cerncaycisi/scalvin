@@ -12,7 +12,7 @@ Recognize conversational requests, not only exact phrases.
 - "switch persona"
 - "be more direct"
 - "be gentler"
-- "be more like Hazel"
+- "be more like Susan"
 
 ### Modality changes
 

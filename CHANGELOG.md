@@ -4,6 +4,16 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.6.0] - 2026-04-13
+
+### Changed
+
+- renamed the `Hazel` persona to `Susan`
+- made `Susan` the default companion persona for conversational bootstrap
+- aligned generated workspace defaults so bootstrap now creates `susan.md` as the named starter file and uses `Susan` as the default companion name
+
+---
+
 ## [0.5.1] - 2026-04-10
 
 ### Fixed
@@ -117,7 +127,7 @@ All notable changes to Scalvin.
   - `RUPTURE-AND-REPAIR.md`
   - `SOURCE-TRIGGERS.md`
   - `WEEKLY-REVIEW.md`
-- `Hazel` as an additional persona option
+- `Susan` as an additional persona option
 
 ### Changed
 

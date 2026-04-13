@@ -75,7 +75,7 @@ Detailed walkthrough: [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)
 
 ## Persona Library
 
-Nine communication styles included: Warm & Supportive (default), Hazel, Direct & Challenging, Coach, Grounded & Real, Contemplative, Philosophical, Creative, and Warm 4o-Style.
+Nine communication styles included: Susan (default), Warm & Supportive, Direct & Challenging, Coach, Grounded & Real, Contemplative, Philosophical, Creative, and Warm 4o-Style.
 
 The companion adds client-specific adjustments on top of whichever base persona is active.
 

@@ -20,7 +20,7 @@ Each generated companion workspace includes several entry files:
 - `START-SESSION.md`
 - `START-CODEX-SESSION.md`
 - `START-CLAUDE-SESSION.md`
-- a named starter file like `hazel.md`
+- a named starter file like `susan.md`
 
 ## Why So Many Entry Files?
 

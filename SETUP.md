@@ -61,8 +61,8 @@ Do not ask the user to choose persona, modality, structure, or storage path duri
 
 Use these defaults:
 
-- companion name: `Scalvin`
-- default persona: `warm-supportive`
+- companion name: `Susan`
+- default persona: `susan`
 - default session structure: `moderate`
 - default modalities: `ACT`, `IFS`, `CFT`
 - default workspace path: `~/scalvin-workspace`
@@ -91,9 +91,9 @@ Create or reuse a self-contained generated workspace outside the repo.
 - `workspace_path` = `~/scalvin-workspace` by default
 - `repo_path` = current repo root
 - `today` = current local date in `YYYY-MM-DD`
-- `companion_name` = `Scalvin`
-- `starter_slug` = `scalvin`
-- `selected_persona_file` = `personas/warm-supportive.md`
+- `companion_name` = `Susan`
+- `starter_slug` = `susan`
+- `selected_persona_file` = `personas/susan.md`
 - `selected_structure_file` = `structures/moderate.md`
 - `selected_modality_files` = `modalities/act.md`, `modalities/ifs.md`, `modalities/cft.md`
 - `default_language` = inferred from the user unless they specify it
@@ -112,7 +112,7 @@ Create:
 ├── START-SESSION.md
 ├── START-CODEX-SESSION.md
 ├── START-CLAUDE-SESSION.md
-├── scalvin.md
+├── susan.md
 ├── SETUP-NOTES.md
 ├── profile.md
 ├── ACTIVE-THEMES.md
@@ -158,7 +158,7 @@ mkdir -p "{workspace_path}/sessions" \
 
 cat > "{workspace_path}/.therapy/version.json" <<EOF
 {
-  "installed_from_version": "0.5.1",
+  "installed_from_version": "0.6.0",
   "source_repo_path": "{repo_path}",
   "source_url": "",
   "components": {
@@ -216,7 +216,7 @@ Create these in the generated workspace by reading the matching template from `.
 - `CLAUDE.md`
 - `START-CODEX-SESSION.md`
 - `START-CLAUDE-SESSION.md`
-- `scalvin.md`
+- `susan.md`
 
 Also create `START-SESSION.md` by copying from `.therapy/runtime/START-SESSION.md`.
 
@@ -224,10 +224,10 @@ Also create `START-SESSION.md` by copying from `.therapy/runtime/START-SESSION.m
 
 Fill it with:
 
-- companion name: `Scalvin`
+- companion name: `Susan`
 - preferred user name if known
 - default language
-- default persona: `warm-supportive`
+- default persona: `susan`
 - default structure: `moderate`
 - default modalities: `ACT, IFS, CFT`
 
