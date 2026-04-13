@@ -160,12 +160,12 @@ mkdir -p "{workspace_path}/sessions" \
 
 cat > "{workspace_path}/.therapy/version.json" <<EOF
 {
-  "installed_from_version": "0.6.5",
+  "installed_from_version": "0.6.6",
   "source_repo_path": "{repo_path}",
   "source_url": "https://raw.githubusercontent.com/cerncaycisi/scalvin/main/",
   "components": {
     "safety-protocol": "1.0.0",
-    "commands": "0.6.5"
+    "commands": "0.6.6"
   },
   "runtime_components": {
     "start-session": "3.0.0",

@@ -4,6 +4,16 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.6.6] - 2026-04-13
+
+### Fixed
+
+- clarified `commands.md` update flow numbering by separating the merge strategy from the numbered update steps
+- `commands.md` now explicitly reads `base_url` from the source manifest before remote file fetches, falling back to `source_url` only when needed
+- cleaned residual macOS `._*` metadata files from the working tree
+
+---
+
 ## [0.6.5] - 2026-04-13
 
 ### Fixed
