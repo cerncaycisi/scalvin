@@ -1,30 +1,30 @@
-<!-- version: 1.0.0 -->
+<!-- version: 1.0.1 -->
 # Client-Told Memories
 
-A living source file that the companion creates and maintains as the user recounts specific remembered scenes across sessions. Not present at bootstrap -- comes into being the first time the user tells a concrete, memorable episode that is likely to matter again.
+A living source file that the companion creates and maintains as the client recounts specific remembered scenes across sessions. Not present at bootstrap -- comes into being the first time the client tells a concrete, memorable episode that is likely to matter again.
 
 This is different from other source files in two ways:
 
-1. **The companion creates and writes it**, not the user. The user brings scenes verbally; the companion logs them.
+1. **The companion creates and writes it**, not the client. The client brings scenes verbally; the companion logs them.
 2. **It grows session by session** rather than being imported once.
 
 ## When To Create The File
 
-Do not create `sources/client-told-memories.md` on bootstrap. Create it the first time the user tells a specific remembered scene during a session that meets the criteria below.
+Do not create `sources/client-told-memories.md` on bootstrap. Create it the first time the client tells a specific remembered scene during a session that meets the criteria below.
 
 ## What Counts As A Scene Worth Logging
 
 A scene is worth logging when:
 
 - It is a specific episode or moment, not a summary or generalization
-- It has enough texture that the user might want to return to it in a later session
+- It has enough texture that the client might want to return to it in a later session
 - Losing it would reduce continuity -- the clinical value of the scene outlives the session it was first told in
-- The scene clarifies something durable about the user's pattern, relationships, or self-understanding
+- The scene clarifies something durable about the client's pattern, relationships, or self-understanding
 
 What does not count:
 - Generic statements ("my childhood was hard")
 - Pure emotional summary without concrete content
-- Scenes the user themselves flags as unimportant or already processed
+- Scenes the client themselves flags as unimportant or already processed
 
 ## Structural Rules
 
@@ -39,7 +39,7 @@ What does not count:
 Each entry should include:
 
 - A short descriptive heading that names the scene (`### The phone call in 2019`)
-- The scene itself in a few lines -- enough to reconstruct what the user told, in their own words where possible
+- The scene itself in a few lines -- enough to reconstruct what the client told, in their own words where possible
 - Optional: a brief clinical note about why this scene matters (separate from the scene itself, clearly marked)
 
 ## Updating Existing Entries
@@ -54,7 +54,7 @@ Duplicates create confusion. One scene, one entry, under the most recent date it
 
 ## Language Fidelity
 
-When logging a scene, use the user's own words for the key phrases. Paraphrase the surrounding narrative but preserve verbatim any phrase the user used to name the scene or its meaning.
+When logging a scene, use the client's own words for the key phrases. Paraphrase the surrounding narrative but preserve verbatim any phrase the client used to name the scene or its meaning.
 
 ## Access Rules
 
