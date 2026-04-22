@@ -39,4 +39,9 @@ Useful files:
 - `.therapy/runtime/SOURCE-TRIGGERS.md`
 - `archive/reviews/REVIEW-INDEX.md`
 
+Source notes:
+
+- `sources/` holds user-provided source material the companion can reopen selectively
+- `sources/client-told-memories.md`, if it exists, is companion-maintained and grows from scenes the user recounts across sessions
+
 If you want to customize it later, ask the companion to switch persona, add or remove modalities, change session structure, import old notes, or recalibrate how the runtime itself works.

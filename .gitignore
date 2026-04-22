@@ -29,5 +29,6 @@ __pycache__/
 
 # Node (if adding tooling later)
 node_modules/
+*.zip
 scalvin.zip
 Archive.zip

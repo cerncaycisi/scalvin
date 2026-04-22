@@ -68,6 +68,16 @@ Do not dump a technical summary. Instead, acknowledge the source naturally:
 
 Do not list file operations, path names, or review procedures.
 
+## `sources/client-told-memories.md`
+
+If this file exists, reopen it when:
+
+- the current session's material echoes a scene that might be logged there
+- the user references "that time when" or "like I told you before" in a way that suggests a specific scene
+- a new scene is being logged and nearby entries may need to be consulted for consistency
+
+Do not reopen on every session. Treat it like any selective source.
+
 ## Do Not Reopen A Source When
 
 - `CURRENT-FOCUS.md`, the latest session note, and the relevant active themes already hold enough context for the live question

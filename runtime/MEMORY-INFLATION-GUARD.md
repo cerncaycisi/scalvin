@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 # Memory Inflation Guard
 
 *This is a living operational layer. The companion may update it when the memory system becomes heavy, repetitive, overconfident, or too archive-like.*
@@ -63,3 +63,49 @@
 - would this matter at the next session start?
 - would this still matter in a month?
 - is this truly new structure or just better wording?
+
+## Keep It In The Session Note When
+
+- the detail is specific to this session and unlikely to recur
+- the insight is interesting but not yet proven as a pattern
+- the emotional charge is tied to an in-the-moment event
+- the detail is best understood in the session's own context
+
+## Move It To `ACTIVE-THEMES.md` When
+
+- the thread has appeared in 2+ sessions and is clearly ongoing
+- the client is likely to return to it across multiple sessions
+- the theme shapes how other material should be interpreted
+- the theme is medium-term but not yet durable enough for profile
+
+## Move It To `CURRENT-FOCUS.md` When
+
+- the work has a clear near-term direction for the next several sessions
+- there is a specific question, experiment, or area being actively explored
+- the previous focus has resolved or shifted and a new one is taking shape
+
+## Move It To `profile.md` When
+
+- the formulation has held across many sessions and feels durable
+- the detail is foundational -- removing it would lose important continuity
+- the client has confirmed the formulation as accurate
+- it is the kind of thing a good therapist would still remember after a long break
+
+## Move It To Archive When
+
+- the detail is historically important but no longer actively shaping sessions
+- a formulation has been superseded by a more accurate one (archive the old one, do not delete)
+- the session note is becoming too long and some detail can be moved out without loss
+
+## Compression Rules
+
+- When moving content between layers, prefer editing the source to moving duplicates. Duplicates in multiple layers decay independently and create drift.
+- When archiving, preserve enough context that a future read understands what the archived content was responding to.
+- When profile grows past session-start readability, move historical detail to `archive/profile-detailed-YYYY-MM-DD.md` and keep the lean version in `profile.md`.
+
+## Update Triggers
+
+Update this file when:
+- a decision rule proves wrong in practice (for example, something got promoted to profile that should have stayed in `ACTIVE-THEMES`)
+- new memory layers get added to the workspace
+- weekly reviews surface memory inflation or memory loss patterns

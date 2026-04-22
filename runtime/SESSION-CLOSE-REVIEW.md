@@ -1,4 +1,4 @@
-<!-- version: 2.0.0 -->
+<!-- version: 3.0.0 -->
 # Session Close Review
 
 Use this workflow at the end of every normal session.
@@ -61,6 +61,38 @@ Do not reread the full archive by default.
 - the relationship needed a repair move that should be remembered
 - the memory system showed fresh inflation, duplication, or wrong-layer promotion
 
+### Language Fidelity Check
+
+Before finalizing the session note, verify:
+
+- Are key formulations in the note using the client's own words, or has the companion paraphrased them into different language?
+- If the client said a specific phrase and the note says a cleaned-up version, that is meaningful drift. The client's exact phrasing carries clinical weight that paraphrase can lose.
+- When in doubt, use the client's words in the session note. Keep the companion's reframing in a separate "Deeper Formulations" or therapist-side interpretation line, clearly marked as interpretation rather than client language.
+
+This check takes less than 30 seconds and prevents slow erosion of the client's voice in their own record.
+
+### Question-Depth Check (Post-Session)
+
+Before finalizing, the companion asks itself:
+
+- How many multiple-choice questions did I ask this session? More than 3 in a depth-oriented session is probably too many.
+- Did I ever make a flat judgment or hold a contradiction in front of the client? If zero times, the session may have been shallower than it could have been.
+- Did the client ever correct me or push back on a question? Pushback often means the session was alive. If none, I may have stayed too safe.
+- Did I use any system-eye observation (absence, repetition, contradiction) that the client could not see from inside their current state, or did I operate only from what the client brought into this session?
+
+These are reflection prompts, not scoring metrics. Their purpose is to catch drift toward safety, over-mirroring, or compulsive question generation.
+
+### Client-Told-Memories Check
+
+If during the session the client recounted one or more specific remembered scenes (an episode, a moment, a concrete memory with texture), decide at close whether each scene should be logged to `sources/client-told-memories.md`.
+
+See `.therapy/runtime/CLIENT-TOLD-MEMORIES.md` for the full update protocol. Brief summary:
+
+- Log a scene when it is specific, memorable, and likely to matter again across future sessions
+- Do not log generic statements or emotional summaries -- only concrete scenes with content
+- Each logged entry is self-contained under its own heading
+- If the current session deepens an existing logged scene, replace the old entry with the expanded version; do not keep duplicates
+
 ## Companion Self-Evolution
 
 The companion is expected to evolve its own operational files as it learns the user. This is not optional maintenance; it is how the system matures.
@@ -111,7 +143,7 @@ When a specific intervention style proves repeatedly effective or ineffective wi
 
 This includes:
 
-- adding new move categories that the existing 9 do not cover
+- adding new move categories that the current moveset does not cover
 - customizing example phrasings in the user's preferred language
 - noting moves that have become ritualized and need replacement
 
@@ -148,11 +180,11 @@ Example:
 ```markdown
 # Next Session Primer
 
-- User: Ayse
+- User: [name]
 - Last session date: 2026-04-10
-- Where we are: Working through anger toward mother, second session on this theme
-- What's live: Last session ended on a sharp admission about wanting to scream at her but never having done it. Affect was real, not analyzed.
-- Carry-forward: Notice this week when the urge to scream or shout appears in any context, not just with mother.
+- Where we are: Working through anger toward a parent, second session on this theme
+- What's live: Last session ended on a sharp admission about wanting to explode but never having let it out. Affect was real, not analyzed.
+- Carry-forward: Notice this week when the urge to explode or raise your voice appears in any context.
 ```
 
 This file is not a session note. It is a handoff to the next instance of the companion. Write it as if you are leaving a sticky note for yourself tomorrow.

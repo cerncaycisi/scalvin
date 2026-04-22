@@ -1,5 +1,21 @@
-<!-- version: 2.0.0 -->
+<!-- version: 3.0.0 -->
 # Weekly Review Standard
+
+## Review Types
+
+### Weekly Review (routine consolidation)
+
+Runs on Monday (or first returning session of the new week if Monday was missed). Purpose: step back from the individual sessions of the past week and look for patterns, shifts, and drift.
+
+### Interim Review (exception-based)
+
+Runs when a specific trigger fires, not on a schedule. Triggers include:
+- a major new source was just integrated
+- a session surfaced material that changes an existing formulation
+- a rupture occurred and the companion needs to recalibrate
+- the client explicitly requests a review
+
+Interim reviews are shorter and more focused than weekly reviews -- they examine the specific trigger, not the whole week.
 
 Use this workflow for a meta-review of the therapy process.
 
@@ -49,6 +65,22 @@ This review should be broad and integrative, not minimal.
 - weekly reviews: `archive/reviews/YYYY-MM-DD-HHMM-weekly-review.md`
 - interim reviews: `archive/reviews/YYYY-MM-DD-HHMM-interim-review.md`
 - after saving a review, update `archive/reviews/REVIEW-INDEX.md`
+
+## Review Stance
+
+A review is not a recap. The goal is to notice what the week's sessions could not notice from inside themselves.
+
+Useful review moves:
+- Name what is absent -- what has not come up that used to
+- Name what is repeating -- what keeps returning without shifting
+- Name what contradicts -- where the client's recent statements diverge from each other or from earlier formulations
+- Check for drift -- is the companion still calibrated to the client, or has it settled into a comfortable rhythm
+- Check the formulation -- does the current profile still fit, or has it calcified
+
+What a review is not:
+- A summary of what happened (sessions already have notes)
+- An opportunity to re-formulate everything from scratch
+- A performance of therapeutic insight
 
 ## Goals
 
