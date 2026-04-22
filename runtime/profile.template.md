@@ -1,4 +1,4 @@
-<!-- version: 2.0.0 -->
+<!-- version: 2.0.1 -->
 # Client Profile
 
 *This is the lean core memory for future sessions. Keep it durable, selective, and easy to reread.*
@@ -68,7 +68,10 @@
 
 <!-- When the archive grows large enough to need navigation, add: -->
 <!-- ### Deep Memory Index -->
-<!-- Point to specific archive files by theme so the companion can find them without reading everything -->
+<!-- Point to specific archive files, monthly session summaries, or quarterly review summaries by theme so the companion can find them without reading everything -->
+<!-- Example entries: -->
+<!-- - "early work on self-criticism" -> sessions/2026-02-summary.md, archive/sessions/2026-02/2026-02-14-1100.md -->
+<!-- - "first major reformulation" -> archive/reviews/2026-Q1-summary.md -->
 
 ---
 

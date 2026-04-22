@@ -1,5 +1,5 @@
 {
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Scalvin components",
   "base_url": "https://raw.githubusercontent.com/cerncaycisi/scalvin/main/",
   "components": {
@@ -30,8 +30,8 @@
     "review-due-check": "2.0.0",
     "source-triggers": "2.0.1",
     "client-told-memories": "1.0.1",
-    "context-compression": "1.0.0",
-    "profile-template": "2.0.0",
+    "context-compression": "1.1.0",
+    "profile-template": "2.0.1",
     "active-themes-template": "1.0.0",
     "current-focus-template": "1.0.0",
     "setup-notes-template": "1.0.0",

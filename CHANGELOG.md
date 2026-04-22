@@ -4,6 +4,19 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.8.1] - 2026-04-22
+
+### Fixed
+
+- 8.5.1 closed the CONTEXT-COMPRESSION read path: `runtime/CONTEXT-COMPRESSION.md` now documents when summaries get consulted on demand, and `runtime/profile.template.md`'s Deep Memory Index guidance now covers compression outputs so summaries can be indexed by theme
+- 8.5.2 updated `templates/archive/reviews/REVIEW-INDEX.template.md` to account for quarterly review summaries and the `history/` subdirectory introduced by compression, so the index stays consistent after first consolidation
+
+### Added
+
+- 8.5.3 added `scripts/clean-for-distribution.sh` and `scripts/README.md` to remove macOS resource fork artifacts from the working tree, plus a "Pre-Release Hygiene" note in `CONTRIBUTING.md`
+
+---
+
 ## [0.8.0] - 2026-04-22
 
 ### Added

@@ -162,7 +162,7 @@ mkdir -p "{workspace_path}/sessions" \
 
 cat > "{workspace_path}/.therapy/version.json" <<EOF
 {
-  "installed_from_version": "0.8.0",
+  "installed_from_version": "0.8.1",
   "source_repo_path": "{repo_path}",
   "source_url": "https://raw.githubusercontent.com/cerncaycisi/scalvin/main/",
   "components": {
@@ -183,8 +183,8 @@ cat > "{workspace_path}/.therapy/version.json" <<EOF
     "review-due-check": "2.0.0",
     "source-triggers": "2.0.1",
     "client-told-memories": "1.0.1",
-    "context-compression": "1.0.0",
-    "profile-template": "2.0.0",
+    "context-compression": "1.1.0",
+    "profile-template": "2.0.1",
     "active-themes-template": "1.0.0",
     "current-focus-template": "1.0.0",
     "setup-notes-template": "1.0.0",

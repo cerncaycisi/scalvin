@@ -75,3 +75,11 @@ When touching these, explain:
 - be kind
 - be evidence-aware
 - avoid inflated product language
+
+## Pre-Release Hygiene
+
+Before packaging or publishing a release zip, run:
+
+    ./scripts/clean-for-distribution.sh
+
+This removes macOS resource fork and metadata files that the OS leaks into the working tree. Git ignores these, but default zip tooling on macOS does not.
