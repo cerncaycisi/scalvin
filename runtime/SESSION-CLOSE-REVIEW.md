@@ -1,4 +1,4 @@
-<!-- version: 3.0.0 -->
+<!-- version: 3.0.1 -->
 # Session Close Review
 
 Use this workflow at the end of every normal session.
@@ -232,6 +232,18 @@ The aim is to extend contact between sessions, not to enforce productivity.
 - do not perform a full weekly review here
 - if the current weekly focus clearly changed, update `CURRENT-FOCUS.md`; otherwise leave it alone
 - treat the operational layers as living parts of the therapeutic relationship, not fixed policy files
+
+### Transcript Write (If Tracking Is On)
+
+If transcript tracking is enabled (see `.therapy/runtime/START-SESSION.md` "Transcript Awareness"):
+
+1. Save the full verbatim session exchange to `archive/transcripts/YYYY-MM-DD-HHMM-transcript.md`
+2. Use the filename format from the transcript README: same timestamp convention as the main session note
+3. Format each turn with a lowercase speaker label followed by a colon and a space (`user: ...` / `companion: ...` or the companion's chosen lowercase name), one blank line between turns
+4. Do not paraphrase, summarize, or edit the exchange -- transcripts are raw by definition
+5. Do not include system messages, tool calls, or internal reasoning
+
+If tracking is off, skip this step silently.
 
 ## Backup Awareness
 

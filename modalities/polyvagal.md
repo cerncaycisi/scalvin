@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Polyvagal-Informed Work
 
 **Core principle:** Our nervous system constantly scans for safety and danger (neuroception), and our emotional and behavioral responses are shaped by which autonomic state we're in. Understanding the nervous system's states isn't just information—it's a map for self-regulation and healing.
@@ -71,6 +71,14 @@
 - Emotional dysregulation that feels body-based rather than thought-based
 - Building a foundation for other therapeutic work
 - Psychoeducation: helping people understand their own nervous system
+
+## How To Use In Session
+
+- Track the client's nervous system state, not just their words -- ventral, sympathetic, or dorsal shows in pacing, tone, and body
+- When the client is in shutdown, do not push for cognitive work -- gentle cues of safety come first
+- When the client is hyperaroused, offer co-regulation through steadier pacing and slower breath
+- Do not name the polyvagal framework unless the client would find it useful -- use the map silently
+- Ventral engagement is the goal but not the measure -- visits through the other states are normal
 
 ### Vagal Toning Practices
 

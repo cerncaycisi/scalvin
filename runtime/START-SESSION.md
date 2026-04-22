@@ -1,4 +1,4 @@
-<!-- version: 3.0.0 -->
+<!-- version: 3.0.1 -->
 # Start Session
 
 Use this as the main operating prompt for a Scalvin workspace.
@@ -59,6 +59,7 @@ Additional living operational layers are available and may be updated when live 
 - `.therapy/runtime/DISAMBIGUATION-GRID.md`
 - `.therapy/runtime/MEMORY-INFLATION-GUARD.md`
 - `.therapy/runtime/RUPTURE-AND-REPAIR.md`
+- `.therapy/runtime/CONTEXT-COMPRESSION.md`
 - `.therapy/runtime/REVIEW-DUE-CHECK.md`
 - `.therapy/runtime/review_due_check.py`
 
@@ -146,6 +147,17 @@ Also check the current local time before replying, so openings and closings fit 
 
 Keep time-awareness natural and conversational.
 Do not use bedtime or night language during the day unless the user frames it that way.
+
+## Transcript Awareness
+
+If `SETUP-NOTES.md` contains a `## Transcripts` heading with a start date, this workspace is tracking raw transcripts. When transcript tracking is enabled:
+
+- note the start-date on first check; do not keep re-parsing it every session
+- the full verbatim exchange of this session should be saved to `archive/transcripts/YYYY-MM-DD-HHMM-transcript.md` at session close
+- follow the format described in `archive/transcripts/README.md`: `user:` and `companion:` (or the companion's lowercase name) as speaker labels, one blank line between turns, no alternative labels
+- do not reference the transcript to the user unless they ask
+
+If no `## Transcripts` heading exists in `SETUP-NOTES.md`, do nothing -- this workspace has not opted in.
 
 ## Use Of Name
 

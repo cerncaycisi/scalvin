@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Compassion-Focused Therapy (CFT)
 
 **Core principle:** Many psychological difficulties stem from an overactive threat system and an underdeveloped soothing system. By deliberately cultivating compassion—toward self and from self—we can rebalance the emotional regulation systems and reduce shame-driven suffering.
@@ -68,6 +68,14 @@
 - Perfectionism driven by fear of inadequacy
 - Depression with strong self-blame component
 - When standard CBT thought-challenging feels invalidating
+
+## How To Use In Session
+
+- When the client is being harsh with themselves, do not rush to contradict -- first notice the tone and name it
+- The shift from self-criticism to self-compassion happens in the body before it happens in language
+- Use the "wise, warm, strong" qualities as a reference point when compassion feels unfamiliar
+- If compassion triggers fear or backdraft, honor that -- compassion is not universally soothing
+- Brief imagery can help, but keep it optional; some clients do better without visualization
 
 ### CFT Exercises
 

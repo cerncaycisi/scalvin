@@ -16,6 +16,9 @@ You open the folder, say hi, and start talking. The companion:
 - runs weekly self-reviews to catch drift, update formulations, and audit its own behavior
 - detects model-specific tendencies (GPT over-mirroring, Claude over-formulating) and corrects for them
 - supports backup and export of the entire workspace
+- maintains a growing `client-told-memories` file as specific scenes are recounted across sessions
+- optionally saves raw session transcripts to `archive/transcripts/` when the user turns on transcript tracking
+- supports full workspace migration and upgrade without losing continuity
 
 Everything stays on your machine in plain markdown files. You own your data.
 

@@ -162,15 +162,15 @@ mkdir -p "{workspace_path}/sessions" \
 
 cat > "{workspace_path}/.therapy/version.json" <<EOF
 {
-  "installed_from_version": "0.7.1",
+  "installed_from_version": "0.8.0",
   "source_repo_path": "{repo_path}",
   "source_url": "https://raw.githubusercontent.com/cerncaycisi/scalvin/main/",
   "components": {
     "safety-protocol": "1.0.0",
-    "commands": "0.7.1"
+    "commands": "0.7.2"
   },
   "runtime_components": {
-    "start-session": "3.0.0",
+    "start-session": "3.0.1",
     "next-primer": "1.0.0",
     "session-start-cheatsheet": "2.0.0",
     "memory-inflation-guard": "2.0.0",
@@ -178,11 +178,12 @@ cat > "{workspace_path}/.therapy/version.json" <<EOF
     "disambiguation-grid": "1.0.0",
     "rupture-and-repair": "2.0.0",
     "session-note-standard": "2.0.0",
-    "session-close-review": "3.0.0",
-    "weekly-review": "3.0.0",
+    "session-close-review": "3.0.1",
+    "weekly-review": "3.0.1",
     "review-due-check": "2.0.0",
     "source-triggers": "2.0.1",
     "client-told-memories": "1.0.1",
+    "context-compression": "1.0.0",
     "profile-template": "2.0.0",
     "active-themes-template": "1.0.0",
     "current-focus-template": "1.0.0",
@@ -206,6 +207,7 @@ cp "{repo_path}"/modalities/*.md "{workspace_path}/.therapy/library/modalities/"
 cp "{repo_path}"/structures/*.md "{workspace_path}/.therapy/library/structures/"
 cp "{repo_path}"/runtime/*.md "{workspace_path}/.therapy/library/runtime/"
 cp "{repo_path}/runtime/CLIENT-TOLD-MEMORIES.md" "{workspace_path}/.therapy/library/runtime/CLIENT-TOLD-MEMORIES.md"
+cp "{repo_path}/runtime/CONTEXT-COMPRESSION.md" "{workspace_path}/.therapy/library/runtime/CONTEXT-COMPRESSION.md"
 cp "{repo_path}/runtime/review_due_check.py" "{workspace_path}/.therapy/library/runtime/review_due_check.py"
 cp "{repo_path}"/adapters/workspace/*.md "{workspace_path}/.therapy/library/adapters/"
 cp "{repo_path}/{selected_persona_file}" "{workspace_path}/.therapy/persona.md"
@@ -215,6 +217,7 @@ cp "{repo_path}/modalities/ifs.md" "{workspace_path}/.therapy/modalities/"
 cp "{repo_path}/modalities/cft.md" "{workspace_path}/.therapy/modalities/"
 cp "{workspace_path}"/.therapy/library/runtime/*.md "{workspace_path}/.therapy/runtime/"
 cp "{workspace_path}/.therapy/library/runtime/CLIENT-TOLD-MEMORIES.md" "{workspace_path}/.therapy/runtime/CLIENT-TOLD-MEMORIES.md"
+cp "{workspace_path}/.therapy/library/runtime/CONTEXT-COMPRESSION.md" "{workspace_path}/.therapy/runtime/CONTEXT-COMPRESSION.md"
 cp "{workspace_path}/.therapy/library/runtime/review_due_check.py" "{workspace_path}/.therapy/runtime/review_due_check.py"
 ```
 

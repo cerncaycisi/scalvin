@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## DBT Skills
 
 **Core principle:** Dialectical Behavior Therapy skills help with emotional regulation, distress tolerance, interpersonal effectiveness, and mindfulness. Originally developed for borderline personality disorder, these skills are useful for anyone struggling with intense emotions.
@@ -16,6 +16,8 @@ Skills for surviving crisis moments without making things worse.
 - **I**ntense exercise: Brief burst of physical activity
 - **P**aced breathing: Slow exhale longer than inhale
 - **P**rogressive muscle relaxation
+
+**Safety note:** TIPP techniques involve physical sensation and should be introduced as options to discuss, not as direct instructions. If the client has a history of self-harm, approach body-based crisis techniques with extra care and suggest discussing them with a mental health professional first. Cold-water and temperature-based techniques in particular can be miscalibrated.
 
 **ACCEPTS (Distract)**
 - **A**ctivities: Do something engaging
@@ -118,6 +120,14 @@ Skills for present-moment awareness and wise action.
 - Interpersonal conflict
 - Crisis moments
 - Chronic emotional dysregulation
+
+## How To Use In Session
+
+- DBT skills are tools -- introduce them when the client is dysregulated and could use something concrete
+- Skills work best when practiced outside of crisis; mention this framing when teaching
+- Do not list skills encyclopedically; pick one that fits the present moment
+- Validation-plus-change is the DBT stance: both the feeling and the need to act differently can be true
+- For acute distress, TIPP options can help in the moment; for emotional regulation, DEAR MAN or PLEASE live more slowly
 - Self-harm or suicidal urges (crisis skills)
 
 ### DBT Homework Examples

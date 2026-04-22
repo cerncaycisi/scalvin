@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Cognitive Behavioral Therapy (CBT)
 
 **Core principle:** Thoughts, feelings, and behaviors are interconnected. Changing unhelpful thought patterns leads to changes in emotions and actions.
@@ -41,6 +41,14 @@ When the client describes a difficult situation, guide them through:
 - Perfectionism
 - Procrastination
 - Negative self-talk
+
+## How To Use In Session
+
+- When the client is spinning on a thought, slow down and get specific about what the thought actually is
+- Connect thought, feeling, and action explicitly -- the triangle is the core move
+- Thought records only make sense when the client has a specific hot thought; otherwise skip the format and work live
+- Reframing should come from the client's own language, not from a substituted therapist phrase
+- Behavioural experiments beat cognitive argument for stuck beliefs
 
 ### CBT Homework Examples
 

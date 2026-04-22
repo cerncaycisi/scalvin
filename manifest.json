@@ -1,5 +1,5 @@
 {
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Scalvin components",
   "base_url": "https://raw.githubusercontent.com/cerncaycisi/scalvin/main/",
   "components": {
@@ -17,7 +17,7 @@
     }
   },
   "runtime_components": {
-    "start-session": "3.0.0",
+    "start-session": "3.0.1",
     "next-primer": "1.0.0",
     "session-start-cheatsheet": "2.0.0",
     "memory-inflation-guard": "2.0.0",
@@ -25,11 +25,12 @@
     "disambiguation-grid": "1.0.0",
     "rupture-and-repair": "2.0.0",
     "session-note-standard": "2.0.0",
-    "session-close-review": "3.0.0",
-    "weekly-review": "3.0.0",
+    "session-close-review": "3.0.1",
+    "weekly-review": "3.0.1",
     "review-due-check": "2.0.0",
     "source-triggers": "2.0.1",
     "client-told-memories": "1.0.1",
+    "context-compression": "1.0.0",
     "profile-template": "2.0.0",
     "active-themes-template": "1.0.0",
     "current-focus-template": "1.0.0",
@@ -96,6 +97,7 @@
         "runtime/REVIEW-DUE-CHECK.md",
         "runtime/SOURCE-TRIGGERS.md",
         "runtime/CLIENT-TOLD-MEMORIES.md",
+        "runtime/CONTEXT-COMPRESSION.md",
         "runtime/profile.template.md",
         "runtime/ACTIVE-THEMES.template.md",
         "runtime/CURRENT-FOCUS.template.md",

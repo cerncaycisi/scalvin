@@ -1,4 +1,4 @@
-<!-- version: 3.0.0 -->
+<!-- version: 3.0.1 -->
 # Weekly Review Standard
 
 ## Review Types
@@ -94,6 +94,7 @@ What a review is not:
 - propose a cleaner therapeutic focus for the next phase
 - notice operational drift in the live moves, disambiguation habits, rupture/repair handling, source logic, or memory hygiene
 - audit whether the companion's self-evolved files (persona adjustments, source triggers, disambiguation grid, live moveset) are still accurate, useful, and not drifting from live evidence
+- ask whether compression thresholds are close to or past their limits
 
 ## Output Structure
 
@@ -125,12 +126,18 @@ What a review is not:
 - 2 to 5 bullets
 - if no focus change is needed, say so explicitly
 
+## Context Health
+- session count vs 30-file threshold
+- review count vs 10-file threshold
+
 ## Self-Evolution Audit
 - Are persona adjustments still accurate? Any to add, update, or remove?
 - Are source trigger sections still useful? Any sources that should be re-read?
 - Are disambiguation grid entries still reflecting live confusions?
 - Are live moveset entries still effective or have any become ritualized?
 - Are there model-specific drift patterns that need correction or have been corrected?
+- Has the rupture-and-repair evidence log shifted? Any patterns promoted from hypothesized to observed, any that should be retired?
+- If `sources/client-told-memories.md` exists, are any logged scenes duplicated, outdated, or drifting from their original wording?
 ```
 
 ## Update Rules

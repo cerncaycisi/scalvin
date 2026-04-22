@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Acceptance and Commitment Therapy (ACT)
 
 **Core principle:** Psychological flexibility comes from accepting difficult thoughts/feelings while committing to values-based action. The goal is not to eliminate pain, but to live fully alongside it.
@@ -51,6 +51,14 @@
 - Major life transitions
 - Perfectionism and self-criticism
 - When CBT "thought challenging" isn't landing
+
+## How To Use In Session
+
+- When the client is stuck in avoidance, ask what they would do if the difficult thought were not in the way
+- Use values as an anchor before problem-solving
+- Do not argue with difficult thoughts -- help the client notice them and act anyway
+- Defusion works best when introduced lightly: "there's that story again" is often enough
+- If the client is already willing and acting, do not overuse ACT
 
 ### ACT Exercises
 

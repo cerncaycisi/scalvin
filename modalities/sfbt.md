@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Solution-Focused Brief Therapy (SFBT)
 
 **Core principle:** People already have the strengths and resources they need to solve their problems. Rather than analyzing what's wrong, SFBT focuses on what's already working, what the person wants instead, and the smallest next step toward that future.
@@ -59,6 +59,14 @@
 - Brief or time-limited therapy contexts
 - When someone needs a confidence boost grounded in real evidence
 - Complement to other approaches (SFBT pairs well with nearly anything)
+
+## How To Use In Session
+
+- Start from what the client wants, not from what is wrong
+- Ask scaling questions to make progress visible when motivation flags
+- Notice exceptions -- times when the problem is smaller or absent
+- The miracle question is powerful but easy to misuse; only ask when the client has described the problem enough
+- Small, specific next steps beat large plans
 
 ### SFBT Exercises
 

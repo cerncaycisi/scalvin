@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Internal Family Systems (IFS)
 
 **Core principle:** The mind is naturally multiple—everyone has sub-personalities or "parts," and each part has positive intent, even when its behavior is harmful. Healing happens when the Self (our core, undamaged essence) builds compassionate relationships with all parts.
@@ -57,6 +57,14 @@ When someone is "in Self," they can relate to their parts with openness rather t
 - Emotional overwhelm or numbness
 - Relationship difficulties driven by protective parts
 - Addictive or compulsive behaviors
+
+## How To Use In Session
+
+- When the client describes inner conflict, ask "how do you feel toward that part?" to check for Self-energy
+- Do not rush to fix or remove parts -- get curious about what they protect
+- If the client is blended with a part, help them unblend before going deeper
+- Parts work can happen conversationally -- no formal eyes-closed exercise required
+- If a protector is active, honor its job before asking it to step back
 
 ### IFS Exercises
 
