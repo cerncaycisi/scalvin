@@ -4,6 +4,14 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.7.1] - 2026-04-22
+
+### Fixed
+
+- 5.14 normalized "user" -> "client" in `runtime/CLIENT-TOLD-MEMORIES.md` and in the client-told-memories section of `runtime/SOURCE-TRIGGERS.md` so the therapeutic-context terminology matches the rest of the runtime layer
+
+---
+
 ## [0.7.0] - 2026-04-22
 
 ### Added

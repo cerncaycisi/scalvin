@@ -1,4 +1,4 @@
-<!-- version: 0.7.0 -->
+<!-- version: 0.7.1 -->
 # Customization Commands
 
 The client can request setup changes during a session. Treat the workspace as self-contained.
