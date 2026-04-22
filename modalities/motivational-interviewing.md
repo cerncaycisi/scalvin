@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Motivational Interviewing (MI)
 
 **Core principle:** People are more likely to change when they talk themselves into it than when someone else tries to convince them. Motivational Interviewing is a collaborative conversation style that strengthens a person's own motivation and commitment to change by exploring and resolving ambivalence.
@@ -75,6 +75,14 @@ The goal is not to eliminate sustain talk but to gently tip the balance toward c
 - When advice-giving or persuasion has failed or backfired
 - Early stages of change (pre-contemplation, contemplation)
 - Any situation where autonomy and self-direction matter
+
+## How To Use In Session
+
+- When the client is ambivalent, both sides are real -- do not pick one and argue for it
+- Use reflections more than questions; reflections slow the client down and open change-talk
+- Notice and amplify change-talk when it appears; do not force it
+- If resistance rises, stop arguing and soften -- the client is the expert on themselves
+- Avoid the righting reflex (the pull to fix) -- that is what keeps ambivalent clients stuck
 
 ### MI Exercises
 

@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Narrative Therapy
 
 **Core principle:** People are not their problems—problems are the problems. We live through stories, and the dominant stories we carry about ourselves shape what we notice, what we believe is possible, and how we act. By externalizing problems and re-authoring stories, people can reclaim agency over their own lives.
@@ -58,6 +58,14 @@
 - Shame and stigma
 - Life transitions requiring new self-understanding
 - When someone feels defined by their diagnosis or problems
+
+## How To Use In Session
+
+- Listen for the story the client tells about themselves, not only the facts they report
+- Externalize problems into named entities ("the Inner Critic") when it helps the client see the story from the outside
+- Ask what the story leaves out -- there is usually a counter-story hiding underneath
+- Unique outcomes (moments that contradict the dominant story) are leverage points
+- Do not replace the client's story with a therapist's preferred one -- the narrative is theirs to rewrite
 
 ### Narrative Exercises
 

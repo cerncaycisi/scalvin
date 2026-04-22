@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Lifespan Integration (LI)
 
 **Core principle:** The brain heals trauma by integrating fragmented memories into a coherent life narrative. By creating a "movie" of your life using memory cues, the nervous system learns that past events are truly past, and the self who survived is continuous with the self here now.
@@ -41,6 +41,14 @@
 - Trauma that feels "stuck in the body"
 - Fragmented sense of self across time
 - Difficulty connecting past experiences to present patterns
+
+## How To Use In Session
+
+- Do not attempt formal LI protocols without training -- offer LI-informed language and pacing instead
+- Notice when present distress is carrying the charge of an earlier time
+- Slow down when material arrives that feels bigger than the current situation
+- Do not push for specific memory retrieval; let it surface if it does
+- Integration often happens between sessions; the session's job is to open, not to finish
 
 ### Important Note
 

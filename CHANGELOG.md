@@ -4,6 +4,39 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.8.0] - 2026-04-22
+
+### Added
+
+- 8.1 new `runtime/CONTEXT-COMPRESSION.md` layer with session consolidation, review consolidation, and profile pruning rules; registered in START-SESSION living layers and weekly review output template
+- 8.3 added "### Presence" subsections to the eight personas that were missing one (direct-challenging, warm-supportive, coach, grounded-real, contemplative, philosophical, creative, warm-4o), bringing the persona library into line with Susan's structure
+- 8.4 added "## How To Use In Session" sections to all twelve modality files, giving the companion concrete operational guidance for live session use
+
+### Changed
+
+- 8.2 added a safety note to the TIPP section of `modalities/dbt-skills.md` warning that body-based crisis techniques should be framed as options, with extra care for clients with self-harm history
+
+---
+
+## [0.7.3] - 2026-04-22
+
+### Changed
+
+- 7.1 refreshed `README.md` to mention client-told-memories, transcript tracking, and workspace migration
+- 7.2 added transcript tracking and workspace migration to the "Change Things Later" list in `docs/GETTING-STARTED.md`
+
+---
+
+## [0.7.2] - 2026-04-22
+
+### Fixed
+
+- 6.1 closed the transcript write flow: `runtime/START-SESSION.md` now detects transcript opt-in from `SETUP-NOTES.md`, and `runtime/SESSION-CLOSE-REVIEW.md` now writes the verbatim session exchange to `archive/transcripts/` when tracking is enabled
+- 6.2 workspace migration now carries forward the transcript opt-in state (`## Transcripts` heading in `SETUP-NOTES.md`), so tracked workspaces do not silently lose transcript tracking when migrated
+- 6.3 extended `runtime/WEEKLY-REVIEW.md` self-evolution audit to cover rupture-and-repair evidence log and client-told-memories drift introduced in Phase 5
+
+---
+
 ## [0.7.1] - 2026-04-22
 
 ### Fixed

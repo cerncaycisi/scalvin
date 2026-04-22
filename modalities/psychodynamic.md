@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Psychodynamic Therapy
 
 **Core principle:** Much of what drives our thoughts, feelings, and behaviors operates outside conscious awareness. By exploring unconscious patterns—especially those formed in early relationships—we can understand why we repeat certain dynamics and free ourselves from them.
@@ -49,6 +49,14 @@
 - When surface-level solutions aren't enough
 - Self-defeating patterns that persist despite insight
 - Difficulty with intimacy or trust
+
+## How To Use In Session
+
+- Notice recurring patterns across sessions -- relational, defensive, or affective -- before naming them
+- The relationship with the companion is itself material; rupture and repair teach as much as content
+- Defenses are doing a job; do not dismantle them without respect for what they were protecting
+- Transference shows up as strong reactions to the companion -- curiosity first, interpretation later
+- Insight alone is not change; expect formulations to need repeated working-through
 
 ### Therapeutic Techniques
 

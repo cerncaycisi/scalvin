@@ -1,4 +1,4 @@
-<!-- version: 0.7.1 -->
+<!-- version: 0.7.2 -->
 # Customization Commands
 
 The client can request setup changes during a session. Treat the workspace as self-contained.
@@ -126,7 +126,7 @@ When the user asks to start tracking transcripts:
 1. Create `archive/transcripts/` if it does not already exist.
 2. Create `archive/transcripts/README.md` using the transcript template shipped with the repo (`templates/archive/transcripts/README.template.md`) when it is available; if the template is not locally accessible, recreate the same structure and guidance directly in the new README.
 3. Tell the user simply that transcripts will be saved from this point forward.
-4. Add a `## Transcripts` heading to `SETUP-NOTES.md` if it does not already exist, and note the transcript start date there so future review can distinguish "no transcript exists" from "transcript not tracked yet."
+4. Add a `## Transcripts` heading to `SETUP-NOTES.md` if it does not already exist, and below the heading add a single line: `Tracking started: YYYY-MM-DD`. This exact heading is what `runtime/START-SESSION.md` checks for to determine whether transcript tracking is enabled.
 5. Do not retro-fill missing transcripts unless the user explicitly asks for that.
 
 ## Backup / Export
@@ -172,6 +172,7 @@ When the user asks to migrate or upgrade their workspace:
    - base persona choice from `SETUP-NOTES.md` or the old `.therapy/persona.md` with any `## Client-Specific Adjustments` section stripped out
    - active modalities from `.therapy/modalities/`
    - session structure from `.therapy/session-structure.md`
+   - transcript opt-in state: if the old `SETUP-NOTES.md` contains a `## Transcripts` heading, copy that heading and its body (including the `Tracking started` line) into the new `SETUP-NOTES.md` so transcript tracking continues across the migration
 3. Copy user data from old to new:
    - `profile.md`, `ACTIVE-THEMES.md`, `CURRENT-FOCUS.md`, `NEXT-PRIMER.md` (as-is)
    - `sessions/` (all files)

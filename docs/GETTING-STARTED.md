@@ -74,6 +74,8 @@ Scalvin can still:
 - import notes or source documents
 - back up the workspace on request
 - recalibrate its own runtime guardrails
+- turn on raw transcript tracking
+- migrate or upgrade the workspace
 
 That last part matters: Scalvin is built so the operational layers can evolve with use, not stay frozen.
 

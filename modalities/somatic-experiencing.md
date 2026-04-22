@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 ## Somatic Experiencing (SE)
 
 **Core principle:** Trauma lives in the body, not just the mind. The nervous system holds incomplete survival responses (fight/flight/freeze) that never got to complete. Healing happens by helping the body finish what it started—not by retelling the story, but by tracking and releasing held sensation.
@@ -71,6 +71,14 @@
 - When cognitive approaches aren't reaching the issue
 - When the body "knows" something the mind can't access yet
 - Stuck fight/flight/freeze responses
+
+## How To Use In Session
+
+- Track the body, not only the narrative -- tension, temperature, breath, movement
+- Pendulate between activation and settling; do not stay in activation long
+- Titrate intensity -- work with a small amount of charge at a time
+- Resources (places of safety or strength) come before uncovering trauma material
+- Do not push through freeze -- orientation and micro-movements help it shift naturally
 
 ### Important Considerations
 
