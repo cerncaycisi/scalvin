@@ -1,5 +1,5 @@
 {
-  "version": "0.6.6",
+  "version": "0.7.0",
   "description": "Scalvin components",
   "base_url": "https://raw.githubusercontent.com/cerncaycisi/scalvin/main/",
   "components": {
@@ -19,16 +19,17 @@
   "runtime_components": {
     "start-session": "3.0.0",
     "next-primer": "1.0.0",
-    "session-start-cheatsheet": "1.0.0",
-    "memory-inflation-guard": "1.0.0",
-    "live-moveset": "2.0.0",
+    "session-start-cheatsheet": "2.0.0",
+    "memory-inflation-guard": "2.0.0",
+    "live-moveset": "3.0.0",
     "disambiguation-grid": "1.0.0",
-    "rupture-and-repair": "1.0.0",
-    "session-note-standard": "1.0.0",
-    "session-close-review": "2.0.0",
-    "weekly-review": "2.0.0",
-    "review-due-check": "1.0.0",
+    "rupture-and-repair": "2.0.0",
+    "session-note-standard": "2.0.0",
+    "session-close-review": "3.0.0",
+    "weekly-review": "3.0.0",
+    "review-due-check": "2.0.0",
     "source-triggers": "2.0.0",
+    "client-told-memories": "1.0.0",
     "profile-template": "2.0.0",
     "active-themes-template": "1.0.0",
     "current-focus-template": "1.0.0",
@@ -94,6 +95,7 @@
         "runtime/WEEKLY-REVIEW.md",
         "runtime/REVIEW-DUE-CHECK.md",
         "runtime/SOURCE-TRIGGERS.md",
+        "runtime/CLIENT-TOLD-MEMORIES.md",
         "runtime/profile.template.md",
         "runtime/ACTIVE-THEMES.template.md",
         "runtime/CURRENT-FOCUS.template.md",
@@ -114,10 +116,11 @@
     }
   },
   "workspace_templates": {
-    "files": [
-      "templates/archive/README.template.md",
-      "templates/archive/reviews/REVIEW-INDEX.template.md",
-      "templates/sources/README.template.md"
-    ]
-  }
+      "files": [
+        "templates/archive/README.template.md",
+        "templates/archive/reviews/REVIEW-INDEX.template.md",
+        "templates/archive/transcripts/README.template.md",
+        "templates/sources/README.template.md"
+      ]
+    }
 }

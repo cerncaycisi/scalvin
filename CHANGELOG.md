@@ -4,6 +4,31 @@ All notable changes to Scalvin.
 
 ---
 
+## [0.7.0] - 2026-04-22
+
+### Added
+
+- 5.1 expanded `runtime/LIVE-MOVESET.md` with explicit purpose, open-ended question defaults, stuck-register handling, lighter-tone handling, Socratic intervention moves, trauma inventory guidance, and update triggers
+- 5.3 added evidence status tracking, repair rules, update rules, and status logging to `runtime/RUPTURE-AND-REPAIR.md`
+- 5.7 added deterministic purpose, output contract, and maintenance triggers to `runtime/REVIEW-DUE-CHECK.md`
+- 5.9 introduced `runtime/CLIENT-TOLD-MEMORIES.md` as a companion-maintained source type, added selective reopening guidance in `runtime/SOURCE-TRIGGERS.md`, and documented it in setup notes and workspace setup
+- 5.10 added optional transcript infrastructure with `templates/archive/transcripts/README.template.md`, transcript opt-in commands, and setup guidance for on-demand transcript tracking
+
+### Changed
+
+- 5.2 replaced `runtime/SESSION-START-CHEATSHEET.md` with a full fast re-entry layer centered on `NEXT-PRIMER`, system-eye scanning, and opening-question discipline
+- 5.4 extended `runtime/SESSION-NOTE-STANDARD.md` with note-boundary rules, dense-session handling, same-day session handling, and source-note boundaries
+- 5.5 expanded `runtime/MEMORY-INFLATION-GUARD.md` with explicit decision buckets, compression rules, and update triggers for memory placement
+- 5.6 deepened `runtime/WEEKLY-REVIEW.md` with weekly vs interim review distinction and clearer review stance guidance
+- 5.8 extended `runtime/SESSION-CLOSE-REVIEW.md` with language fidelity, question-depth, and client-told-memories checks
+- 5.11 rewrote `personas/susan.md` with stronger drift-correction, presence, boundary, and language guidance while keeping the persona generic
+
+### Fixed
+
+- 5.12 cleaned leftover zip and macOS metadata artifacts from the working tree and expanded ignore coverage for archive bundles
+
+---
+
 ## [0.6.6] - 2026-04-13
 
 ### Fixed

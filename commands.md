@@ -1,4 +1,4 @@
-<!-- version: 0.6.6 -->
+<!-- version: 0.7.0 -->
 # Customization Commands
 
 The client can request setup changes during a session. Treat the workspace as self-contained.
@@ -39,12 +39,21 @@ Recognize conversational requests, not only exact phrases.
 - "add these old conversations"
 - "put this document into sources"
 
+### Transcript Tracking
+
+- "start tracking transcripts"
+- "save transcripts"
+- "turn on transcripts"
+
 ### Backup / Export
 
 - "back up my workspace"
 - "export my data"
 - "save a copy"
 - "create a backup"
+
+### Workspace Migration
+
 - "migrate my workspace"
 - "upgrade my workspace"
 
@@ -109,6 +118,16 @@ Recognize conversational requests, not only exact phrases.
    - write an interim review in `archive/reviews/` if the source is major
    - acknowledge the source naturally without exposing file operations
 6. Follow `.therapy/runtime/MEMORY-INFLATION-GUARD.md` when deciding where imported material belongs.
+
+## Transcript Tracking
+
+When the user asks to start tracking transcripts:
+
+1. Create `archive/transcripts/` if it does not already exist.
+2. Create `archive/transcripts/README.md` using the transcript template shipped with the repo (`templates/archive/transcripts/README.template.md`) when it is available; if the template is not locally accessible, recreate the same structure and guidance directly in the new README.
+3. Tell the user simply that transcripts will be saved from this point forward.
+4. Add a `## Transcripts` heading to `SETUP-NOTES.md` if it does not already exist, and note the transcript start date there so future review can distinguish "no transcript exists" from "transcript not tracked yet."
+5. Do not retro-fill missing transcripts unless the user explicitly asks for that.
 
 ## Backup / Export
 
