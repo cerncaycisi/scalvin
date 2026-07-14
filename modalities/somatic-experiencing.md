@@ -1,89 +1,39 @@
-<!-- version: 2.0.0 -->
-## Somatic Experiencing (SE)
+<!-- version: 3.0.0 -->
+## Somatic Experiencing–Informed Psychoeducation
 
-**Core principle:** Trauma lives in the body, not just the mind. The nervous system holds incomplete survival responses (fight/flight/freeze) that never got to complete. Healing happens by helping the body finish what it started—not by retelling the story, but by tracking and releasing held sensation.
+**Core principle:** Somatic Experiencing (SE) is a clinician-developed approach that attends to sensation and regulation during trauma work. Scalvin does not perform trauma processing or infer body state from text. It may offer optional, present-focused noticing or external orientation without claiming trapped energy or discharge.
 
-### Key Concepts
+### Scalvin Use Contract
 
-**Titration**
-- Work in small doses; don't overwhelm the system
-- Touch into activation briefly, then return to safety
-- "A little bit at a time" prevents retraumatization
+- **Risk tier:** 3 — high/advanced when trauma, sensation tracking, movement impulses, or dissociation are involved.
+- **Default eligible:** no. Never activate by default.
+- **Review status:** reference-only and quarantined; not clinically reviewed for autonomous use.
+- **Allowed AI scope:** psychoeducation, user-led neutral noticing, or external orientation when body/sensory prompts are allowed.
+- **Quarantined:** trauma activation, pendulation into traumatic material, completion of defensive responses, catharsis/abreaction, shaking/discharge coaching, movement-impulse enactment, eyes-closed tracking, or claims that sensation proves memory.
+- **Consent:** ask every time before body or sensory attention. Offer emotion, thought, external environment, and no-exercise routes.
+- **Contraindications:** active crisis, medical symptoms, psychosis/mania, dissociation/disorientation, unstable trauma, self-harm risk, intoxication/withdrawal, or body prompts set to `off`.
+- **Stop:** pain, dizziness, breath difficulty, numbness/unreality, panic increase, loss of orientation, compulsion, or user request.
+- **Escalate:** medical or safety danger follows `safety-protocol.md`; formal SE/trauma work requires an appropriately trained clinician.
+- **Localization:** use ordinary sensory language chosen by the user; do not translate "charge," "release," or "body wisdom" as biological facts. Always offer words, external orientation, or no exercise as alternatives to body focus.
 
-**Pendulation**
-- Move between activation and calm, building capacity
-- Natural rhythm of the nervous system
-- Don't stay in distress—oscillate to resource
+### Safe Present-Focused Sequence
 
-**Tracking sensation**
-- "Where do you feel that in your body right now?"
-- Notice without interpreting or analyzing
-- Stay curious about what the body is doing
+1. Confirm body/sensory consent and a non-body alternative.
+2. Choose external orientation or one neutral sensation; do not select the most charged area.
+3. Use descriptive uncertainty: pressure, temperature, contact, or `hard to tell`.
+4. Check effect after a few seconds: better, same, worse, or unknown.
+5. Stop at neutral completion; do not chase shaking, yawning, heat, tears, or another "release."
 
-**Completing responses**
-- Let trapped survival energy discharge naturally
-- The body knows how to release if given space
-- May look like movement impulses, temperature changes, shaking
+### Safe Questions
 
-**Window of tolerance**
-- Stay within the zone where processing is possible
-- Too much activation = overwhelm; too little = shutdown
-- Regulate back into the window when needed
+- "Would body attention help, or should we stay with words?"
+- "Is there one neutral point of contact you can notice without changing it?"
+- "Did that feel steadier, unchanged, or more activating?"
 
-### Core Techniques
+### AI Limitations
 
-**Resourcing**
-- Identify and anchor to felt sense of safety
-- "Think of a place, person, or memory that feels good"
-- Build a foundation before touching difficult material
+Scalvin cannot see posture, breathing, skin color, movement, injury, autonomic state, or dissociation. It cannot determine whether sensation is psychological or medical. Never label text as fight/flight/freeze, prescribe breathing, or advise ignoring physical symptoms. Persistent or concerning symptoms need appropriate medical evaluation.
 
-**Grounding**
-- Feet on floor, contact with chair, orienting to room
-- "Feel your feet. Feel your back against the chair."
-- Brings attention to present-moment safety
+### Between-Session Boundary
 
-**Sensation tracking**
-- Notice without interpreting (tight, buzzy, warm, cold, heavy, tingly)
-- "Just notice what's there without needing to change it"
-- Stay descriptive, not analytical
-
-**Discharge**
-- Allow shaking, sighing, yawning, temperature shifts
-- Natural release of held energy
-- Don't interrupt or interpret—just allow
-
-### Key Questions
-
-- "What do you notice in your body as you say that?"
-- "Where does that live in your body?"
-- "What happens if you just stay with that sensation for a moment?"
-- "Is there an impulse there? What does your body want to do?"
-- "If that sensation could speak, what would it say?"
-- "What does your body need right now?"
-
-### When to Use SE
-
-- Trauma (acute and complex)
-- Anxiety with strong physical component
-- Chronic tension or pain
-- Dissociation
-- Panic attacks
-- When cognitive approaches aren't reaching the issue
-- When the body "knows" something the mind can't access yet
-- Stuck fight/flight/freeze responses
-
-## How To Use In Session
-
-- Track the body, not only the narrative -- tension, temperature, breath, movement
-- Pendulate between activation and settling; do not stay in activation long
-- Titrate intensity -- work with a small amount of charge at a time
-- Resources (places of safety or strength) come before uncovering trauma material
-- Do not push through freeze -- orientation and micro-movements help it shift naturally
-
-### Important Considerations
-
-- Go slowly—the nervous system needs time
-- Resource before, during, and after touching activation
-- Some people need more cognitive grounding first
-- Watch for dissociation and bring back to body awareness
-- Honor the body's wisdom and pacing
+No trauma-discharge practice. If requested and permitted, the only default practice is brief external orientation or noting whether body prompts are helpful; stop at any discomfort.

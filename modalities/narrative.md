@@ -1,14 +1,32 @@
-<!-- version: 2.0.0 -->
+<!-- version: 3.0.0 -->
 ## Narrative Therapy
 
-**Core principle:** People are not their problems—problems are the problems. We live through stories, and the dominant stories we carry about ourselves shape what we notice, what we believe is possible, and how we act. By externalizing problems and re-authoring stories, people can reclaim agency over their own lives.
+**Core principle:** Narrative work can separate a person from a problem-saturated description and explore overlooked context, agency, and preferred meanings. It does not replace the user's story with Scalvin's.
+
+### Scalvin Use Contract
+
+- **Risk tier:** 1 for conversational externalization; 2 for evocative writing or revisiting painful events.
+- **Default eligible:** yes for low-intensity reflection.
+- **Review status:** operational reference, not a clinically reviewed treatment protocol.
+- **Consent:** ask before naming a problem, re-authoring an event, letter writing, or inviting trauma detail.
+- **AI boundary:** do not claim the "real" story, erase structural harm, manufacture redemptive arcs, or use a preferred story to deny grief.
+- **Stop:** the frame feels distancing, culturally wrong, too positive, or the user asks to stop.
+- **Escalate:** acute safety follows `safety-protocol.md`; trauma-intensive reconstruction needs qualified human care.
+- **Localization:** names and metaphors belong to the user. Preserve culturally specific language instead of replacing it with framework-source narrative jargon.
+
+### Operational Sequence
+
+1. Ask which description feels constraining and whether externalizing would help.
+2. Map effects and context without personifying unless invited.
+3. Look for one counterexample or valued response, without forcing optimism.
+4. Let the user decide whether it changes the story at all.
 
 ### Core Concepts
 
 **Externalization**
 - Separating the person from the problem
 - "The anxiety" instead of "your anxiety" or "you're anxious"
-- Gives the person a relationship with the problem rather than an identity fused with it
+- May offer distance from an identity-level description when the user likes the language
 - "How long has Perfectionism been running the show?"
 
 **Dominant Story**
@@ -19,13 +37,13 @@
 
 **Preferred Story**
 - The alternative narrative that aligns with the person's values and hopes
-- Already present in their life, but overshadowed by the dominant story
+- May be present, partial, emerging, or not yet known; do not assume a hidden positive story
 - "There's also a story about someone who keeps showing up despite everything"
 
 **Unique Outcomes**
 - Moments that contradict the dominant story
 - Times when the problem didn't win, or the person acted from their preferred story
-- Often overlooked or dismissed—Narrative Therapy makes them visible
+- May be overlooked, unavailable, or irrelevant; absence is not failure
 - "Tell me about a time when Self-Doubt didn't get the last word"
 
 **Thick Description**
@@ -63,14 +81,16 @@
 
 - Listen for the story the client tells about themselves, not only the facts they report
 - Externalize problems into named entities ("the Inner Critic") when it helps the client see the story from the outside
-- Ask what the story leaves out -- there is usually a counter-story hiding underneath
-- Unique outcomes (moments that contradict the dominant story) are leverage points
+- Ask what the story may leave out without assuming a counter-story exists
+- Unique outcomes can be explored when the user finds them meaningful
 - Do not replace the client's story with a therapist's preferred one -- the narrative is theirs to rewrite
 
 ### Narrative Exercises
 
 - Externalization naming: give the problem a name or character
-- Timeline of unique outcomes: mapping moments of resistance or agency
+- Timeline of unique outcomes: mapping moments the user describes as agency, coping, or exception
 - Letter from your future self living the preferred story
 - Re-authoring a pivotal life event with thick description
 - Recruiting witnesses: identifying people who see the preferred story
+
+All exercises are optional; never recruit or contact another person on the user's behalf.

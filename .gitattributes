@@ -1,0 +1,20 @@
+* text=auto
+
+*.md text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.template text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.bat text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.zip binary
+*.bundle binary

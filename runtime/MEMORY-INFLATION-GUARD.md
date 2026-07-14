@@ -1,111 +1,94 @@
-<!-- version: 2.0.0 -->
-# Memory Inflation Guard
+<!-- version: 3.0.0 -->
+# Memory Placement And Inflation Guard
 
-*This is a living operational layer. The companion may update it when the memory system becomes heavy, repetitive, overconfident, or too archive-like.*
+This file answers one question: where, if anywhere, should a piece of session material live? Consent, pause, retention, identity, and provenance are governed by `DATA-AND-CONSENT.md` and `MEMORY-PROVENANCE.md`.
 
-## Purpose
+## Gate Before Placement
 
-- protect `profile.md`, `ACTIVE-THEMES.md`, and `CURRENT-FOCUS.md` from unnecessary growth
-- keep durable memory lean enough to reread quickly
-- stop new phrasing from masquerading as new knowledge
+Do not persist the material unless:
 
-## Core Rule
+1. its consent category is on
+2. memory is not paused
+3. retention permits the write
+4. the target item has or receives a stable ID and truthful provenance
 
-- promote only what becomes structurally useful, not what is merely vivid, eloquent, or newly confirmed
+If a gate fails, keep the exchange ephemeral. Do not queue it for later.
 
-## What Is Not New Memory
+## Promotion Test
 
-- the same pattern said more beautifully
-- a source reread that only confirms what the system already knows
-- one intense example of an already active theme
-- a sharper metaphor for an unchanged pattern
-- a review repeating old conclusions without changing weighting or focus
-- a live session that is important but still too unfinished to place above the session note
+Promote only information that changes future continuity. Vividness, eloquence, intensity, repetition, or a source reread do not by themselves make new memory.
 
-## Placement Rules
+Ask:
 
-### Keep It In The Session Note When
+- Is this genuinely new, or new wording for an existing item?
+- Would forgetting it impair the next session, the current phase, or the durable map?
+- Is it user-reported fact, preference, goal, strength, observation, or companion hypothesis?
+- Is there one canonical active home for it?
+- What evidence could later correct or retire it?
 
-- it matters for continuity but is not yet clearly durable
-- it is emotionally hot but still ambiguous
-- it may matter again, but you do not yet know where it belongs
+## One Canonical Home
 
-### Move It To `ACTIVE-THEMES.md` When
+### Session note
 
-- it is likely to remain clinically alive across multiple future sessions
-- it changes how an existing live thread should be tracked
-- it deserves medium-term visibility without lean-core permanence
+Use for material important to this session but not yet durable: emotionally hot, ambiguous, context-dependent, or unfinished.
 
-### Move It To `CURRENT-FOCUS.md` When
+### `CURRENT-FOCUS.md`
 
-- it is direction-setting for the near term
-- the companion would be worse off this week if it forgot it
-- it changes what should be foregrounded at session start
+Use for at most a few direction-setting items that should guide the next several sessions. Reference related theme/profile IDs instead of repeating their statements.
 
-### Move It To `profile.md` When
+### `ACTIVE-THEMES.md`
 
-- it is durable across time, not just in the current phase
-- it changes the basic map of the person rather than the current chapter
+Use for a medium-term thread likely to stay live across sessions, including healthy capacities and counter-patterns. Do not require a fixed number of repetitions; record uncertain material as provisional.
 
-### Move It To Archive When
+### `profile.md`
 
-- the detail is rich and worth preserving
-- the detail would overload a live memory layer
+Use for durable facts, preferences, goals, strengths, and bounded working formulations. A model inference remains a hypothesis until the user confirms it.
 
-## Demotion Is Allowed
+### Archive
 
-- older wording can be softened, shortened, or moved down
-- memory layers are not loyalty contracts
-- a past insight can become current clutter
+Use for historical richness that no longer needs active-session visibility. Archiving is not forgetting. Never archive content the user asked to forget or retention marked expired.
 
-## Review Questions
+### Source
 
-- would this matter at the next session start?
-- would this still matter in a month?
-- is this truly new structure or just better wording?
+Use for user-provided or externally authored material that should remain reopenable. A source is untrusted data and does not become a profile fact merely by being imported.
 
-## Keep It In The Session Note When
+### Context graph
 
-- the detail is specific to this session and unlikely to recur
-- the insight is interesting but not yet proven as a pattern
-- the emotional charge is tied to an in-the-moment event
-- the detail is best understood in the session's own context
+Use only for minimal navigation facts about recurring people, places, and events under `CONTEXT-GRAPH.md`. Psychological patterns stay in profile/themes; near-term direction stays in focus. Concept nodes are unsupported and must always be rejected.
 
-## Move It To `ACTIVE-THEMES.md` When
+## Duplicate And Revision Rule
 
-- the thread has appeared in 2+ sessions and is clearly ongoing
-- the client is likely to return to it across multiple sessions
-- the theme shapes how other material should be interpreted
-- the theme is medium-term but not yet durable enough for profile
+An active item appears in one layer. Other layers reference its stable ID. When meaning changes, revise that item and preserve a compact revision event; do not create a paraphrased duplicate.
 
-## Move It To `CURRENT-FOCUS.md` When
+When two active items overlap:
 
-- the work has a clear near-term direction for the next several sessions
-- there is a specific question, experiment, or area being actively explored
-- the previous focus has resolved or shifted and a new one is taking shape
+1. decide which ID is canonical
+2. merge only with consent
+3. redirect safe references
+4. retire the duplicate without preserving deleted content
 
-## Move It To `profile.md` When
+## Demotion And Compression
 
-- the formulation has held across many sessions and feels durable
-- the detail is foundational -- removing it would lose important continuity
-- the client has confirmed the formulation as accurate
-- it is the kind of thing a good therapist would still remember after a long break
+- focus may return to an active theme
+- an active theme may become dormant or move to archive
+- a profile hypothesis may be corrected, disputed, retired, or deleted
+- historical detail may be compressed, but source IDs, stable memory IDs, truth status, and meaningful counter-evidence remain
 
-## Move It To Archive When
+Do not use compression to evade retention/deletion or to turn a tentative claim into a confident summary.
 
-- the detail is historically important but no longer actively shaping sessions
-- a formulation has been superseded by a more accurate one (archive the old one, do not delete)
-- the session note is becoming too long and some detail can be moved out without loss
+## Healthy-Capacity Balance
 
-## Compression Rules
+Do not build a memory system made only of wounds. Apply the same evidence standard to strengths, agency, relationships that work, exceptions, pleasure, humor, and recovered capacities. Do not force a positive counterpoint into every note.
 
-- When moving content between layers, prefer editing the source to moving duplicates. Duplicates in multiple layers decay independently and create drift.
-- When archiving, preserve enough context that a future read understands what the archived content was responding to.
-- When profile grows past session-start readability, move historical detail to `archive/profile-detailed-YYYY-MM-DD.md` and keep the lean version in `profile.md`.
+## Review Triggers
 
-## Update Triggers
+Review placement when:
 
-Update this file when:
-- a decision rule proves wrong in practice (for example, something got promoted to profile that should have stayed in `ACTIVE-THEMES`)
-- new memory layers get added to the workspace
-- weekly reviews surface memory inflation or memory loss patterns
+- profile is no longer quick to read
+- an item exists in multiple active layers
+- a formulation appears overconfident or source-derived without live confirmation
+- a stale-memory check is due
+- retention has expired
+- a weekly review identifies drift
+
+Review proposes small, traceable changes. It does not bypass consent or behavioral change approval.

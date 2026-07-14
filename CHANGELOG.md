@@ -4,16 +4,117 @@ All notable changes to Scalvin.
 
 ---
 
+## [Unreleased]
+
+This development line prepares a breaking architecture and safety release. It
+is not a stable release or evidence of clinical review. Existing workspaces
+must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
+
+### Added
+
+- deterministic Node 20+ CLI for install, doctor, review-due, pinned update,
+  integrity-checked backup, and traversal-safe restore
+- manifest schema v2 with per-file version, SHA-256, source, role, target, and
+  protection metadata
+- transactional staging, atomic writes, restrictive POSIX permissions,
+  symlink/path-containment checks, customized-file detection, full mutation
+  snapshots, and rollback
+- explicit versioned consent categories, retention controls, consent/deletion/
+  source/backup/change ledgers, and separate transcript state
+- memory show, correct, pause, resume, forget, export, and delete contracts
+- item-level provenance and stale-memory review for profile, themes, and focus
+- controlled user overlays with proposal, approval, rejection, history, and
+  rollback instead of silent base-runtime self-modification
+- source prompt-injection boundary, stable IDs, content hashes, idempotent
+  integration states, and external-care note provenance
+- explicit session close/recovery lifecycle, seconds + UUID no-clobber names,
+  checkpoints, and honest transcript coverage grades
+- opt-in context graph for people, places, and events with
+  Core/Active/Provisional/Dormant lifecycle and supervised backfill
+- neutral Scalvin default persona; Susan remains optional
+- opt-in guarded Ideal Parent Figure reference
+- locale-pack mechanical safety hook, current-time hook, and
+  deterministic must-fire/silent/over-fire eval corpus
+- public-repository private-data/secret scan, Markdown link check, syntax and
+  manifest gates, cross-platform CI, issue forms, CODEOWNERS, governance,
+  support, accessibility, localization, architecture, privacy, migration, and
+  release documentation
+
+### Changed
+
+- immutable startup order is now safety → consent → client capability → active
+  session configuration → minimum mutable context
+- active session structure and modalities are loaded explicitly; heavy command,
+  source, and close protocols are lazy
+- default active modalities are ACT, CFT, and Motivational Interviewing; IFS
+  and higher-intensity techniques are no longer default
+- persona language no longer fabricates human identity, lived experience, or
+  superiority over human care
+- modalities now include risk tiers, consent, AI limitations,
+  contraindications, stop/escalation rules, localization, and accessible
+  alternatives
+- weekly reviews are session-triggered on the first return in a new week when
+  the prior week contains a completed session, instead of Monday/Tuesday only
+- local workspace pointers moved from tracked `SETUP-NOTES.md` to gitignored
+  machine state
+- generated workspaces use a default-deny `.gitignore`
+- raw transcripts remain off by default and now support status, pause, resume,
+  stop, deletion, coverage grade, and visible gaps
+- local-first documentation now distinguishes local durable storage from
+  hosted model inference
+- runtime language is now `auto` or canonical BCP-47 with Unicode,
+  code-switching, and language/location/timezone separation; finite detector
+  packs are test coverage, not privileged product-language tiers
+- the model-branded `warm-4o` persona is now provider-neutral `casual-warm`;
+  existing selector state is canonicalized during install or update
+- alternate-manifest update trust requires the exact manifest SHA-256;
+  `--release` is only an additional version constraint and mutable raw `main`
+  is rejected
+- absolute-path `.command` and `.bat` launchers are no longer generated
+- MIT license text is kept license-pure; attribution and product boundary moved
+  to `NOTICE.md`
+
+### Fixed
+
+- first-session safety protocol could previously be skipped
+- selected modalities, structure, and command behavior could be disconnected
+  from the active runtime
+- stale/incorrect version metadata and duplicated runtime-copy paths
+- quoted-tilde bootstrap path risk and non-empty target clobber risk
+- update/install partial-state activation and missing rollback
+- mutable workspace-state hashes could authorize silent overwrite or removal;
+  update authority now comes only from an independently verified signed prior
+  plan, with unknown prior distributions preserved and conflict-gated
+- language preference changes could leave rendered client adapters and their
+  canonical hashes on the previous language
+- a snapshot/copy ABA race could reactivate transient external edits; every
+  clone-and-mutate transaction now proves its private stage matches the exact
+  pre-read content snapshot before applying changes
+- doctor diagnostics could trust mutable target metadata or incomplete
+  distribution provenance when classifying state integrity
+- untrusted source documents could influence runtime instructions
+- session-note template could assert no acute crisis without an assessment
+- crisis flow lacked clear risk-class branching and capability truth
+- transcript, session, deep-dive, and backup filename collision risk
+- `review_due_check.py` crashed when the review path was a file
+- cleanup script was non-executable and did not enforce its tracked-file safety
+  claim
+- freeform/weekly-review and structured/homework precedence conflicts
+- client-told memories lost first-observed provenance during revision
+- generated workspaces were not fully self-contained
+
+---
+
 ## [0.8.1] - 2026-04-22
 
 ### Fixed
 
-- 8.5.1 closed the CONTEXT-COMPRESSION read path: `runtime/CONTEXT-COMPRESSION.md` now documents when summaries get consulted on demand, and `runtime/profile.template.md`'s Deep Memory Index guidance now covers compression outputs so summaries can be indexed by theme
-- 8.5.2 updated `templates/archive/reviews/REVIEW-INDEX.template.md` to account for quarterly review summaries and the `history/` subdirectory introduced by compression, so the index stays consistent after first consolidation
+- closed the CONTEXT-COMPRESSION read path: `runtime/CONTEXT-COMPRESSION.md` now documents when summaries get consulted on demand, and `runtime/profile.template.md`'s Deep Memory Index guidance now covers compression outputs so summaries can be indexed by theme
+- updated `templates/archive/reviews/REVIEW-INDEX.template.md` to account for quarterly review summaries and the `history/` subdirectory introduced by compression, so the index stays consistent after first consolidation
 
 ### Added
 
-- 8.5.3 added `scripts/clean-for-distribution.sh` and `scripts/README.md` to remove macOS resource fork artifacts from the working tree, plus a "Pre-Release Hygiene" note in `CONTRIBUTING.md`
+- added `scripts/clean-for-distribution.sh` and `scripts/README.md` to remove macOS resource fork artifacts from the working tree, plus a "Pre-Release Hygiene" note in `CONTRIBUTING.md`
 
 ---
 
@@ -21,13 +122,13 @@ All notable changes to Scalvin.
 
 ### Added
 
-- 8.1 new `runtime/CONTEXT-COMPRESSION.md` layer with session consolidation, review consolidation, and profile pruning rules; registered in START-SESSION living layers and weekly review output template
-- 8.3 added "### Presence" subsections to the eight personas that were missing one (direct-challenging, warm-supportive, coach, grounded-real, contemplative, philosophical, creative, warm-4o), bringing the persona library into line with Susan's structure
-- 8.4 added "## How To Use In Session" sections to all twelve modality files, giving the companion concrete operational guidance for live session use
+- new `runtime/CONTEXT-COMPRESSION.md` layer with session consolidation, review consolidation, and profile pruning rules; registered in START-SESSION living layers and weekly review output template
+- added "### Presence" subsections to the eight personas that were missing one (direct-challenging, warm-supportive, coach, grounded-real, contemplative, philosophical, creative, warm-4o), bringing the persona library into line with Susan's structure
+- added "## How To Use In Session" sections to all twelve modality files, giving the companion concrete operational guidance for live session use
 
 ### Changed
 
-- 8.2 added a safety note to the TIPP section of `modalities/dbt-skills.md` warning that body-based crisis techniques should be framed as options, with extra care for clients with self-harm history
+- added a safety note to the TIPP section of `modalities/dbt-skills.md` warning that body-based crisis techniques should be framed as options, with extra care for clients with self-harm history
 
 ---
 
@@ -35,8 +136,8 @@ All notable changes to Scalvin.
 
 ### Changed
 
-- 7.1 refreshed `README.md` to mention client-told-memories, transcript tracking, and workspace migration
-- 7.2 added transcript tracking and workspace migration to the "Change Things Later" list in `docs/GETTING-STARTED.md`
+- refreshed `README.md` to mention client-told-memories, transcript tracking, and workspace migration
+- added transcript tracking and workspace migration to the "Change Things Later" list in `docs/GETTING-STARTED.md`
 
 ---
 
@@ -44,9 +145,9 @@ All notable changes to Scalvin.
 
 ### Fixed
 
-- 6.1 closed the transcript write flow: `runtime/START-SESSION.md` now detects transcript opt-in from `SETUP-NOTES.md`, and `runtime/SESSION-CLOSE-REVIEW.md` now writes the verbatim session exchange to `archive/transcripts/` when tracking is enabled
-- 6.2 workspace migration now carries forward the transcript opt-in state (`## Transcripts` heading in `SETUP-NOTES.md`), so tracked workspaces do not silently lose transcript tracking when migrated
-- 6.3 extended `runtime/WEEKLY-REVIEW.md` self-evolution audit to cover rupture-and-repair evidence log and client-told-memories drift introduced in Phase 5
+- closed the transcript write flow: `runtime/START-SESSION.md` now detects transcript opt-in from `SETUP-NOTES.md`, and `runtime/SESSION-CLOSE-REVIEW.md` now writes the verbatim session exchange to `archive/transcripts/` when tracking is enabled
+- workspace migration now carries forward the transcript opt-in state (`## Transcripts` heading in `SETUP-NOTES.md`), so tracked workspaces do not silently lose transcript tracking when migrated
+- extended `runtime/WEEKLY-REVIEW.md` self-evolution audit to cover rupture-and-repair evidence log and client-told-memories drift introduced in Phase 5
 
 ---
 
@@ -54,7 +155,7 @@ All notable changes to Scalvin.
 
 ### Fixed
 
-- 5.14 normalized "user" -> "client" in `runtime/CLIENT-TOLD-MEMORIES.md` and in the client-told-memories section of `runtime/SOURCE-TRIGGERS.md` so the therapeutic-context terminology matches the rest of the runtime layer
+- normalized "user" -> "client" in `runtime/CLIENT-TOLD-MEMORIES.md` and in the client-told-memories section of `runtime/SOURCE-TRIGGERS.md` so the therapeutic-context terminology matches the rest of the runtime layer
 
 ---
 
@@ -62,24 +163,24 @@ All notable changes to Scalvin.
 
 ### Added
 
-- 5.1 expanded `runtime/LIVE-MOVESET.md` with explicit purpose, open-ended question defaults, stuck-register handling, lighter-tone handling, Socratic intervention moves, trauma inventory guidance, and update triggers
-- 5.3 added evidence status tracking, repair rules, update rules, and status logging to `runtime/RUPTURE-AND-REPAIR.md`
-- 5.7 added deterministic purpose, output contract, and maintenance triggers to `runtime/REVIEW-DUE-CHECK.md`
-- 5.9 introduced `runtime/CLIENT-TOLD-MEMORIES.md` as a companion-maintained source type, added selective reopening guidance in `runtime/SOURCE-TRIGGERS.md`, and documented it in setup notes and workspace setup
-- 5.10 added optional transcript infrastructure with `templates/archive/transcripts/README.template.md`, transcript opt-in commands, and setup guidance for on-demand transcript tracking
+- expanded `runtime/LIVE-MOVESET.md` with explicit purpose, open-ended question defaults, stuck-register handling, lighter-tone handling, Socratic intervention moves, trauma inventory guidance, and update triggers
+- added evidence status tracking, repair rules, update rules, and status logging to `runtime/RUPTURE-AND-REPAIR.md`
+- added deterministic purpose, output contract, and maintenance triggers to `runtime/REVIEW-DUE-CHECK.md`
+- introduced `runtime/CLIENT-TOLD-MEMORIES.md` as a companion-maintained source type, added selective reopening guidance in `runtime/SOURCE-TRIGGERS.md`, and documented it in setup notes and workspace setup
+- added optional transcript infrastructure with `templates/archive/transcripts/README.template.md`, transcript opt-in commands, and setup guidance for on-demand transcript tracking
 
 ### Changed
 
-- 5.2 replaced `runtime/SESSION-START-CHEATSHEET.md` with a full fast re-entry layer centered on `NEXT-PRIMER`, system-eye scanning, and opening-question discipline
-- 5.4 extended `runtime/SESSION-NOTE-STANDARD.md` with note-boundary rules, dense-session handling, same-day session handling, and source-note boundaries
-- 5.5 expanded `runtime/MEMORY-INFLATION-GUARD.md` with explicit decision buckets, compression rules, and update triggers for memory placement
-- 5.6 deepened `runtime/WEEKLY-REVIEW.md` with weekly vs interim review distinction and clearer review stance guidance
-- 5.8 extended `runtime/SESSION-CLOSE-REVIEW.md` with language fidelity, question-depth, and client-told-memories checks
-- 5.11 rewrote `personas/susan.md` with stronger drift-correction, presence, boundary, and language guidance while keeping the persona generic
+- replaced `runtime/SESSION-START-CHEATSHEET.md` with a full fast re-entry layer centered on `NEXT-PRIMER`, system-eye scanning, and opening-question discipline
+- extended `runtime/SESSION-NOTE-STANDARD.md` with note-boundary rules, dense-session handling, same-day session handling, and source-note boundaries
+- expanded `runtime/MEMORY-INFLATION-GUARD.md` with explicit decision buckets, compression rules, and update triggers for memory placement
+- deepened `runtime/WEEKLY-REVIEW.md` with weekly vs interim review distinction and clearer review stance guidance
+- extended `runtime/SESSION-CLOSE-REVIEW.md` with language fidelity, question-depth, and client-told-memories checks
+- rewrote `personas/susan.md` with stronger drift-correction, presence, boundary, and language guidance while keeping the persona generic
 
 ### Fixed
 
-- 5.12 cleaned leftover zip and macOS metadata artifacts from the working tree and expanded ignore coverage for archive bundles
+- cleaned leftover zip and macOS metadata artifacts from the working tree and expanded ignore coverage for archive bundles
 
 ---
 

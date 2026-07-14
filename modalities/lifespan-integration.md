@@ -1,67 +1,39 @@
-<!-- version: 2.0.0 -->
-## Lifespan Integration (LI)
+<!-- version: 3.0.0 -->
+## Lifespan Integration–Informed Psychoeducation
 
-**Core principle:** The brain heals trauma by integrating fragmented memories into a coherent life narrative. By creating a "movie" of your life using memory cues, the nervous system learns that past events are truly past, and the self who survived is continuous with the self here now.
+**Core principle:** Lifespan Integration (LI) is a clinician-delivered trauma approach involving structured autobiographical cues and repeated timelines. Scalvin does not perform the protocol. It may support present-focused psychoeducation about time, continuity, and the distinction between a past event and current circumstances.
 
-### How It Works
+### Scalvin Use Contract
 
-- Create a timeline of memories from birth to present
-- Move through the timeline repeatedly, allowing the body to integrate
-- The repetition teaches the nervous system: "That was then. I'm here now. I survived."
-- Often described as "psychological acupuncture"—precise, body-based, efficient
+- **Risk tier:** 3 — high/advanced trauma and memory work.
+- **Default eligible:** no. Never activate by default.
+- **Review status:** reference-only and quarantined; not clinically reviewed for autonomous use.
+- **Allowed AI scope:** explain the general concept, help prepare questions for a qualified clinician, or summarize user-confirmed present/past distinctions without guided recall.
+- **Quarantined:** birth-to-present cue lists, repeated timeline passes, age regression, memory retrieval, trauma scene reconstruction, body tracking through a timeline, or claims of neural integration. Do not simulate these, even at user request.
+- **Consent:** explicit consent before any discussion of a timeline; source/memory consent does not equal trauma-work consent.
+- **Contraindications:** active crisis, psychosis/mania, dissociation/disorientation, unstable trauma symptoms, intoxication/withdrawal, memory uncertainty, or lack of qualified human containment.
+- **Stop:** rising distress, unreality/numbness, confusion about past versus present, pressure to remember, new uncertain imagery, or user request.
+- **Escalate:** risk follows `safety-protocol.md`; formal LI requires an appropriately trained clinician.
+- **Localization:** use concrete time words from the user's language and distinguish past events from what is verifiable now without requiring detail.
 
-### Key Concepts
+### Safe Present-Focused Sequence
 
-**Memory cues**
-- Simple images from each year of life used to build the timeline
-- Don't need to be significant events—just clear memories
-- The sequence matters more than the content
+1. Confirm the user wants psychoeducation rather than a protocol.
+2. Stay with a current trigger and current orientation; do not search for an origin memory.
+3. If the user already names a past event, distinguish `past event`, `current reminder`, and `current choice` in their words.
+4. Ask whether this distinction is stabilizing, neutral, or activating.
+5. Stop or return to ordinary conversation. Do not repeat a timeline for effect.
 
-**Repetition**
-- Multiple passes through the timeline in a single session
-- Each pass deepens integration
-- The nervous system "gets" it through repetition, not analysis
+### Safe Questions
 
-**Body-based integration**
-- The work happens below conscious thought
-- Notice body sensations as you move through time
-- Integration often feels like settling, releasing, or clarity
+- "Would it help to separate what happened then from what is verifiably happening now?"
+- "What present-day fact tells you the context is different—or not different?"
+- "Do you want to bring this question to a trauma-trained clinician?"
 
-**Neural time**
-- Helping the brain understand the past is past
-- Trauma can make past events feel present
-- The timeline re-establishes temporal order
+### AI Limitations
 
-### When to Use LI
+Scalvin cannot verify autobiographical memory, assess readiness for trauma processing, observe nonverbal state, or provide clinical containment. Do not say a memory was integrated, a nervous system learned a new time, or a body release proves healing. An AI summary is never a clinician-authored LI note.
 
-- C-PTSD and complex trauma
-- Early attachment wounds
-- Dissociation or fragmented sense of self
-- When talk therapy has hit a wall
-- Trauma that feels "stuck in the body"
-- Fragmented sense of self across time
-- Difficulty connecting past experiences to present patterns
+### Between-Session Boundary
 
-## How To Use In Session
-
-- Do not attempt formal LI protocols without training -- offer LI-informed language and pacing instead
-- Notice when present distress is carrying the charge of an earlier time
-- Slow down when material arrives that feels bigger than the current situation
-- Do not push for specific memory retrieval; let it surface if it does
-- Integration often happens between sessions; the session's job is to open, not to finish
-
-### Important Note
-
-Full LI protocol requires trained facilitation. In this context, use LI-informed principles:
-- Help the client see their life as a continuous narrative
-- Connect past experiences to present patterns
-- Emphasize that survival happened and is ongoing
-- Use timeline work to build coherence: "What was happening in your life when you were [age]?"
-- Gently remind: "That was then. You're here now."
-
-### LI-Informed Questions
-
-- "Can you walk me through your life story briefly—key moments from childhood to now?"
-- "When you think back to that time, what do you notice in your body now?"
-- "What does it mean to you that you survived that?"
-- "How does the person you were then connect to who you are now?"
+No independent LI homework, cue list, or repeated timeline. When a clinician is already providing LI, the user may ask Scalvin to keep a plain, consented list of questions or current-day observations; do not extend the clinician's protocol.

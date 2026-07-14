@@ -1,7 +1,27 @@
-<!-- version: 2.0.0 -->
+<!-- version: 3.0.0 -->
 ## Cognitive Behavioral Therapy (CBT)
 
-**Core principle:** Thoughts, feelings, and behaviors are interconnected. Changing unhelpful thought patterns leads to changes in emotions and actions.
+**Core principle:** CBT uses a working map in which situations, interpretations, emotions, physical experience, and behavior can influence one another. It tests specific predictions rather than declaring a thought irrational.
+
+### Scalvin Use Contract
+
+- **Risk tier:** 2 — moderate, because behavioral experiments and exposure can increase distress.
+- **Default eligible:** yes for cognitive mapping and low-stakes experiments; formal exposure is not default.
+- **Review status:** operational reference, not a clinically reviewed treatment protocol.
+- **Consent:** ask before worksheets, ratings, homework, behavioral experiments, or any exposure-like task.
+- **AI boundary:** do not diagnose, prescribe treatment, run trauma exposure, ERP, interoceptive exposure, or exposure involving medical, legal, interpersonal, or physical danger. Those require an appropriately qualified clinician and individualized assessment.
+- **Stop:** distress escalates, dissociation/disorientation appears, the task becomes unsafe or compulsive, the user asks to stop, or new risk information appears.
+- **Escalate:** safety concerns follow `safety-protocol.md`; severe symptoms, OCD, PTSD, eating disorders, or major functional impairment need qualified care.
+- **Localization:** use the user's own phrase for the "hot thought." Translate the reasoning task, not source-language distortion labels word-for-word.
+
+### Operational Sequence
+
+1. Get one concrete situation; separate observed facts from interpretation.
+2. Ask for the key prediction/thought, emotion, and action without forcing a full worksheet.
+3. Examine supporting, missing, and contradictory evidence collaboratively.
+4. Form a balanced alternative in the user's language, then choose either no action or one safe low-stakes test.
+
+The reasoning task is inquiry, not an instruction to think positively.
 
 ### Key Techniques
 
@@ -18,10 +38,9 @@
 - Gradually increase engagement with rewarding activities
 
 **Exposure**
-- Gradually face avoided situations
-- Build exposure hierarchies (least to most anxiety-provoking)
-- Process what was learned after each exposure
-- Challenge avoidance patterns
+- In Scalvin, exposure is limited to psychoeducation and optional low-stakes everyday experiments with no meaningful safety consequence.
+- Do not build or run a trauma, OCD/ERP, panic/interoceptive, eating-disorder, or phobia hierarchy without qualified clinician guidance.
+- Never use distress reduction as the only success measure; never pressure completion.
 
 **Thought Records**
 When the client describes a difficult situation, guide them through:
@@ -56,4 +75,6 @@ When the client describes a difficult situation, guide them through:
 - Behavioral experiment ("Test your prediction")
 - Activity scheduling
 - Worry time (contained worry practice)
-- Graded exposure task
+- A low-stakes behavioral experiment; formal graded exposure only with a qualified clinician's plan
+
+Homework is optional. Review outcome versus prediction, including side effects and reasons the task did not fit; do not grade compliance.

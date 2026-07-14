@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:scalvin:schema:manifest:v2",
+  "title": "Scalvin Manifest v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "product",
+    "release",
+    "consentNoticeVersion",
+    "defaults",
+    "state",
+    "workspaceDirectories",
+    "protectedPaths",
+    "clientIntegrations",
+    "files"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./schemas/manifest-v2.schema.json"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "minimumNode", "repository"],
+      "properties": {
+        "name": {
+          "const": "scalvin"
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        },
+        "minimumNode": {
+          "type": "string",
+          "pattern": "^>=\\d+\\.\\d+\\.\\d+$"
+        },
+        "repository": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["channel", "version"],
+      "properties": {
+        "channel": {
+          "enum": ["stable", "prerelease", "development"]
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        }
+      }
+    },
+    "consentNoticeVersion": {
+      "$ref": "#/$defs/semver"
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace",
+        "companionName",
+        "language",
+        "persona",
+        "structure",
+        "modalities"
+      ],
+      "properties": {
+        "workspace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "companionName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1
+        },
+        "persona": {
+          "$ref": "#/$defs/slug"
+        },
+        "structure": {
+          "$ref": "#/$defs/slug"
+        },
+        "modalities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/slug"
+          }
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "localPointer", "legacyPaths"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "localPointer": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "legacyPaths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/relativePath"
+          }
+        }
+      }
+    },
+    "workspaceDirectories": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/relativePath"
+      }
+    },
+    "protectedPaths": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "clientIntegrations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["settingsPath", "event", "hooks"],
+        "properties": {
+          "settingsPath": {
+            "$ref": "#/$defs/relativePath"
+          },
+          "event": {
+            "type": "string",
+            "minLength": 1
+          },
+          "hooks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["target", "command", "timeoutSeconds"],
+              "properties": {
+                "target": {
+                  "$ref": "#/$defs/relativePath"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "timeoutSeconds": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 30
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/fileEntry"
+      }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:[\\\\/])(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "protection": {
+      "enum": ["framework", "active", "seed", "protected"]
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group", "name"],
+      "properties": {
+        "group": {
+          "enum": ["persona", "structure", "modality"]
+        },
+        "name": {
+          "$ref": "#/$defs/slug"
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "protection"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "protection": {
+          "$ref": "#/$defs/protection"
+        },
+        "render": {
+          "const": "placeholders"
+        },
+        "activation": {
+          "$ref": "#/$defs/activation"
+        }
+      }
+    },
+    "fileEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "source",
+        "version",
+        "sha256",
+        "role",
+        "protection",
+        "targets"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "$ref": "#/$defs/semver"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "protection": {
+          "$ref": "#/$defs/protection"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/target"
+          }
+        }
+      }
+    }
+  }
+}

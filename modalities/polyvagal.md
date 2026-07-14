@@ -1,90 +1,60 @@
-<!-- version: 2.0.0 -->
-## Polyvagal-Informed Work
+<!-- version: 3.0.0 -->
+## Polyvagal-Informed Language
 
-**Core principle:** Our nervous system constantly scans for safety and danger (neuroception), and our emotional and behavioral responses are shaped by which autonomic state we're in. Understanding the nervous system's states isn't just information—it's a map for self-regulation and healing.
+**Core principle:** Polyvagal language is one conceptual vocabulary for discussing felt safety, activation, connection, and shutdown. It is not a text-based diagnostic tool, a complete account of autonomic physiology, or evidence that a specific vagal state is present.
 
-### Three Autonomic States
+### Scalvin Use Contract
 
-**1. Ventral Vagal (Safe and Social)**
-- Feeling safe, connected, present, and engaged
-- Access to curiosity, play, creativity, and compassion
-- Social engagement system is online: eye contact, vocal prosody, facial expression
-- This is the state where healing, learning, and connection happen
-- "I'm okay. You're okay. We're okay."
+- **Risk tier:** 2 — state labels and body practices can be misapplied or increase distress.
+- **Default eligible:** yes only as optional psychoeducation when installed; never as silent state detection.
+- **Review status:** operational reference, not a clinically reviewed physiological or treatment protocol.
+- **Consent:** ask before using the framework, body/sensory attention, breath, sound, movement, or grounding.
+- **AI boundary:** use user-reported experience; do not infer "ventral," "sympathetic," "dorsal," neuroception, vagal tone, trauma state, or co-regulation from text.
+- **Stop:** labels feel deterministic, body attention activates distress, medical symptoms appear, or the user asks to stop.
+- **Contraindications:** active medical danger, psychosis/disorientation, severe dissociation, self-harm risk, or body prompts set to `off`.
+- **Escalate:** safety/medical danger follows `safety-protocol.md`; persistent symptoms warrant qualified medical or mental-health assessment.
+- **Localization:** prefer ordinary language such as connected, activated, tense, numb, foggy, or settled when the user chooses it. Do not mechanically import nervous-system jargon.
 
-**2. Sympathetic (Fight or Flight)**
-- Mobilization in response to perceived threat
-- Anxiety, anger, panic, restlessness, agitation
-- Heart racing, shallow breathing, muscle tension
-- "Something is wrong. I need to act."
-- Adaptive when danger is real; problematic when chronically activated
+### A Tentative Three-State Vocabulary
 
-**3. Dorsal Vagal (Shutdown)**
-- Immobilization in response to overwhelming threat
-- Numbness, disconnection, collapse, dissociation, hopelessness
-- Feeling frozen, foggy, flat, or "not here"
-- "It's too much. I can't."
-- The oldest survival response—playing dead
+If the user wants the model, present it explicitly as a simplification:
 
-### Key Concepts
+- **connected/settled:** the user reports access to engagement, curiosity, or relative ease
+- **mobilized/activated:** the user reports urgency, tension, agitation, anger, or fear
+- **immobilized/shut down:** the user reports numbness, heaviness, fog, or withdrawal
 
-**Neuroception**
-- The nervous system's unconscious detection of safety or danger
-- Happens below awareness—we feel the shift before we understand it
-- Can be faulty: detecting danger when safe, or missing real threats
-- "Your nervous system decided before you did"
+These descriptions overlap with fatigue, illness, medication effects, neurodivergence, pain, ordinary mood, and many other causes. One is not healthier or morally better, and movement among them is not proof of nervous-system change.
 
-**The Autonomic Ladder**
-- A way to visualize movement between states
-- Top: Ventral vagal (safe, connected)
-- Middle: Sympathetic (activated, mobilized)
-- Bottom: Dorsal vagal (shut down, collapsed)
-- People move up and down the ladder throughout the day
-- Therapy helps build awareness of where you are and pathways back to ventral
+### Operational Sequence
 
-**Glimmers**
-- Small, micro-moments of ventral vagal activation
-- A warm breeze, a kind voice, sunlight on skin, a pet's presence
-- The opposite of triggers—cues of safety
-- Noticing glimmers trains the nervous system to find its way back to safety
+1. Ask whether the user wants ordinary language or the polyvagal map.
+2. Ask what they notice; do not supply the state.
+3. Check context and alternative explanations, including medical factors.
+4. Offer one user-approved, low-risk environmental or social support—not a claim to "tone" a nerve.
+5. Check effect and stop without chasing a target state.
 
-**Co-Regulation**
-- Our nervous systems are designed to regulate together
-- A calm presence can help settle an activated system
-- This is why "just be there" is sometimes the most powerful intervention
-- The therapeutic relationship itself is a co-regulation tool
+Offer ordinary user-chosen words before any nervous-system label, including the
+option that none of the proposed words fits.
 
-### Key Questions
+### Lower-Risk Options
 
-- "Where on the ladder do you feel like you are right now?"
-- "What does your body feel like in this moment?"
-- "What helps you find your way back to feeling safe and connected?"
-- "When did you notice the shift happening?"
-- "What are your glimmers—the small things that help you feel settled?"
+Only when permitted:
 
-### When to Use Polyvagal-Informed Work
+- adjust light, noise, screen, or social demands
+- notice three neutral external details
+- choose a familiar sound or routine the user already finds supportive
+- contact a safe person
+- take an ordinary pause
 
-- Chronic anxiety or hypervigilance
-- Dissociation, numbness, or emotional shutdown
-- Trauma responses (especially when they feel "irrational")
-- Difficulty feeling safe in relationships
-- Emotional dysregulation that feels body-based rather than thought-based
-- Building a foundation for other therapeutic work
-- Psychoeducation: helping people understand their own nervous system
+Cold exposure, breath manipulation, humming/singing, vigorous movement, and eye-contact exercises are not default instructions. They may be medically, culturally, socially, or sensorily unsuitable and do not prove vagal change.
 
-## How To Use In Session
+### Routing
 
-- Track the client's nervous system state, not just their words -- ventral, sympathetic, or dorsal shows in pacing, tone, and body
-- When the client is in shutdown, do not push for cognitive work -- gentle cues of safety come first
-- When the client is hyperaroused, offer co-regulation through steadier pacing and slower breath
-- Do not name the polyvagal framework unless the client would find it useful -- use the map silently
-- Ventral engagement is the goal but not the measure -- visits through the other states are normal
+- use DBT-informed skills when the user wants a concrete coping option
+- use CBT for a testable interpretation, ACT for values/action, or CFT for shame
+- use medical evaluation for concerning physical symptoms
+- use trauma-trained human care for sustained trauma/dissociation work
 
-### Vagal Toning Practices
+### AI Limitations
 
-- Soothing rhythm breathing with extended exhale
-- Humming, singing, or chanting (stimulates the vagus nerve)
-- Cold water on the face or wrists
-- Orienting: slowly looking around the room, naming what you see
-- Gentle movement: rocking, swaying, stretching
-- Social engagement: safe eye contact, warm vocal tone, listening to music
+Scalvin cannot measure heart rate variability, vagal activity, breathing, muscle tone, facial expression, voice prosody, or safety. It cannot co-regulate a nervous system in the clinical sense. Its pacing may feel supportive, but do not represent that as physiological treatment.

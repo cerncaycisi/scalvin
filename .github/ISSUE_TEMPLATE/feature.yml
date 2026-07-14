@@ -1,0 +1,44 @@
+name: Feature proposal
+description: Propose an improvement that preserves Scalvin's safety and privacy invariants.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use synthetic examples only. Do not include real therapeutic material or private workspace contents.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or maintainer problem should be solved?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the observable behavior, not only an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Safety, privacy, and migration impact
+      description: What data, runtime, client, or compatibility boundaries does this touch?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: invariants
+    attributes:
+      label: Design confirmation
+      options:
+        - label: The proposal does not require publishing or uploading real workspace data.
+          required: true
+        - label: The proposal keeps model-provider limitations explicit.
+          required: true

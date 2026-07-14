@@ -1,20 +1,18 @@
 # Review Index
 
-Keep a reverse-chronological index of weekly and interim reviews here.
+Reverse-chronological navigation. It is not the due-check authority.
 
 ## Current Entries
 
-- `[YYYY-MM-DD-HHMM-weekly-review.md]` - one-line summary
-- `[YYYY-MM-DD-HHMM-interim-review.md]` - one-line summary
+- `[YYYY-MM-DD-HHMMSS--<uuid>--weekly-review.md]` — covered session IDs; one-line scope
+- `[YYYY-MM-DD-HHMMSS--<uuid>--interim-review.md]` — trigger and covered session IDs
 
-Update this section after each new review is saved.
+Update only after the artifact has been created with no-clobber semantics and verified.
 
-## Quarterly Summaries
+## Consolidated Summaries
 
-When reviews are consolidated under `.therapy/runtime/CONTEXT-COMPRESSION.md`, list the consolidated summaries here:
-
-- `[YYYY-Q#-summary.md]` - which review files it consolidates, one-line thematic note
+- `[YYYY-Q#--<uuid>--review-summary.md]` — source review IDs and coverage
 
 ## Historical
 
-Individual review files that have been consolidated into a quarterly summary live in `history/` and are not listed above. Refer to the quarterly summary; reopen individual history files only when the summary points at one worth re-reading.
+When retention permits consolidation, keep stable review/session/source IDs so summaries remain traceable. Do not retain content that expired or was deleted. Reopen historical reviews only for a specific consented question.

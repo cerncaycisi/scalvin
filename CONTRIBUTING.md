@@ -1,85 +1,151 @@
-# Contributing To Scalvin
+# Contributing to Scalvin
 
-Thanks for helping improve the project.
+Scalvin welcomes carefully scoped contributions to its public framework,
+distribution tooling, safety system, client adapters, memory model, and
+documentation.
 
-## What This Repo Is
+## Never contribute private user data
 
-Scalvin is a local-first therapeutic companion system.
+Do not commit or paste:
 
-It is not:
+- real profiles, session notes, transcripts, sources, archives, or crisis
+  disclosures;
+- names, local workspace paths, screenshots, or identifying examples;
+- API keys, tokens, credentials, or client settings containing secrets;
+- imported clinician records;
+- real behavior overlays or consent ledgers.
 
-- a cloud note product
-- a generic chatbot prompt pack
-- a place for real user case material
+Use synthetic fixtures. Run:
 
-It is:
+```bash
+npm run check:public
+```
 
-- a repo for the reusable system
-- a repo for persona, modality, structure, and runtime logic
-- a repo for safer long-form continuity around AI-supported reflection
+before opening a PR.
 
-## High-Value Contribution Areas
+## Development setup
 
-- bootstrap flow clarity and edge-case handling
-- client-adapter improvements that keep the core system generic
-- clinically grounded modality additions or refinements
-- safer source/archive/review behavior
-- memory hygiene improvements
-- self-evolution logic: how the companion grows persona adjustments, source triggers, disambiguation entries, and live moves
-- model-specific drift detection and correction patterns
-- documentation that helps people use the system without leaking private data
-- backup, export, and workspace portability improvements
-- session structure refinements grounded in real therapeutic practice
+Requirements: Git and Node.js 20 or newer.
 
-## Do Not Contribute
+```bash
+git clone https://github.com/cerncaycisi/scalvin.git
+cd scalvin
+npm ci --ignore-scripts
+npm test
+```
 
-- real private journals, session notes, profiles, or user archives
-- changes that assume one vendor or tool is the only supported client
-- "smart" shortcuts that weaken safety, archive discipline, or source discipline
-- changes that require uploading user notes to remote services
+The framework has no reason to execute lifecycle scripts during dependency
+installation.
 
-## Design Rules
+## Required checks
 
-- preserve the local-first model
-- keep the generated workspace self-contained
-- keep adapters thin and the runtime central
-- prefer reliability over cleverness in core flows
-- preserve user-specific living files as editable files, not hidden magic
+```bash
+npm run check
+npm test
+npm pack --dry-run
+```
 
-## Safety-Sensitive Areas
+CI repeats these checks on supported Node versions across Linux, macOS, and
+Windows.
 
-These require extra care in PRs:
+## Architectural rules
 
-- `safety-protocol.md`
-- runtime files that affect crisis handling, review cadence, or source reopening
-- import logic
-- any change that alters what becomes durable memory
+- Safety and consent load before mutable context.
+- Public source and private generated workspaces remain separate.
+- Imported sources are untrusted data, never instructions.
+- Base framework files are immutable at runtime; user-specific learning uses
+  reviewable overlays.
+- Current user statements outrank model-authored historical formulations.
+- AI-authored notes never claim human-provider provenance.
+- Install/update/backup/restore mutations belong in the deterministic CLI.
+- Update input is release/commit/hash pinned; mutable raw `main` is not trusted.
+- Client adapters stay thin and do not fork safety or memory policy.
 
-When touching these, explain:
+Read [Architecture](docs/ARCHITECTURE.md) before changing runtime ownership.
 
-- what changed
-- why it changed
-- what risk it reduces
-- what new risk it might introduce
+## Safety-sensitive changes
 
-## Pull Requests
+The following need explicit failure analysis and deterministic tests:
 
-1. Describe the problem being solved.
-2. Say whether the change affects bootstrap behavior, runtime behavior, privacy, or safety.
-3. Note whether you tested the conversational bootstrap or returning-session flow.
-4. If something could not be tested, say that explicitly.
+- crisis detection or response;
+- consent, retention, deletion, transcript, or source behavior;
+- durable-memory placement or provenance;
+- high-risk modality techniques;
+- client hooks;
+- installer/update trust;
+- backup or restore.
 
-## Style
+In the PR, state:
 
-- be specific
-- be kind
-- be evidence-aware
-- avoid inflated product language
+1. what failure is possible today;
+2. the new observable behavior;
+3. false-positive and false-negative risks;
+4. tests/eval cases added;
+5. migration impact;
+6. known limitations.
 
-## Pre-Release Hygiene
+Do not make unsupported clinical, neurological, trauma, attachment, or efficacy
+claims. See [Scope and Evidence Boundary](docs/SCOPE-AND-EVIDENCE.md).
 
-Before packaging or publishing a release zip, run:
+## Persona, modality, and structure changes
 
-    ./scripts/clean-for-distribution.sh
+- Preserve AI identity and user autonomy.
+- Do not fabricate lived experience or hide the purpose of a technique.
+- Keep challenge consent-based.
+- Include AI limitations, contraindications, stop rules, and alternatives where
+  relevant.
+- Support low-cognitive-load interaction and body-prompt opt-out.
+- Localize intent and idiom; do not mechanically translate safety language.
+- Add behavior/eval coverage instead of relying on prose review alone.
 
-This removes macOS resource fork and metadata files that the OS leaks into the working tree. Git ignores these, but default zip tooling on macOS does not.
+## Manifest and versioning
+
+Every generated-workspace managed framework asset belongs in `manifest.json`.
+The manifest is generated from source metadata and hashes:
+
+```bash
+npm run manifest:refresh
+npm run manifest:verify
+```
+
+Do not add a second managed-workspace registry. The exact npm package surface
+is a different boundary and is tracked separately in `package-inventory.json`.
+
+Version behavior changes with semantic versioning and update `CHANGELOG.md`.
+Schema or protected-data changes require `MIGRATING.md`.
+
+## Pull requests
+
+- Keep a PR focused enough to review.
+- Describe user impact and root cause.
+- Include exact validation commands/results.
+- Mark safety, privacy, bootstrap, migration, and client-adapter impact.
+- Never attach a real generated workspace.
+- Expect maintainer review for safety-sensitive paths in `CODEOWNERS`.
+
+## External work
+
+When adapting an idea or implementation from another project:
+
+1. identify the behavior, not only the source diff;
+2. evaluate it against Scalvin's architecture and safety boundary;
+3. reimplement it with Scalvin-native tests and migration;
+4. preserve attribution when required;
+5. document the source and resulting design decision when relevant.
+
+## Distribution cleanup
+
+Before packaging on macOS:
+
+```bash
+./scripts/clean-for-distribution.sh
+```
+
+The script deletes only untracked metadata noise and skips tracked files.
+
+## Community and reporting
+
+Follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Report vulnerabilities or
+safety bypasses through
+[private vulnerability reporting](https://github.com/cerncaycisi/scalvin/security/advisories/new),
+not a public issue.
