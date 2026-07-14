@@ -1,0 +1,122 @@
+{
+  "allowed": {
+    "consent": {
+      "status": "granted",
+      "continuityMemory": "on",
+      "transcripts": "on",
+      "currentSessionId": null,
+      "eventId": "consent-123e4567-e89b-42d3-a456-426614174000",
+      "memoryPause": { "state": "none", "startedAt": null },
+      "retention": {
+        "session_notes": "until_deleted",
+        "primers_and_checkpoints": "until_deleted",
+        "raw_transcripts": "session_only"
+      },
+      "transcriptState": {
+        "state": "recording",
+        "sessionId": null,
+        "captureGrade": "turn_captured",
+        "startedAt": "2026-07-14T12:00:00+03:00",
+        "pausedIntervals": [],
+        "stoppedAt": null,
+        "knownGaps": []
+      }
+    }
+  },
+  "consentOff": {
+    "consent": {
+      "status": "declined",
+      "continuityMemory": "off",
+      "transcripts": "off",
+      "currentSessionId": null,
+      "eventId": null,
+      "memoryPause": { "state": "none", "startedAt": null },
+      "retention": {
+        "session_notes": "do_not_store",
+        "primers_and_checkpoints": "do_not_store",
+        "raw_transcripts": "do_not_store"
+      },
+      "transcriptState": {
+        "state": "off",
+        "sessionId": null,
+        "captureGrade": null,
+        "startedAt": null,
+        "pausedIntervals": [],
+        "stoppedAt": null,
+        "knownGaps": []
+      }
+    }
+  },
+  "transcriptOnly": {
+    "consent": {
+      "status": "not-decided",
+      "continuityMemory": "ask",
+      "transcripts": "on",
+      "currentSessionId": null,
+      "eventId": "consent-123e4567-e89b-42d3-a456-426614174003",
+      "memoryPause": { "state": "none", "startedAt": null },
+      "retention": {
+        "session_notes": "do_not_store",
+        "primers_and_checkpoints": "do_not_store",
+        "raw_transcripts": "session_only"
+      },
+      "transcriptState": {
+        "state": "recording",
+        "sessionId": null,
+        "captureGrade": "turn_captured",
+        "startedAt": "2026-07-14T12:00:00+03:00",
+        "pausedIntervals": [],
+        "stoppedAt": null,
+        "knownGaps": []
+      }
+    }
+  },
+  "writePause": {
+    "consent": {
+      "status": "granted",
+      "continuityMemory": "on",
+      "transcripts": "on",
+      "currentSessionId": null,
+      "eventId": "consent-123e4567-e89b-42d3-a456-426614174001",
+      "memoryPause": { "state": "write_pause", "startedAt": "2026-07-14T12:05:00+03:00" },
+      "retention": {
+        "session_notes": "until_deleted",
+        "primers_and_checkpoints": "until_deleted",
+        "raw_transcripts": "session_only"
+      },
+      "transcriptState": {
+        "state": "paused",
+        "sessionId": null,
+        "captureGrade": "turn_captured",
+        "startedAt": "2026-07-14T12:00:00+03:00",
+        "pausedIntervals": [{ "startedAt": "2026-07-14T12:05:00+03:00", "endedAt": null }],
+        "stoppedAt": null,
+        "knownGaps": []
+      }
+    }
+  },
+  "sealedPause": {
+    "consent": {
+      "status": "granted",
+      "continuityMemory": "on",
+      "transcripts": "on",
+      "currentSessionId": null,
+      "eventId": "consent-123e4567-e89b-42d3-a456-426614174002",
+      "memoryPause": { "state": "sealed_pause", "startedAt": "2026-07-14T12:05:00+03:00" },
+      "retention": {
+        "session_notes": "until_deleted",
+        "primers_and_checkpoints": "until_deleted",
+        "raw_transcripts": "session_only"
+      },
+      "transcriptState": {
+        "state": "paused",
+        "sessionId": null,
+        "captureGrade": "turn_captured",
+        "startedAt": "2026-07-14T12:00:00+03:00",
+        "pausedIntervals": [],
+        "stoppedAt": null,
+        "knownGaps": []
+      }
+    }
+  }
+}

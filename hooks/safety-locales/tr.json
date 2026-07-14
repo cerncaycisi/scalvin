@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "locale": "tr",
+  "speakerStartPattern": "^(?:[\"“]\\s*)?ben\\b",
+  "speakerPivotPattern": "(?:[,;:-]\\s*|\\b(?:ama|fakat|ancak|ve)\\s+)(?=ben\\b)",
+  "currentSelfQuotedDisclosurePatterns": [
+    "(?:\\b(?:dedim|söyledim|yazdım)\\b[^.!?\\n]{0,160}(?:ölmek\\s+istiyorum|intihar|kendimi\\s+öldüreceğim)|(?:ölmek\\s+istiyorum|intihar|kendimi\\s+öldüreceğim)[^.!?\\n]{0,80}\\b(?:dedim|söyledim|yazdım)\\b)[^.!?\\n]{0,80}\\b(?:ciddiyim|hâlâ\\s+böyle\\s+hissediyorum|hala\\s+böyle\\s+hissediyorum|şu\\s+an|bu\\s+gece)\\b",
+    "[\"“]\\s*(?:ölmek\\s+istiyorum|intihar\\s+etmek\\s+istiyorum|kendimi\\s+öldürmek\\s+istiyorum)\\s*[\"”]\\s+(?:şu\\s+an\\s+)?(?:hissettiğim|düşündüğüm)\\s+şey\\b"
+  ],
+  "clearNonSelfContextPatterns": [
+    "\\b(?:kardeşim|abim|ablam|annem|babam|arkadaşım|danışanım|hastam|öğrencim)\\s+(?:dedi|söyledi|diyor|istiyor|düşünüyor)\\b",
+    "\\b(?:filmde|dizide|kitapta|şarkıda|haberde|makalede|araştırmada|vakada|karakter)\\b",
+    "\\b(?:hastalar|danışanlar|öğrenciler|katılımcılar)\\s+(?:arasında|için|diyor|bildirdi|bildiriyor)\\b",
+    "\\b(?:çevirisi|alıntı|ifade)\\b"
+  ],
+  "ambiguousPatterns": [
+    "\\b(?:artık\\s+devam\\s+edemiyorum|hiçbir\\s+çıkış\\s+yolu\\s+yok|her\\s+şey\\s+bitsin\\s+istiyorum)\\b"
+  ],
+  "domains": {
+    "self_harm": [
+      "(?:ölmek\\s+istiyorum|yaşamak\\s+istemiyorum|artık\\s+yaşamak\\s+istemiyorum|keşke\\s+ölsem|canıma\\s+kıyacağım|kendimi\\s+öldür(?:eceğim|mek\\s+istiyorum)|kendimi\\s+öldürmeyi\\s+(?:düşünüyorum|planlıyorum)|intihar\\s+(?:etmek\\s+istiyorum|etmeyi\\s+düşünüyorum|etmeyi\\s+planlıyorum|edeceğim)|kendime\\s+zarar\\s+ver(?:mek\\s+istiyorum|eceğim)|kendimi\\s+kes(?:mek\\s+istiyorum|eceğim))",
+      "\\b(?:ben\\s+olmasam\\s+herkes\\s+daha\\s+iyi|kimse\\s+beni\\s+özlemez|uyanmasam\\s+keşke)\\b"
+    ],
+    "overdose": [
+      "(?:bütün\\s+hapları\\s+içtim|çok\\s+fazla\\s+(?:ilaç|hap)\\s+aldım|aşırı\\s+doz\\s+aldım|bir\\s+şişe\\s+(?:hap|ilaç)\\s+(?:içtim|aldım))"
+    ],
+    "medical_emergency": [
+      "(?:felç\\s+geçiriyorum|kalp\\s+krizi\\s+geçiriyorum|nefes\\s+alamıyorum\\s*,?\\s*(?:ve\\s+)?göğsüm\\s+ağrıyor)"
+    ],
+    "harm_to_others": [
+      "\\b(?:onu|onları|birini)\\s+(?:öldüreceğim|öldürmek\\s+istiyorum|öldürmeyi\\s+(?:düşünüyorum|planlıyorum)|vuracağım|bıçaklayacağım|ciddi\\s+şekilde\\s+yaralayacağım)\\b"
+    ],
+    "psychosis_or_disorientation": [
+      "\\b(?:sesler\\s+bana\\s+(?:kendimi|onu|birini)\\s+(?:öldürmemi|yaralamamı)\\s+emrediyor|neyin\\s+gerçek\\s+olduğunu\\s+ayırt\\s+edemiyorum)\\b"
+    ],
+    "abuse_or_safeguarding": [
+      "\\b(?:eşim|partnerim|annem|babam|bakıcım)\\s+beni\\s+(?:dövüyor|boğuyor|tehdit\\s+ediyor)\\b|\\bzorla\\s+tutuluyorum\\b"
+    ]
+  }
+}

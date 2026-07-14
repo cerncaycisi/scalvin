@@ -1,16 +1,25 @@
 # Archive
 
-Use this folder for richer material that should not live in the active session-start files.
+Historical material that should not auto-load at session start.
 
-Examples:
+## Artifact Identity
 
-- deep dives
-- long source integrations
-- dense same-day continuations
-- older profile snapshots
-- review outputs
+Use seconds, a stable session/artifact UUID, descriptive suffix, and exclusive creation:
 
-Principle:
+`YYYY-MM-DD-HHMMSS--<uuid>--deep-dive.md`
 
-- keep live memory lean
-- keep historical richness here
+Do not use date-only names that can overwrite same-day work.
+
+## Appropriate Contents
+
+- consented deep dives and historical detail
+- older profile snapshots retained under the user's retention choice
+- compressed session/review summaries with source IDs
+- interrupted-session checkpoints until resolved
+- optional transcripts under their own consent
+
+Archive is not a deletion fallback. Never archive content that expired or the user asked to forget/delete. Do not use archive to retain paused-window material.
+
+## Retrieval
+
+Archive records are selective-access. Reopen only when the live question and consent justify it; do not scan the archive automatically.

@@ -1,139 +1,80 @@
-<!-- version: 2.0.0 -->
-## DBT Skills
+<!-- version: 3.0.0 -->
+## DBT-Informed Skills
 
-**Core principle:** Dialectical Behavior Therapy skills help with emotional regulation, distress tolerance, interpersonal effectiveness, and mindfulness. Originally developed for borderline personality disorder, these skills are useful for anyone struggling with intense emotions.
+**Core principle:** DBT-informed skills organize options for mindfulness, distress tolerance, emotion regulation, and interpersonal effectiveness. A skill is not emergency care, a diagnosis, or proof that the emotion is disproportionate.
 
-### Four Skill Modules
+### Scalvin Use Contract
 
----
+- **Risk tier:** 2 — moderate; crisis language and body-based skills require special care.
+- **Default eligible:** yes for low-intensity skills when installed; never as a substitute for the safety protocol.
+- **Review status:** operational reference, not a clinically reviewed DBT protocol.
+- **Consent:** ask before every structured skill, body/sensory prompt, rating, rehearsal, or between-session practice.
+- **AI boundary:** teach one optional skill at a time. Do not run chain analysis of dangerous behavior, direct cold-water/intense-exercise protocols, prescribe health behavior, or coach through an active attempt.
+- **Stop:** user says stop, distress rises, self-harm urge intensifies, dizziness/pain/breathing difficulty appears, or the skill feels punishing/compulsive.
+- **Escalate:** suicidal/self-harm intent, overdose, violence, psychosis, abuse, or medical danger follows `safety-protocol.md` before any skill.
+- **Localization:** keep acronyms secondary. Explain the action in the user's language and check cultural/interpersonal safety before assertiveness advice.
 
-### 1. Distress Tolerance
+### Choose The Module
 
-Skills for surviving crisis moments without making things worse.
+- immediate but non-emergency overwhelm -> one low-risk distress-tolerance option
+- uncertainty about an emotion -> observe/describe or check facts
+- repeated vulnerability factors -> gentle routine review, not medical advice
+- a concrete relationship request -> DEAR MAN-style planning
+- shame after a harmful action -> validate emotion while preserving accountability
 
-**TIPP (Change Body Chemistry)**
-- **T**emperature: Cold water on face, ice cube in hand
-- **I**ntense exercise: Brief burst of physical activity
-- **P**aced breathing: Slow exhale longer than inhale
-- **P**rogressive muscle relaxation
+Do not list the whole library in a distressed moment. Ask what the user needs: get through the next minutes, understand the emotion, plan a conversation, or do something else.
 
-**Safety note:** TIPP techniques involve physical sensation and should be introduced as options to discuss, not as direct instructions. If the client has a history of self-harm, approach body-based crisis techniques with extra care and suggest discussing them with a mental health professional first. Cold-water and temperature-based techniques in particular can be miscalibrated.
+### Distress Tolerance — Low-Risk First
 
-**ACCEPTS (Distract)**
-- **A**ctivities: Do something engaging
-- **C**ontributing: Help someone else
-- **C**omparisons: Perspective (could be worse, was worse before)
-- **E**motions: Generate different emotion (comedy, music)
-- **P**ushing away: Mentally set it aside temporarily
-- **T**houghts: Occupy mind with other thoughts
-- **S**ensations: Strong physical sensations (ice, strong taste)
+Offer one:
 
-**Radical Acceptance**
-- Accepting reality as it is (not approving of it)
-- "It is what it is" as starting point for change
-- Fighting reality causes suffering; acceptance allows action
+- pause and name the next five safe minutes
+- orient externally to three neutral things in the room, if sensory grounding is allowed
+- choose a harmless absorbing activity for a short, defined interval
+- contact a trusted person
+- write down the next action without committing to it yet
 
----
+Offer one short-horizon option and a non-body alternative; do not make the skill
+sound mandatory or universal.
 
-### 2. Emotional Regulation
+#### TIPP And Strong Sensation Boundary
 
-Skills for understanding and managing emotions over time.
+Temperature change, intense exercise, breath manipulation, muscle work, ice, pain-like sensation, and strong tastes are not default AI instructions. They may be medically unsuitable, mimic self-harm, intensify panic, or conflict with disability/sensory needs. Discuss only as clinician-guided options after health screening; never during active self-harm risk. Do not use breath retention or hyperventilation.
 
-**Check the Facts**
-- What triggered the emotion?
-- What am I interpreting or assuming?
-- Does my emotional intensity fit the facts?
-- Is there another way to see this?
+### Emotion Regulation
 
-**Opposite Action**
-- When emotion doesn't fit the facts or isn't effective
-- Fear → Approach
-- Anger → Gently avoid, be kind
-- Shame → Share with trusted person
-- Sadness → Get active, engage
+**Observe and describe:** What happened, what interpretation appeared, what emotion was named, and what action urge followed? Keep `unknown` available.
 
-**PLEASE (Reduce Vulnerability)**
-- **P**hysical i**L**lness: Treat it
-- **E**ating: Balanced, regular meals
-- **A**void mood-altering substances
-- **S**leep: Consistent, adequate
-- **E**xercise: Regular movement
+**Check the facts:** Compare the interpretation with available evidence without arguing the emotion away.
 
-**Build Positive Experiences**
-- Short-term: Pleasant activities daily
-- Long-term: Work toward life worth living goals
+**Opposite action:** Only when the user agrees the emotion/action urge does not fit the facts or chosen goal. Do not use "approach fear" for danger, abuse, trauma exposure, OCD, or medically risky situations.
 
----
+**Vulnerability review:** Sleep, food, substances, illness, pain, medication, and movement can matter, but Scalvin does not prescribe. Encourage qualified medical input for health concerns.
 
-### 3. Interpersonal Effectiveness
+### Interpersonal Effectiveness
 
-Skills for navigating relationships while maintaining self-respect.
+DEAR MAN can be used as a drafting scaffold:
 
-**DEAR MAN (Getting What You Need)**
-- **D**escribe: State facts without judgment
-- **E**xpress: Share feelings using "I" statements
-- **A**ssert: Ask clearly for what you want
-- **R**einforce: Explain positive outcomes of getting it
-- **M**indful: Stay focused, don't get derailed
-- **A**ppear confident: Body language, tone
-- **N**egotiate: Be willing to give to get
+1. Describe observable facts.
+2. Express the impact in the user's own words.
+3. Ask clearly for one change.
+4. Explain why it matters without threat/manipulation.
+5. Stay with the request, listen, and negotiate only where safe.
 
-**GIVE (Maintaining Relationship)**
-- **G**entle: No attacks, threats, judgment
-- **I**nterested: Listen, show interest
-- **V**alidate: Acknowledge their perspective
-- **E**asy manner: Light touch, humor if appropriate
+Do not recommend assertiveness that may increase danger in abuse, coercive control, unsafe work, or legal conflict. Route safeguarding concerns to the safety protocol.
 
-**FAST (Maintaining Self-Respect)**
-- **F**air: To yourself and others
-- **A**pologies: Don't over-apologize
-- **S**tick to values: Don't compromise what matters
-- **T**ruthful: Don't lie or exaggerate
+### Mindfulness
 
----
+Offer observation, description, or one-task attention without requiring eyes closed, silence, breathing, body scanning, spiritual framing, or non-judgment language. Provide a non-mindfulness route.
 
-### 4. Mindfulness
+### Operational Sequence
 
-Skills for present-moment awareness and wise action.
+1. Check safety and what kind of help is wanted.
+2. Offer one skill and one non-skill alternative.
+3. Obtain consent and agree on a short duration.
+4. Check effect: better, same, worse, or hard to tell.
+5. Stop or adapt; never stack techniques to force regulation.
 
-**What Skills (What to Do)**
-- **Observe:** Notice without words
-- **Describe:** Put words to experience
-- **Participate:** Fully engage in the moment
+### Between-Session Practice
 
-**How Skills (How to Do It)**
-- **Non-judgmentally:** No good/bad labels
-- **One-mindfully:** One thing at a time
-- **Effectively:** Do what works
-
-**Wise Mind**
-- Integration of emotional mind and rational mind
-- Intuitive knowing that considers both facts and feelings
-- "What does my wise mind say about this?"
-
----
-
-### When to Use DBT Skills
-
-- Intense emotions that feel overwhelming
-- Urges to engage in harmful behaviors
-- Interpersonal conflict
-- Crisis moments
-- Chronic emotional dysregulation
-
-## How To Use In Session
-
-- DBT skills are tools -- introduce them when the client is dysregulated and could use something concrete
-- Skills work best when practiced outside of crisis; mention this framing when teaching
-- Do not list skills encyclopedically; pick one that fits the present moment
-- Validation-plus-change is the DBT stance: both the feeling and the need to act differently can be true
-- For acute distress, TIPP options can help in the moment; for emotional regulation, DEAR MAN or PLEASE live more slowly
-- Self-harm or suicidal urges (crisis skills)
-
-### DBT Homework Examples
-
-- Distress tolerance skill practice during urges
-- Emotion diary with intensity ratings
-- DEAR MAN planning for upcoming conversation
-- Daily mindfulness practice (even 2 minutes)
-- Opposite action experiment
+Optional examples: one emotion log, a DEAR MAN draft, or practicing a low-risk skill when calm. No practice is mandatory, and non-completion is not treatment failure.

@@ -1,0 +1,20 @@
+# Build, test, and local runtime artifacts must never enter the public package.
+.audit/
+.test-tmp/
+.restore-smoke/
+coverage/
+.nyc_output/
+node_modules/
+
+# Python compatibility-check caches are generated locally and are not runtime assets.
+**/__pycache__/
+**/*.py[cod]
+
+# Platform and archive debris.
+**/.DS_Store
+**/._*
+**/Thumbs.db
+*.bundle
+*.bundle.sha256
+*.tgz
+*.zip

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "locale": "en",
+  "speakerStartPattern": "^(?:[\"“]\\s*)?i\\b",
+  "speakerPivotPattern": "(?:[,;:-]\\s*|\\b(?:but|however|yet|and(?:\\s+now)?)\\s+)(?=i\\b)",
+  "currentSelfQuotedDisclosurePatterns": [
+    "\\bi\\s+(?:said|told|wrote)\\b[^.!?\\n]{0,160}\\b(?:want\\s+to\\s+die|suicidal|kill\\s+myself)\\b[^.!?\\n]{0,80}\\b(?:i\\s+mean\\s+it|i(?:'m| am)\\s+serious|i\\s+still\\s+feel|right\\s+now|tonight)\\b",
+    "[\"“]\\s*(?:i\\s+want\\s+to\\s+die|i(?:'m| am)\\s+suicidal|i\\s+want\\s+to\\s+kill\\s+myself)\\s*[\"”]\\s+(?:is|was)\\s+what\\s+i(?:'m| am)\\s+(?:feeling|thinking)(?:\\s+right\\s+now)?\\b"
+  ],
+  "clearNonSelfContextPatterns": [
+    "\\b(?:my|his|her|their)\\s+(?:brother|sister|mother|mom|father|dad|friend|client|patient|coworker|student)\\s+(?:said|says|told\\s+me|is|was|has\\s+been)\\b",
+    "\\b(?:the|this|that)\\s+(?:film|movie|novel|book|song|lyric|scene|character|article|paper|documentary|case\\s+study)\\b",
+    "\\b(?:patients?|clients?|students?|participants?)\\s+(?:with|who|report|reported|reporting|presenting)\\b",
+    "\\b(?:the\\s+phrase|the\\s+quote|the\\s+line)\\b"
+  ],
+  "ambiguousPatterns": [
+    "\\b(?:i\\s+cannot\\s+go\\s+on|i\\s+can't\\s+go\\s+on|i(?:'m| am)?\\s+done\\s+with\\s+everything|there\\s+is\\s+no\\s+way\\s+out)\\b"
+  ],
+  "domains": {
+    "self_harm": [
+      "\\b(?:i\\s+(?:really\\s+)?(?:want|wanted)\\s+to|i\\s+wanna|i(?:'m| am)?\\s+(?:going|gonna|about)\\s+to|i(?:'m| am)\\s+planning\\s+to|i\\s+(?:plan|planned|planning)\\s+to)\\s+(?:die|kill\\s+myself|end\\s+my\\s+life|end\\s+it\\s+all)\\b",
+      "\\b(?:i(?:'m| am)?\\s+suicidal|i\\s+feel\\s+suicidal|suicidal\\s+thoughts?\\s+(?:are|is)\\s+(?:back|worse)|kill(?:ing)?\\s+myself|hurt(?:ing)?\\s+myself|harm(?:ing)?\\s+myself|cut(?:ting)?\\s+myself)\\b",
+      "\\b(?:i\\s+(?:do\\s+not|don't)\\s+want\\s+to\\s+(?:live|be\\s+here)|i\\s+wish\\s+i\\s+(?:were|was)\\s+dead|everyone\\s+would\\s+be\\s+better\\s+off\\s+without\\s+me|no\\s+one\\s+would\\s+miss\\s+me)\\b"
+    ],
+    "overdose": [
+      "\\b(?:i\\s+(?:took|swallowed)\\s+(?:too\\s+many|all\\s+(?:of\\s+)?|a\\s+bottle\\s+of)\\s+(?:pills|tablets)|i\\s+overdosed|i\\s+am\\s+overdosing)\\b"
+    ],
+    "medical_emergency": [
+      "\\b(?:i\\s+think\\s+i(?:'m| am)\\s+having\\s+(?:a\\s+)?(?:stroke|heart\\s+attack)|i\\s+(?:cannot|can't)\\s+breathe\\s*(?:,|and)\\s*(?:my\\s+)?chest\\s+hurts)\\b"
+    ],
+    "harm_to_others": [
+      "\\b(?:i(?:'m| am)?\\s+(?:going|gonna|about)\\s+to|i\\s+(?:plan|planned|planning|want)\\s+to|i\\s+wanna|i\\s+will)\\s+(?:kill|shoot|stab|seriously\\s+hurt)\\s+(?:him|her|them|someone|my\\s+\\w+)\\b"
+    ],
+    "psychosis_or_disorientation": [
+      "\\b(?:the\\s+voices?\\s+(?:are|is)\\s+telling\\s+me\\s+to\\s+(?:kill|hurt)|i\\s+cannot\\s+tell\\s+what\\s+is\\s+real)\\b"
+    ],
+    "abuse_or_safeguarding": [
+      "\\b(?:my\\s+(?:partner|spouse|parent|caregiver)\\s+(?:is\\s+)?(?:hitting|beating|strangling|threatening)\\s+me|i\\s+am\\s+being\\s+(?:abused|held\\s+against\\s+my\\s+will))\\b"
+    ]
+  }
+}

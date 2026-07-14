@@ -1,24 +1,29 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 # Active Themes
 
-*This file tracks medium-term threads that are still alive, even if they are not the focus of every session. Keep it short, current, and revisit it often.*
+Medium-term consented threads and capacities. Each item has stable provenance and one canonical home.
 
-## How To Use
+## theme-<uuid> — Theme Name
 
-- list only themes that are still psychologically active
-- remove or downgrade themes that feel resolved, dormant, or absorbed into the core profile
-- keep each theme brief enough to reread quickly at session start
-
----
-
-## 1. Theme Name
-
-- Status: active
-- Why it matters:
+- Statement:
+- Status: provisional | active | dormant | disputed | retired
+- First observed: YYYY-MM-DDTHH:MM:SS+HH:MM | unknown
+- First session: s-<uuid> | imported
+- Imported at: null
+- Source IDs: []
+- Last live confirmed: never
+- Last confirmed session: null
+- Confidence: tentative
+- Review state: current
+- Current revision: 1
 - Live edge:
-- Last touched:
 - Return path:
+- Related memory IDs: []
+
+### Revision history
+
+- r1 — YYYY-MM-DDTHH:MM:SS+HH:MM — created
 
 ## Healthy Live Capacities
 
-- Track non-wound strengths here too, not only injury themes
+<!-- Use the same block and evidence standard. Track agency and exceptions without forcing positivity. -->

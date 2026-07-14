@@ -1,0 +1,6 @@
+# Scalvin workspaces contain sensitive personal material.
+# Default deny: Git ignores every generated file unless the user deliberately
+# changes this policy after understanding the privacy implications.
+*
+!.gitignore
+!README.md

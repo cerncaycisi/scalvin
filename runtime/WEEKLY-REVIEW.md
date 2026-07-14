@@ -1,150 +1,130 @@
-<!-- version: 3.0.1 -->
-# Weekly Review Standard
+<!-- version: 4.1.0 -->
+# Weekly And Interim Review
+
+Reviews are consented, session-triggered reflection. They are not background jobs and do not silently rewrite memory or behavior.
+
+## Canonical Weekly Rule
+
+The user's confirmed timezone defines a Monday 00:00–Sunday 23:59:59 calendar week.
+
+A weekly review is due at session start when all are true:
+
+1. this is a returning workspace with at least one valid, completed session dated before the current week's Monday
+2. no valid, completed, non-hidden weekly-review artifact exists with a creation date in the current week and not in the future
+3. continuity persistence is on and memory is not paused
+4. the user's IANA timezone is confirmed
+
+It runs on the first returning session that meets those conditions, whether Monday, Tuesday, or any later weekday. If the user does not return, no review runs. There is no Tuesday-only catch-up window.
+
+The canonical deterministic authority is the cross-platform Node command:
+
+```bash
+scalvin review-due --workspace . --timezone <confirmed-IANA-timezone>
+```
+
+`review_due_check.py` is a compatibility/reference fallback and must maintain tested parity with the Node command. `REVIEW-INDEX.md` is navigation only. The user may defer or skip a due review. Record a content-free deferral so it is not repeatedly pushed during the same session.
+
+An unconfirmed device timezone may be shown as a candidate but cannot produce `DUE`. The explicit `--date YYYY-MM-DD` override may produce `DUE` only for deterministic tests; it is not a substitute for confirming the user's timezone during a real session.
+
+## What Counts As Completed
+
+For current seconds-plus-UUID filenames, the artifact must contain leading YAML frontmatter with exactly one standalone, top-level, unquoted marker:
+
+```yaml
+completion: complete
+```
+
+An empty file, filename-only placeholder, missing/malformed frontmatter, missing marker, duplicate marker, or any non-`complete` value is ignored for due-check purposes. `interrupted_partial`, `incomplete`, `active`, and similar values never count as complete.
+
+Legacy `YYYY-MM-DD-HHMM.md` sessions and `YYYY-MM-DD-HHMM-weekly-review.md` reviews remain compatible only when nonempty. A nonempty legacy artifact without a standalone top-level completion marker may count because old versions did not write the field. If a legacy artifact contains such a marker, it counts only when there is exactly one unquoted marker with value `complete`; an explicit incomplete or duplicate marker never counts.
+
+This compatibility rule does not upgrade or rewrite legacy records. New artifacts never receive the legacy exception.
 
 ## Review Types
 
-### Weekly Review (routine consolidation)
+### Weekly
 
-Runs on Monday (or first returning session of the new week if Monday was missed). Purpose: step back from the individual sessions of the past week and look for patterns, shifts, and drift.
+Looks across the period since the prior weekly review, emphasizing the previous completed week. It checks continuity, drift, counter-evidence, context health, stale items, and optional change proposals.
 
-### Interim Review (exception-based)
+### Interim
 
-Runs when a specific trigger fires, not on a schedule. Triggers include:
-- a major new source was just integrated
-- a session surfaced material that changes an existing formulation
-- a rupture occurred and the companion needs to recalibrate
-- the client explicitly requests a review
-
-Interim reviews are shorter and more focused than weekly reviews -- they examine the specific trigger, not the whole week.
-
-Use this workflow for a meta-review of the therapy process.
-
-This is not a normal session.
-
-## When To Run
-
-### Weekly Review
-
-The current review week means the 7-day period starting Monday 00:00 in the user's local time.
-
-On any session start, if today is Monday and no weekly review exists for the current review week, create one before entering the normal session.
-If Monday was missed, allow the next session on Tuesday to create a late weekly review, but only if no weekly review exists for that week yet.
-Determine this from actual non-hidden `archive/reviews/*-weekly-review.md` files for the current review week.
-Ignore hidden metadata files such as `._*`, and ignore any weekly-review file dated later than today.
-Use `archive/reviews/REVIEW-INDEX.md` as an orientation layer for reading order, not as the authoritative due-check.
-
-### Interim Review
-
-An interim review may be created between two weekly reviews when one of the following occurs:
-
-1. a major new source has been integrated
-2. a significant narrative shift or major reformulation has occurred
-3. a change to system architecture is needed that would affect profile, active themes, current focus, or runtime logic
-
-Do not create more than one interim review between two weekly reviews unless there is a truly major source integration or clinical shift.
+Runs only on explicit request or a consented significant trigger such as major source integration, reformulation, rupture, or architecture concern. It focuses on that trigger rather than repeating a weekly review.
 
 ### Manual
 
-Run the review workflow whenever the user explicitly asks for a review, reset, audit, or pattern check.
+Runs whenever the user requests a review, reset, audit, or pattern check. Manual review is not proof that the automatic weekly review occurred unless saved as a weekly artifact for the current week.
 
-## Files To Review
+## Read Scope
 
-- `profile.md`
-- `ACTIVE-THEMES.md`
-- `CURRENT-FOCUS.md`
-- relevant living operational layers if the review is about process drift
-- all session files in `sessions/`
-- relevant archive files in `archive/`
-- prior weekly and interim reviews in `archive/reviews/`
-- important source materials in `sources/` when they are part of the ongoing record
+Respect consent, retention, and sealed pause. Start with:
 
-This review should be broad and integrative, not minimal.
+- profile, active themes, current focus
+- session notes since the prior review
+- prior weekly review and approved current overlays
 
-## Where To Save Review Outputs
+Open older archive/source records only when a specific review question requires them. Do not auto-read transcripts or external-care records without their separate permitted scope.
 
-- weekly reviews: `archive/reviews/YYYY-MM-DD-HHMM-weekly-review.md`
-- interim reviews: `archive/reviews/YYYY-MM-DD-HHMM-interim-review.md`
-- after saving a review, update `archive/reviews/REVIEW-INDEX.md`
+## Artifact Identity
 
-## Review Stance
+- weekly: `archive/reviews/YYYY-MM-DD-HHMMSS--<review-uuid>--weekly-review.md`
+- interim: `archive/reviews/YYYY-MM-DD-HHMMSS--<review-uuid>--interim-review.md`
 
-A review is not a recap. The goal is to notice what the week's sessions could not notice from inside themselves.
+Use confirmed timezone, seconds, UUID, and exclusive/no-clobber creation. Frontmatter includes review ID, created timestamp/timezone, sessions covered, consent event, and completion status. Write `completion: complete` only after the artifact body and required index/state updates have succeeded; a partial write remains explicitly incomplete and cannot suppress a future review.
 
-Useful review moves:
-- Name what is absent -- what has not come up that used to
-- Name what is repeating -- what keeps returning without shifting
-- Name what contradicts -- where the client's recent statements diverge from each other or from earlier formulations
-- Check for drift -- is the companion still calibrated to the client, or has it settled into a comfortable rhythm
-- Check the formulation -- does the current profile still fit, or has it calcified
+## Review Questions
 
-What a review is not:
-- A summary of what happened (sessions already have notes)
-- An opportunity to re-formulate everything from scratch
-- A performance of therapeutic insight
+- What repeated, shifted, disappeared, or contradicted the current map?
+- What healthy capacities or counter-examples complicate wound-focused formulations?
+- Which item is source-derived, disputed, duplicated, overconfident, or in the wrong layer?
+- Which items meet the ~90-day plus 3-session stale-review threshold?
+- Is context near compression thresholds?
+- Did any interaction preference or repair pattern merit a user-visible change proposal?
+- Are retention expirations or known backup reminders due?
 
-## Goals
+Absence is not avoidance by default. Stale is not false. A source claim is not live confirmation.
 
-- detect repeated patterns that may be missed in single sessions
-- identify themes that are no longer active
-- identify themes that should be promoted into `ACTIVE-THEMES.md`
-- identify profile statements that are outdated, overconfident, too broad, or no longer useful
-- audit whether `profile.md` has become too dense, redundant, or over-formulated
-- notice contradictions, drift, or over-formulation
-- identify counter-evidence, healthy capacities, and material that does not fit the dominant wound narrative
-- propose a cleaner therapeutic focus for the next phase
-- notice operational drift in the live moves, disambiguation habits, rupture/repair handling, source logic, or memory hygiene
-- audit whether the companion's self-evolved files (persona adjustments, source triggers, disambiguation grid, live moveset) are still accurate, useful, and not drifting from live evidence
-- ask whether compression thresholds are close to or past their limits
-
-## Output Structure
+## Output
 
 ```markdown
-# Weekly Review - YYYY-MM-DD-HHMM
+---
+record_kind: ai_authored_weekly_review
+review_id: review-<uuid>
+created_at: YYYY-MM-DDTHH:MM:SS+HH:MM
+timezone: Area/City
+covered_session_ids: []
+consent_event_id: consent-<uuid>
+completion: complete
+---
 
-## Recurring Patterns
-- 3 to 7 bullets
+# Weekly Review
 
-## Emerging Themes
-- 1 to 5 bullets
+## Recurring Or Shifting Patterns
 
-## Themes To Downgrade Or Close
-- 0 to 5 bullets
+## Emerging Or Dormant Themes
 
-## Counter-Evidence / Healthy Signals
-- 1 to 5 bullets
+## Counter-Evidence And Healthy Capacities
 
-## What May Have Been Over-Interpreted
-- 0 to 5 bullets
+## What May Be Over-Interpreted
 
-## Profile Update Suggestions
-- concise suggestions only
+## Stale-Memory Offers
 
-## Active Themes Update Suggestions
-- concise suggestions only
+## Proposed Memory Changes
 
-## Suggested Focus For The Next Week
-- 2 to 5 bullets
-- if no focus change is needed, say so explicitly
+## Proposed Behavioral Changes
 
-## Context Health
-- session count vs 30-file threshold
-- review count vs 10-file threshold
+## Suggested Focus
 
-## Self-Evolution Audit
-- Are persona adjustments still accurate? Any to add, update, or remove?
-- Are source trigger sections still useful? Any sources that should be re-read?
-- Are disambiguation grid entries still reflecting live confusions?
-- Are live moveset entries still effective or have any become ritualized?
-- Are there model-specific drift patterns that need correction or have been corrected?
-- Has the rupture-and-repair evidence log shifted? Any patterns promoted from hypothesized to observed, any that should be retired?
-- If `sources/client-told-memories.md` exists, are any logged scenes duplicated, outdated, or drifting from their original wording?
+## Context And Retention Health
 ```
 
-## Update Rules
+Proposals include stable IDs and concise before/after wording. Do not include a raw transcript or source dump.
 
-- do not automatically rewrite everything
-- only update `profile.md` and `ACTIVE-THEMES.md` if the review produces clear, useful, durable improvements
-- if `profile.md` has become heavy or archive-like, compress it back toward lean core memory
-- prefer small edits over large rewrites
-- if nothing important changed, say so plainly
-- if reviews show process drift rather than content drift, selectively update the relevant living operational layer instead of forcing the fix into profile/themes/focus
+## Approval Boundary
+
+- Memory writes still require active consent and provenance.
+- A user correction applies immediately under the correction command.
+- Behavioral/persona/moveset/source-trigger changes require `SELF-MODIFICATION.md` proposal approval.
+- A weekly review cannot approve its own proposals.
+- If nothing should change, say so.
+
+Update `REVIEW-INDEX.md` only after the review artifact is successfully created and verified.

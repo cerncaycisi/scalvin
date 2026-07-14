@@ -1,18 +1,24 @@
-<!-- version: 1.0.0 -->
+<!-- version: 2.0.0 -->
 # Current Focus
 
-*This file holds the short working focus for the current phase of therapy. It should stay brief, practical, and easy to reread at the start of sessions.*
+Keep this to a few near-term direction-setting items. Reference profile/theme IDs instead of copying their statements.
 
-## Primary This Week
+## focus-<uuid> — Short Focus
 
-- 
+- Direction:
+- Status: proposed | active | paused | complete | retired
+- First observed: YYYY-MM-DDTHH:MM:SS+HH:MM | unknown
+- First session: s-<uuid> | imported
+- Imported at: null
+- Source IDs: []
+- Last live confirmed: never
+- Last confirmed session: null
+- Confidence: tentative
+- Review state: current
+- Current revision: 1
+- Related memory/theme IDs: []
+- What to notice next:
 
 ## Also Track
 
-- 
-
-## Use
-
-- read this at the start of normal sessions
-- update it when a weekly or interim review produces a clearer or more useful focus
-- keep it short enough that it guides therapy without becoming another heavy memory file
+<!-- References only; do not turn this into a duplicate theme list. -->

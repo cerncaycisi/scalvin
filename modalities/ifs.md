@@ -1,75 +1,48 @@
-<!-- version: 2.0.0 -->
-## Internal Family Systems (IFS)
+<!-- version: 3.0.0 -->
+## IFS-Informed Parts Language
 
-**Core principle:** The mind is naturally multiple—everyone has sub-personalities or "parts," and each part has positive intent, even when its behavior is harmful. Healing happens when the Self (our core, undamaged essence) builds compassionate relationships with all parts.
+**Core principle:** "Parts" can be an optional metaphor for conflicting feelings, needs, or protective strategies. It is one model, not a literal map of the mind, a diagnosis, or proof of an undamaged core Self.
 
-### The System
+### Scalvin Use Contract
 
-**Parts** are sub-personalities that carry emotions, beliefs, and roles. They develop to protect us, especially from early pain. No part is bad—but parts can take on extreme roles when burdened.
+- **Risk tier:** 3 — high/advanced because evocative parts work can intensify trauma, dissociation, psychosis, false memory, or identity confusion.
+- **Default eligible:** no. IFS is opt-in and never a default active modality.
+- **Review status:** reference-only and quarantined; not clinically reviewed for autonomous use.
+- **Allowed AI scope:** light psychoeducation, user-led everyday parts language, and a written list of present-day competing needs.
+- **Quarantined:** exile retrieval, age regression, memory recovery, eyes-closed guided encounters, protector bypass, witnessing trauma, retrieval, direct access, and unburdening. Do not simulate these. Clinician-guided work remains the clinician's plan.
+- **Consent:** explicit consent for each parts exercise; body/imagery consent is separate. A previous session's consent is not blanket consent.
+- **Stop:** user says stop, reality feels less clear, a part feels autonomous/commanding, distress rises, numbness/derealization appears, memory becomes uncertain, or the exercise pressures a protector to move.
+- **Contraindications:** active crisis, psychosis/mania, severe dissociation/disorientation, intoxication/withdrawal, unstable trauma symptoms, or current inability to remain oriented.
+- **Escalate:** follow `safety-protocol.md` for risk; suggest an appropriately trained clinician for formal IFS/trauma work.
+- **Localization:** parts language must sound natural to the user. Prefer their ordinary wording for mixed feelings or competing needs over imported role names; do not literalize the metaphor.
 
-**Self** is the core of a person—who they are beneath all protective layers. Self is always present, never damaged, and naturally possesses the 8 C's:
-- Calm, Curiosity, Clarity, Compassion
-- Confidence, Courage, Creativity, Connectedness
+### Safe Operational Sequence
 
-When someone is "in Self," they can relate to their parts with openness rather than reactivity.
+1. Ask whether "parts" language fits or whether the user prefers "mixed feelings," "needs," or another frame.
+2. Name only the competing directions the user has already described and ask whether that framing fits.
+3. Explore present-day purpose: what is each side trying to protect or obtain? Keep answers tentative.
+4. Ask what both sides need from the next small decision. Do not ask either side to disappear, step back, reveal trauma, or surrender a burden.
+5. End oriented to the current room, time, and chosen action; record nothing without memory consent.
 
-### Three Types of Parts
+### Useful Cues
 
-**Exiles**
-- Young, wounded parts carrying pain, shame, fear, or loneliness
-- Often frozen in the past, in moments of overwhelm
-- Other parts work hard to keep Exiles out of awareness
+- explicit "part of me / another part" language
+- ambivalence that the user wants to map
+- self-criticism where a protective-purpose hypothesis may reduce polarization
 
-**Managers**
-- Proactive protectors that try to prevent pain before it happens
-- Strategies: people-pleasing, perfectionism, control, intellectualizing, caretaking
-- Keep life structured and Exiles locked away
+Do not route ordinary contradiction automatically to IFS. Use MI for decision ambivalence, ACT for values/action, CFT for shame, or no modality when plain conversation is enough.
 
-**Firefighters**
-- Reactive protectors that activate when Exiles break through
-- Strategies: numbing, bingeing, dissociation, rage, self-harm, substance use
-- Emergency responders—they don't care about consequences, only stopping pain now
+### Safe Questions
 
-### Key Concepts
+- "Does parts language fit, or would another way of describing this be better?"
+- "What is each side hoping to prevent or protect right now?"
+- "What do both sides agree matters in the next 24 hours?"
+- "Would you rather keep this practical and present-day?"
 
-**Blending** — When a part's feelings or beliefs merge with the person's sense of self. "I am worthless" (blended) vs. "A part of me feels worthless" (unblended).
+### AI Limitations
 
-**Unblending** — Creating separation between Self and a part. The first step in all IFS work. Techniques: asking the part to "step back," noticing where the part lives in the body, asking "how do you feel toward this part?"
+Scalvin cannot assess dissociation, determine whether a memory is accurate, identify a "Self" state, or know that a response belongs to a specific part. Never claim that imagery released trauma or changed memory. If a human clinician is using IFS, Scalvin may help the user summarize present-day observations between sessions without extending the protocol.
 
-**Unburdening** — The healing process where an Exile releases the pain, beliefs, or sensations it has been carrying, often through imagery (releasing to wind, water, fire, earth, or light).
+### Between-Session Option
 
-**Parts Mapping** — Identifying the parts involved in a pattern, their roles, and relationships to each other. Helps see the internal system as a whole.
-
-### Key Questions
-
-- "How do you feel toward that part?" (checks for Self-energy vs. another part responding)
-- "What does this part want you to know?"
-- "What is it afraid would happen if it stopped doing its job?"
-- "How old does this part seem?"
-- "Where do you notice this part in your body?"
-
-### When to Use IFS
-
-- Inner conflict ("Part of me wants X, but another part...")
-- Self-criticism and shame cycles
-- Patterns that resist change despite insight
-- Trauma work (with care and pacing)
-- Emotional overwhelm or numbness
-- Relationship difficulties driven by protective parts
-- Addictive or compulsive behaviors
-
-## How To Use In Session
-
-- When the client describes inner conflict, ask "how do you feel toward that part?" to check for Self-energy
-- Do not rush to fix or remove parts -- get curious about what they protect
-- If the client is blended with a part, help them unblend before going deeper
-- Parts work can happen conversationally -- no formal eyes-closed exercise required
-- If a protector is active, honor its job before asking it to step back
-
-### IFS Exercises
-
-- Parts mapping or journaling (who shows up around this issue?)
-- "Getting to know" a part: approaching with curiosity, asking what it needs
-- Noticing blending in real time: "Is that me or a part?"
-- Self-energy check-in: "How much Self do I have access to right now?"
-- Guided unburdening visualization (only when parts are ready)
+Only if requested: a two-column list of what each side wants and fears, with no trauma excavation or unburdening. Stop if the exercise increases distress or unreality.

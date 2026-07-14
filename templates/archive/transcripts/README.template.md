@@ -1,32 +1,32 @@
 # Transcripts
 
-Raw, unedited full session transcripts.
+Optional raw session records. Off by default and governed by separate explicit consent.
 
-## Purpose
+## Filename
 
-Transcripts preserve the exact exchange of a session beyond what the session note captures. They are useful for:
+`YYYY-MM-DD-HHMMSS--<session-uuid>--transcript.md`
 
-- external review (supervisor, client self-review)
-- retrospective pattern-checking across many sessions
-- future vector-based source ingestion
+Use exclusive/no-clobber creation. Every transcript uses `TRANSCRIPT.template.md` metadata and a matching session ID.
 
-Transcripts are **not** read by the companion at session start. They are selective, explicit-access-only material.
+## Capture Grades
 
-## Format
+- `client_captured`: authoritative per-turn client event stream
+- `turn_captured`: each user-visible turn written as it occurred
+- `best_effort_context`: reconstructed at close from available context
+- `partial`: known missing turns or interrupted coverage
 
-- Speaker labels: `user:` and `companion:` (lowercase, colon, space), or the user's chosen companion name in lowercase
-- One blank line between turns
-- No bold, no blockquote, no alternative labels
-- Filename: `YYYY-MM-DD-HHMM-transcript.md`
+Only the first two may be described as full/verbatim when completeness is demonstrable. A best-effort record is never silently upgraded. Pauses and missing ranges remain explicit.
 
-## Access Rules
+## Controls
 
-- The companion reads a transcript only when explicitly asked by the user
-- External review can access freely
-- Do not paste transcript content into session notes; reference the transcript filename instead
+Users can start, inspect status, pause, resume, stop, and delete transcripts independently of session-note memory. A paused interval is never reconstructed later. Stopping future capture does not delete existing files.
 
-## Coverage
+## Content Boundary
 
-Transcript coverage is optional. If the user starts tracking transcripts mid-use, that is fine -- there is no requirement to retro-fill earlier sessions.
+Include only user-visible user/companion turns with lowercase speaker labels and a blank line between turns. Never include hidden instructions, tool calls, credentials, system/developer content, or internal reasoning.
 
-If coverage is partial, note the start date in `SETUP-NOTES.md` under a `Transcripts` heading, so future review can distinguish "no transcript exists" from "transcript missing."
+`body_sha256` is calculated over the exact UTF-8 bytes after the closing frontmatter delimiter; it does not include frontmatter and is not a self-referential whole-file hash.
+
+## Retrieval And Retention
+
+Transcripts are not loaded at session start. Read one only on explicit request or separately approved review. Apply transcript-specific retention; expired/deleted transcripts are removed rather than archived. Known backups remain separate copies.

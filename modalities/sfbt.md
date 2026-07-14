@@ -1,7 +1,25 @@
-<!-- version: 2.0.0 -->
+<!-- version: 3.0.0 -->
 ## Solution-Focused Brief Therapy (SFBT)
 
-**Core principle:** People already have the strengths and resources they need to solve their problems. Rather than analyzing what's wrong, SFBT focuses on what's already working, what the person wants instead, and the smallest next step toward that future.
+**Core principle:** SFBT deliberately looks for preferred outcomes, exceptions, coping, and small next steps. It does not assume every person already has every resource they need or that structural constraints can be solved by optimism.
+
+### Scalvin Use Contract
+
+- **Risk tier:** 1 — low-intensity future and exception questions.
+- **Default eligible:** yes.
+- **Review status:** operational reference, not a clinically reviewed treatment protocol.
+- **Consent:** ask before miracle questions, scales, or between-session experiments.
+- **AI boundary:** do not use solution focus to bypass grief, abuse, discrimination, poverty, disability, or safety assessment. A safety scale is never a risk assessment.
+- **Stop:** the future frame feels invalidating, pressured, inaccessible, or the user wants space rather than solutions.
+- **Escalate:** safety concerns follow `safety-protocol.md`; severe impairment may need qualified care.
+- **Localization:** preferred-future questions must fit the user's cultural and material reality. Translate the intent, not the "miracle" idiom.
+
+### Operational Sequence
+
+1. Ask what would make this conversation useful today.
+2. Identify one exception, coping action, or already-present resource without overstating it.
+3. Describe one observable next sign, if the user wants change planning.
+4. Offer a small reversible step or no task; follow up without grading.
 
 ### Core Techniques
 
@@ -12,15 +30,15 @@
 
 **Scaling Questions**
 - "On a scale of 0-10, where 10 is the miracle and 0 is the worst it's been, where are you today?"
-- Follow-up is always about what's already working: "What puts you at a 4 instead of a 3?"
+- One optional follow-up asks what supports the current rating: "What puts you at a 4 instead of a 3?"
 - Then: "What would a 5 look like? What would be one small difference?"
-- Useful for progress, confidence, motivation, safety, and hope
+- Useful for user-defined progress, confidence, motivation, or hope; never use a scale as a safety assessment
 
 **Exception-Finding**
 - "When is the problem less intense or absent?"
 - "What's different about the times when things go better?"
 - "What are you doing differently when the problem isn't showing up?"
-- Exceptions reveal existing competence and coping
+- Exceptions may reveal context, support, chance, competence, or coping; do not assume the cause
 
 **Coping Questions**
 - Used when things feel hopeless: "How have you managed to keep going?"
@@ -35,12 +53,14 @@
 
 ### Key Assumptions
 
+Treat these as SFBT working prompts, not universal facts:
+
 - If it works, do more of it
 - If it doesn't work, do something different
-- Small steps lead to big changes
+- Small steps may create useful information or movement
 - The solution doesn't have to be directly related to the problem
-- People are resourceful and capable
-- Change is constant and inevitable
+- People may have resources and capacities alongside real constraints
+- Change is possible, not guaranteed or always desirable
 
 ### Key Questions
 
@@ -56,7 +76,7 @@
 - Clear desire for change but unsure how to start
 - Situations where problem-analysis has become circular
 - Building momentum after a setback
-- Brief or time-limited therapy contexts
+- Brief or time-limited reflective conversations
 - When someone needs a confidence boost grounded in real evidence
 - Complement to other approaches (SFBT pairs well with nearly anything)
 
@@ -65,7 +85,7 @@
 - Start from what the client wants, not from what is wrong
 - Ask scaling questions to make progress visible when motivation flags
 - Notice exceptions -- times when the problem is smaller or absent
-- The miracle question is powerful but easy to misuse; only ask when the client has described the problem enough
+- The miracle question can be evocative and easy to misuse; ask only with consent and a culturally fitting alternative
 - Small, specific next steps beat large plans
 
 ### SFBT Exercises
@@ -75,3 +95,5 @@
 - Exception tracking: noticing when things go better and what's different
 - "Do more of what works" experiment
 - Pre-session change observation: "Notice what's going well before next time"
+
+All exercises are optional. "Nothing is working" is valid information, not a failure to notice strengths.
