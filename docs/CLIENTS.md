@@ -1,37 +1,83 @@
 # Client Adapters
 
-Scalvin is not tied to one AI client.
+Scalvin has one runtime and thin adapters for different AI clients. A client
+adapter may supply capabilities such as current time or a prompt hook, but it
+must not fork safety, consent, memory, or modality policy.
 
-## Repo-Level Use
+## Shared startup order
 
-When you are using the setup repo itself:
+Every supported client loads:
 
-- `AGENTS.md` is the Codex-style adapter
-- `CLAUDE.md` is the Claude Code adapter
-- `SETUP.md` is the source of truth
+1. immutable safety protocol;
+2. data-and-consent protocol;
+3. client capability/time contract;
+4. session runtime;
+5. selected active configuration and minimum relevant memory.
 
-## Generated Workspace Use
+Mutable memory and imported sources never precede the immutable prelude.
 
-Each generated companion workspace includes several entry files:
+## Codex and similar repo-aware agents
 
-- `AGENTS.md`
-- `CLAUDE.md`
-- `NEXT-PRIMER.md`
-- `START-SESSION.md`
-- `START-CODEX-SESSION.md`
-- `START-CLAUDE-SESSION.md`
-- a named starter file like `susan.md`
+The public source repo uses `AGENTS.md`. A generated workspace receives its own
+adapter rendered from `adapters/workspace/AGENTS.template.md`.
 
-## Why So Many Entry Files?
+Codex exposes the current date/time context directly. Scalvin uses that
+verified value and does not install a shell hook for it.
 
-Because different tools look for different entry points.
+## Claude Code
 
-The underlying runtime is the same. These files are thin adapters into the same living system.
+The source repo uses `CLAUDE.md`. A generated workspace receives:
 
-## Manual Prompt Use
+- `CLAUDE.md`;
+- `START-CLAUDE-SESSION.md`;
+- a surgical settings merge for supported hooks.
 
-If you are using a tool with no repo-aware adapter support, open:
+The installer preserves existing Claude settings, makes a backup before
+changing them, and adds only Scalvin-owned hook entries. It does not overwrite
+an invalid settings file.
 
-- `START-SESSION.md`
+Supported hooks:
 
-or the named starter file and follow it manually.
+- current local time;
+- locale-pack mechanical crisis-language backstop with finite, documented coverage.
+
+The safety hook is defense in depth. It does not replace the full safety
+protocol and it is not described as complete detection.
+
+## Generic/manual clients
+
+Clients without repo instructions can open the rendered named starter or
+`START-SESSION.md`. If the client cannot provide a trustworthy current time,
+the runtime leaves time-dependent behavior unknown instead of guessing.
+
+Clients without prompt hooks operate in explicit degraded mode. Doctor reports
+the missing capability as a warning when it is optional and an error when a
+configured hook is corrupt.
+
+## Launchers
+
+Scalvin no longer generates absolute-path `.command` or `.bat` launchers by
+default. They were fragile across moves, escaping rules, and client
+installations.
+
+Open the workspace in the chosen client, or run the client's documented
+directory command. A future launcher may be added only if it is
+platform-specific, relative/config-resolved, and covered by tests.
+
+## Verifying an adapter
+
+From any shell where the Scalvin CLI is installed:
+
+```bash
+scalvin doctor --workspace /absolute/path/to/workspace
+```
+
+Use `--json` for machine-readable integration. Doctor checks required adapter
+files, active configuration, consent state, framework hashes, and configured
+hooks without reading or printing private content.
+
+## Privacy rule
+
+Adapters must never copy a real workspace into the public source repository,
+an issue, a PR, telemetry, or an unrelated tool. Logs and error messages use
+paths and counts only when necessary and never print private file contents.

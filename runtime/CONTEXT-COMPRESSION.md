@@ -1,64 +1,65 @@
-<!-- version: 1.1.0 -->
+<!-- version: 2.0.0 -->
 # Context Compression
 
-This layer governs how the workspace manages growing context over time. The companion reads this when compression thresholds are approaching and applies the rules to keep the working context readable without losing history.
+Compression keeps default context small while preserving consented, retained history and provenance. It is never a substitute for deletion, forgetting, or expiration.
 
-## When To Compress
+## Gates
 
-Compress when any of these is true:
+Before compression:
 
-- `sessions/` contains more than 30 session files
-- `archive/reviews/` contains more than 10 review files
-- a weekly review reports difficulty holding all context at once
-- `profile.md` has grown past the point of being readable at session start
+- continuity consent is on and memory is not paused
+- retention is enforced first
+- source/session/review IDs and integrity references are available
+- the user has not asked to forget the material
+
+Never include paused-window, expired, deleted, disputed-as-fact, or unauthorized transcript/source content in a summary.
+
+## Suggested Triggers
+
+- more than 30 active individual session notes
+- more than 10 unconsolidated reviews
+- profile no longer fits quick session-start reading
+- the user or a review identifies context overload
+
+Thresholds propose compression; they do not authorize sensitive writes outside consent.
 
 ## Session Consolidation
 
-When `sessions/` exceeds 30 files:
+For fully completed past months:
 
-1. Group older sessions into monthly batches
-2. Write a summary for each batch to `sessions/YYYY-MM-summary.md`
-3. Each summary should capture: main threads of the month, key shifts, important carry-forwards, and what fed into profile or themes changes
-4. Move the original individual session files to `archive/sessions/YYYY-MM/` (create the subdirectory)
-5. Keep the most recent 10 to 15 individual session files in `sessions/` untouched
+1. create `sessions/YYYY-MM--<summary-uuid>--summary.md` with exclusive creation
+2. record source session IDs, covered timestamps/timezone, creation timestamp, consent event, and AI authorship
+3. summarize main threads, shifts, counter-evidence, unresolved items, and which stable memory IDs changed
+4. verify that every referenced session ID exists and the coverage has no accidental omission
+5. move originals only if retention permits; otherwise leave them and treat the summary as an index
+6. keep recent 10–15 individual notes readily available
 
-Do not consolidate the current month -- only fully-completed past months.
+A summary does not become live confirmation of the items it mentions.
 
 ## Review Consolidation
 
-When `archive/reviews/` exceeds 10 files:
-
-1. Write a consolidated summary covering the oldest batch to `archive/reviews/YYYY-Q#-summary.md` (quarterly is a reasonable cadence)
-2. Move the individual reviews that fed the summary into `archive/reviews/history/`
-3. Keep the most recent 4 to 5 reviews as individual files
+Create `archive/reviews/YYYY-Q#--<summary-uuid>--review-summary.md`. Record all source review IDs and covered session IDs. Keep recent reviews individual. Update the review index only after verification.
 
 ## Profile Pruning
 
-When `profile.md` has grown past session-start readability:
+- keep durable active items and compact provenance in `profile.md`
+- move consented historical detail to a unique archive artifact
+- leave stable IDs/references in the deep-memory index
+- preserve corrections and counter-evidence
+- do not convert provisional/source-derived claims into facts through summarization
 
-- Move historical detail to `archive/profile-detailed-YYYY-MM-DD.md`
-- Keep `profile.md` lean and current
-- Update the Deep Memory Index in `profile.md` to point at the archived detail
+## Retrieval
 
-## Compression Frequency
+Summaries are selective-access. Reopen when a current question, stable ID, or review scope points to them. Do not load all summaries at session start.
 
-Run when thresholds are crossed, not on a schedule. The companion may suggest compression during a weekly review if thresholds are close but not yet exceeded.
+If the user deletes a source record, trace summaries and indexes that derived from it. Remove or rewrite affected content under the deletion rules rather than letting the summary resurrect it.
 
-## Principle
+## Verification
 
-Compression serves readability. The goal is not to lose information but to layer it -- lean core for session start, consolidated summaries for medium-term, full originals in archive for deep detail.
+After compression:
 
-## Accessing Summaries
-
-Summaries are not auto-loaded at session start. They are consulted on demand when the companion needs historical context that has been compressed away.
-
-The companion reopens a monthly or quarterly summary when:
-
-- the current session's thread explicitly references an earlier period (for example, "like we talked about back in February")
-- a weekly review is looking for pattern continuity across a longer horizon than the last few sessions
-- `profile.md`'s Deep Memory Index points at the summary as the relevant entry for a theme under discussion
-- the user asks about something that predates the current working window
-
-The companion does not read all summaries speculatively. Summaries exist to make targeted historical lookup possible, not to expand the default context load.
-
-If a monthly summary points at a specific archived session worth reopening, the companion may then read that archived file (`archive/sessions/YYYY-MM/*.md`) directly.
+- check unique filenames and no-clobber creation
+- verify source IDs and links
+- confirm active layers do not duplicate the summarized statements
+- confirm expired/deleted material is absent
+- record only a content-free operational event if a ledger is used

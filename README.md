@@ -1,103 +1,267 @@
 # Scalvin
 
-A local-first AI companion system for long-form therapeutic continuity.
+[![CI](https://github.com/cerncaycisi/scalvin/actions/workflows/ci.yml/badge.svg)](https://github.com/cerncaycisi/scalvin/actions/workflows/ci.yml)
+[![Security](https://img.shields.io/badge/security-private%20reporting-blue)](https://github.com/cerncaycisi/scalvin/security/advisories/new)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Built from the MIT-licensed [Inner Dialogue](https://github.com/ataglianetti/inner-dialogue) project, redesigned around a self-evolving runtime that grows with the user.
+Scalvin is a local-first AI companion framework for self-reflection,
+conversation continuity, and user-controlled memory.
 
-## What It Does
+> **Development status:** the current `1.0.0` line is an unreleased development
+> preview. Independent safety review and release-candidate behavior evaluation
+> are not complete; this is not clinical validation.
 
-You open the folder, say hi, and start talking. The companion:
+It combines a natural conversational experience with a deterministic
+installer, explicit data consent, multi-client adapters, layered memory,
+source isolation, safety evals, and verifiable backup/update tooling.
 
-- introduces itself and begins the first session immediately -- no setup wizard
-- learns about you over the first few sessions and builds your profile automatically
-- writes session notes, tracks active themes, and maintains a working therapeutic focus
-- evolves its own operational files as it learns your patterns, defenses, and preferences
-- integrates source documents (journals, old notes, clinical records) and indexes them for selective reopening
-- runs weekly self-reviews to catch drift, update formulations, and audit its own behavior
-- detects model-specific tendencies (GPT over-mirroring, Claude over-formulating) and corrects for them
-- supports backup and export of the entire workspace
-- maintains a growing `client-told-memories` file as specific scenes are recounted across sessions
-- optionally saves raw session transcripts to `archive/transcripts/` when the user turns on transcript tracking
-- supports full workspace migration and upgrade without losing continuity
+Scalvin is not a therapist, clinician, medical device, crisis service, or
+substitute for professional care. The supported public project is designed for
+adults.
 
-Everything stays on your machine in plain markdown files. You own your data.
+## What makes Scalvin different
 
-## How It Works
+Scalvin's architecture is built around:
 
-Scalvin creates a separate living workspace that holds:
+- separate public framework and private user workspace;
+- Codex, Claude Code, and generic client adapters;
+- safety and consent loaded before mutable memory;
+- profile, themes, current focus, primer, sessions, sources, context, and
+  archive with clear ownership;
+- item-level provenance and stale-memory review;
+- controlled user overlays instead of silent base-prompt self-modification;
+- deterministic install, update, doctor, backup, and restore;
+- locale-pack mechanical safety backstop with precision/over-fire tests;
+- source prompt-injection boundaries;
+- explicit inspect, correct, pause, forget, export, transcript, and delete
+  controls.
 
-- `profile.md` -- lean core memory, grows over time
-- `ACTIVE-THEMES.md` -- medium-term therapeutic threads
-- `CURRENT-FOCUS.md` -- short-term working direction
-- `NEXT-PRIMER.md` -- 5-line handoff between sessions
-- `sessions/` -- session notes
-- `sources/` -- imported documents the companion can reopen selectively
-- `archive/` -- richer historical material and review outputs
+## Data-flow truth
 
-Behind the scenes, a set of operational layers guide the companion's behavior:
+```mermaid
+flowchart LR
+    A["Public Scalvin framework"] --> B["Verified installer / updater"]
+    B --> C["Private local workspace"]
+    C --> D["Selected minimum context"]
+    U["User consent and controls"] --> C
+    U --> D
+    D --> E["AI client"]
+    E --> F["Local model or hosted provider"]
+```
 
-- how to open and close sessions
-- when to update memory and when to leave it alone
-- how to detect and interrupt defensive patterns
-- when to reopen source material and when to stay with live content
-- how to run weekly reviews and interim reviews
-- how to evolve its own persona, disambiguation logic, and intervention style
+Durable workspace storage is local by default. If the AI client uses a hosted
+model, the live message and selected local context may be sent to that
+provider. Scalvin does not override provider policy and does not describe
+hosted inference as on-device.
 
-These layers are living files the companion can update as the work progresses.
+Read [Privacy and Data Flow](docs/PRIVACY.md) before using Scalvin with
+sensitive material.
 
-## Setup
+## Quick start
 
-1. Install [Codex](https://github.com/openai/codex) or [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
-2. Open this folder.
-3. Type "start" or "başla" or just say hi.
-4. That's it.
+Requirements: Git and Node.js 20 or newer.
 
-No templates to fill. No configuration. The companion handles everything through conversation.
+```bash
+git clone https://github.com/cerncaycisi/scalvin.git
+cd scalvin
+```
 
-Detailed walkthrough: [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)
+Open the folder in Codex, Claude Code, or another repo-aware agent and say
+hello in any language. The default language preference is `auto`.
 
-## Key Features
+Scalvin first explains:
 
-**Conversational bootstrap** -- first session starts immediately, no setup wizard. Defaults are chosen silently; change them later by asking.
+- what local continuity memory stores;
+- what a hosted model provider may receive;
+- how to inspect, correct, pause, export, forget, or delete data;
+- that raw transcripts are a separate opt-in and off by default.
 
-**Self-evolving companion** -- the companion updates its own persona notes, intervention playbook, pattern disambiguation, and source indexing as it learns the user.
+You may continue without saved memory.
 
-**Source integration** -- import journals, old AI conversations, clinical records, or personal writing. The companion reads them, indexes triggers for reopening, and integrates relevant material into the therapeutic record.
+For an explicit CLI install:
 
-**Model awareness** -- detects common drift patterns in GPT and Claude models and corrects for them. Notes which patterns actually appear with each user.
+```bash
+node bin/scalvin.js install \
+  --workspace "~/scalvin-workspace" \
+  --consent not-decided
+```
 
-**Weekly reviews** -- automatic Monday reviews that catch drift, update formulations, check for over-interpretation, and audit the companion's own evolved files.
+Then verify:
 
-**Session primer** -- a 5-line rolling handoff file written at every session close, giving the next session instant context without reading 15 files.
+```bash
+node bin/scalvin.js doctor \
+  --workspace "~/scalvin-workspace"
+```
 
-**Between-session experiments** -- selective, observational carry-forward tasks with follow-up tracking and non-completion treated as meaningful data.
+See [Getting Started](docs/GETTING-STARTED.md) for selections, JSON mode,
+dry-runs, backups, restores, and updates.
 
-**Backup and export** -- ask the companion to save a copy of the workspace at any time. Gentle reminder after 10+ sessions without a backup.
+## Neutral defaults
 
-**Local-first** -- all files stay on your machine. Your continuity doesn't depend on any vendor's chat history.
+- companion: Scalvin;
+- persona: Scalvin;
+- structure: moderate;
+- active modalities: ACT, CFT, Motivational Interviewing;
+- transcripts: off;
+- body prompts: ask first;
+- between-session experiments: ask first.
 
-## Persona Library
+Susan and the rest of the persona library remain optional. Advanced modality
+references are installed as library material but are not automatically active.
+Risk-tier and consent rules still apply after selection.
 
-Nine communication styles included: Susan (default), Warm & Supportive, Direct & Challenging, Coach, Grounded & Real, Contemplative, Philosophical, Creative, and Warm 4o-Style.
+## User controls
 
-The companion adds client-specific adjustments on top of whichever base persona is active.
+Scalvin recognizes natural language and explicit forms:
 
-## Therapeutic Modalities
+```text
+/memory status
+/memory show
+/memory pause
+/memory resume
+/memory correct <item>
+/memory forget <item-or-category>
+/memory review-due|review-confirm|review-decline <item>
+/transcript start|status|pause|resume|stop
+/transcript delete <session-or-all>
+/data export <active|continuity|all>
+/data delete all
+/source add|status|integrate|reject|delete
+/close
+```
 
-Twelve modalities available: ACT, IFS, CFT (defaults), CBT, DBT Skills, Psychodynamic, Narrative, Somatic Experiencing, Polyvagal, Lifespan Integration, Motivational Interviewing, and SFBT.
+Memory and transcript consent are separate. Imported sources and external-care
+records use per-import consent. A paused interval is not silently backfilled.
 
-Mix and match at any time by asking the companion.
+## Layered continuity
+
+| Layer | Purpose |
+|---|---|
+| Profile | Lean durable context and user-confirmed preferences |
+| Active themes | Medium-term recurring work |
+| Current focus | Immediate working direction |
+| Next primer | Short handoff to the next session |
+| Sessions | Chronological summaries with provenance |
+| Sources | User-provided untrusted documents and integration records |
+| Context graph | Opt-in people, places, and events with lifecycle state |
+| Archive | Historical/compressed material, opened selectively |
+| Overlays | Approved user-specific behavior adjustments with rollback |
+
+Current user statements outrank older model-authored summaries. Import time is
+not treated as live confirmation. Users can inspect and correct what the
+runtime relies on.
+
+## Personas, structures, and modalities
+
+The libraries provide conversation styles and reflection tools, not clinical
+treatment.
+
+- Personas control voice, length, challenge, and presence without fabricated
+  human identity.
+- Structures range from freeform to structured, while safety, consent, and
+  accessibility always take precedence.
+- Modalities provide questions and low-risk exercises informed by named
+  traditions. Higher-intensity techniques are quarantined or limited to
+  psychoeducation/clinician-guided use.
+
+See [Scope and Evidence Boundary](docs/SCOPE-AND-EVIDENCE.md). Independent
+clinical and safety review has not been completed; the requirements are
+documented in the [Clinical and Safety Review Gate](docs/CLINICAL-SAFETY-REVIEW.md).
 
 ## Safety
 
-Scalvin is for emotional support and self-reflection. It is not a substitute for licensed mental health care.
+Scalvin uses two layers:
 
-If you are in crisis:
+1. an immutable prose safety protocol;
+2. a bounded, locale-pack-driven mechanical hook for supported clients.
 
-- US/Canada: `988`
-- International: [findahelpline.com](https://findahelpline.com)
-- Immediate danger: contact local emergency services
+The hook scans all installed, validated locale packs; it does not define the
+set of languages Scalvin can converse in. It is defense in depth, not complete
+detection. CI tracks must-fire, silent-expected, known-boundary, and over-fire
+cases per bundled pack. The runtime distinguishes
+imminent self-harm, harm to others, abuse/safeguarding, possible
+psychosis/medical emergency, and lower-immediacy distress.
+
+Scalvin cannot call emergency services, locate or monitor a user, or guarantee
+confidentiality. Current location-aware guidance lives in
+[the safety protocol](safety-protocol.md).
+
+## Deterministic lifecycle
+
+```bash
+scalvin install --help
+scalvin doctor --workspace "<workspace>"
+scalvin backup --workspace "<workspace>" --output "<directory>"
+scalvin restore --backup "<backup>" --workspace "<workspace>" --dry-run
+scalvin changes history --workspace "<workspace>"
+scalvin update --workspace "<workspace>" --manifest-sha256 "<exact-manifest-sha256>" --dry-run
+scalvin review-due --workspace "<workspace>" --json
+```
+
+Lifecycle commands support previews, verify managed files, preserve user data
+and local customizations, and roll back failed mutations. Destructive changes
+require the exact confirmation returned by a fresh preview.
+
+Backups are integrity-checked and may be encrypted:
+
+```bash
+scalvin backup --workspace "<workspace>" --output "<directory>" \
+  --encrypt --passphrase-file "<private-passphrase-file>"
+scalvin restore --backup "<backup>" --workspace "<workspace>" \
+  --passphrase-file "<private-passphrase-file>" --dry-run
+```
+
+The passphrase is read from a private file, never from a command argument or
+environment value. Losing it makes the backup unrecoverable. See
+[Getting Started](docs/GETTING-STARTED.md#backup-and-restore) for update,
+backup, restore, and recovery details.
+
+## Development
+
+```bash
+npm run check
+npm test
+```
+
+`npm test` includes the evaluator suite. Use `npm run test:evals` only for a
+focused evaluator run while developing those rules.
+
+The test suite covers CLI transactions, path/symlink attacks, manifest hashes,
+customized-file preservation, legacy migration, backup/restore, safety
+precision/recall boundaries, public-repo hygiene, and documentation links.
+
+Contributors must use synthetic data. Never commit a real profile, session,
+transcript, source, local path, or credential. See [Contributing](CONTRIBUTING.md)
+and [Security](SECURITY.md).
+
+## Documentation
+
+### Using Scalvin
+
+- [Getting Started](docs/GETTING-STARTED.md)
+- [Privacy and Data Flow](docs/PRIVACY.md)
+- [Client Adapters](docs/CLIENTS.md)
+- [Scope and Evidence Boundary](docs/SCOPE-AND-EVIDENCE.md)
+- [Localization](docs/LOCALIZATION.md)
+- [Accessibility](docs/ACCESSIBILITY.md)
+- [Migration](MIGRATING.md)
+- [Support](SUPPORT.md)
+
+### Contributors and maintainers
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Contributing](CONTRIBUTING.md)
+- [Clinical and Safety Review Gate](docs/CLINICAL-SAFETY-REVIEW.md)
+- [Stable Release Evidence](docs/RELEASE-EVIDENCE.md)
+- [Release Process](RELEASING.md)
+- [Governance](GOVERNANCE.md)
 
 ## Attribution
 
-Scalvin is a derivative work built from the MIT-licensed Inner Dialogue project by Anthony Taglianetti. The original copyright notice and license are preserved in [LICENSE](LICENSE).
+Scalvin is an independent derivative of Anthony Taglianetti's
+[Inner Dialogue](https://github.com/ataglianetti/inner-dialogue). The original
+MIT copyright notice is preserved. See [Notices](NOTICE.md).
+
+## License
+
+[MIT](LICENSE)

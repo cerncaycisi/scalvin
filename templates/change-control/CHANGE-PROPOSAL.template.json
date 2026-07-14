@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "changeId": "chg-<uuid-v4>",
+  "createdAt": "YYYY-MM-DDTHH:MM:SS.sssZ",
+  "sessionId": "s-<uuid-v4>",
+  "target": "session-style",
+  "setting": "response_load",
+  "evidenceStatus": "user_requested",
+  "consentEventId": "consent-<uuid>",
+  "why": "bounded single-line reason",
+  "before": null,
+  "proposedAfter": "concise",
+  "expectedEffect": "bounded single-line expected effect",
+  "risksOrTradeoffs": "bounded single-line tradeoff",
+  "status": "pending",
+  "decidedAt": null,
+  "decisionWording": null,
+  "appliedRevision": null,
+  "rollbackRevisionId": null
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# version: 1.0.0
+# version: 2.1.0
 from __future__ import annotations
 
 import argparse
@@ -8,10 +8,25 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 import re
 import sys
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
-WEEKLY_REVIEW_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-\d{4}-weekly-review\.md$")
+OLD_WEEKLY_REVIEW_RE = re.compile(
+    r"^(\d{4}-\d{2}-\d{2})-\d{4}-weekly-review\.md$"
+)
+NEW_WEEKLY_REVIEW_RE = re.compile(
+    r"^(\d{4}-\d{2}-\d{2})-\d{6}--[0-9a-fA-F-]{36}--weekly-review\.md$"
+)
+OLD_SESSION_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})-\d{4}\.md$")
+NEW_SESSION_RE = re.compile(
+    r"^(\d{4}-\d{2}-\d{2})-\d{6}--[0-9a-fA-F-]{36}--session\.md$"
+)
+COMPLETION_LINE_RE = re.compile(
+    r"^completion:\s*([^\r\n#]+?)\s*$", re.MULTILINE | re.IGNORECASE
+)
+LEADING_FRONTMATTER_RE = re.compile(
+    r"^---\s*\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)"
+)
 
 
 @dataclass(frozen=True)
@@ -19,112 +34,228 @@ class ReviewCheckResult:
     status: str
     today: date
     week_start: date
+    timezone: str
+    timezone_status: str
     reason: str
     matches: list[str]
+    prior_sessions: list[str]
+
+
+def workspace_root() -> Path:
+    return Path(__file__).resolve().parents[2]
 
 
 def default_reviews_dir() -> Path:
-    return Path(__file__).resolve().parents[2] / "archive" / "reviews"
+    return workspace_root() / "archive" / "reviews"
+
+
+def default_sessions_dir() -> Path:
+    return workspace_root() / "sessions"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Deterministically decide whether a weekly review is due."
+        description="Decide whether a session-triggered weekly review is due."
     )
-    parser.add_argument("--date", dest="date_override", help="Override today's date in YYYY-MM-DD format.")
-    parser.add_argument("--timezone", help="Optional IANA timezone name.")
-    parser.add_argument("--reviews-dir", default=str(default_reviews_dir()), help="Path to the reviews directory.")
+    parser.add_argument(
+        "--date", dest="date_override", help="Override today's date (YYYY-MM-DD)."
+    )
+    parser.add_argument("--timezone", help="Confirmed IANA timezone name.")
+    parser.add_argument(
+        "--reviews-dir",
+        default=str(default_reviews_dir()),
+        help="Path to archive/reviews.",
+    )
+    parser.add_argument(
+        "--sessions-dir",
+        default=str(default_sessions_dir()),
+        help="Path to sessions.",
+    )
     return parser.parse_args()
 
 
-def resolve_today(date_override: str | None, timezone_name: str | None) -> date:
+def resolve_clock(
+    date_override: str | None, timezone_name: str | None
+) -> tuple[date, str, str]:
     if date_override:
-        return date.fromisoformat(date_override)
+        if timezone_name:
+            try:
+                ZoneInfo(timezone_name)
+            except ZoneInfoNotFoundError as exc:
+                raise ValueError(f"unknown IANA timezone: {timezone_name}") from exc
+        return date.fromisoformat(date_override), timezone_name or "date-override", "date_override"
     if timezone_name:
-        return datetime.now(ZoneInfo(timezone_name)).date()
-    return datetime.now().astimezone().date()
+        try:
+            zone = ZoneInfo(timezone_name)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(f"unknown IANA timezone: {timezone_name}") from exc
+        return datetime.now(zone).date(), timezone_name, "confirmed"
+    local = datetime.now().astimezone()
+    local_name = getattr(local.tzinfo, "key", None) or str(local.tzinfo) or "system-local"
+    return local.date(), local_name, "unconfirmed"
 
 
 def current_review_week_start(today: date) -> date:
     return today - timedelta(days=today.weekday())
 
 
-def weekly_review_files_for_week(reviews_dir: Path, week_start: date, today: date) -> list[str]:
-    matches: list[str] = []
-    for path in sorted(reviews_dir.iterdir()):
-        name = path.name
-        if name.startswith("._") or not path.is_file():
+def require_directory(path: Path, label: str) -> None:
+    if not path.exists():
+        raise FileNotFoundError(f"{label} directory not found: {path}")
+    if not path.is_dir():
+        raise NotADirectoryError(f"{label} path is not a directory: {path}")
+
+
+def normalize_completion_value(value: str) -> str:
+    return value.strip().lower()
+
+
+def completion_values(text: str) -> list[str]:
+    return [normalize_completion_value(match.group(1)) for match in COMPLETION_LINE_RE.finditer(text)]
+
+
+def leading_frontmatter(text: str) -> str | None:
+    match = LEADING_FRONTMATTER_RE.match(text)
+    return match.group(1) if match else None
+
+
+def is_countable_artifact(path: Path, legacy: bool) -> bool:
+    text = path.read_text(encoding="utf-8")
+    if not text.strip().removeprefix("\ufeff").strip():
+        return False
+
+    if legacy:
+        markers = completion_values(text)
+        if not markers:
+            return True
+        return markers == ["complete"]
+
+    frontmatter = leading_frontmatter(text)
+    if frontmatter is None:
+        return False
+    return completion_values(text) == ["complete"] and completion_values(frontmatter) == ["complete"]
+
+
+def dated_matches(
+    directory: Path, patterns: tuple[tuple[re.Pattern[str], bool], ...]
+) -> list[tuple[Path, date]]:
+    matches: list[tuple[Path, date]] = []
+    for path in sorted(directory.iterdir()):
+        if path.name.startswith("."):
             continue
-        match = WEEKLY_REVIEW_RE.match(name)
-        if not match:
+        if path.is_symlink():
+            raise ValueError(f"symlink entries are not allowed in {directory}: {path.name}")
+        if not path.is_file():
             continue
-        file_date = date.fromisoformat(match.group(1))
-        if file_date > today:
-            continue
-        if current_review_week_start(file_date) == week_start:
-            matches.append(name)
+        for pattern, legacy in patterns:
+            match = pattern.match(path.name)
+            if match:
+                if is_countable_artifact(path, legacy=legacy):
+                    matches.append((path, date.fromisoformat(match.group(1))))
+                break
     return matches
 
 
-def evaluate(today: date, reviews_dir: Path) -> ReviewCheckResult:
-    week_start = current_review_week_start(today)
-    matches = weekly_review_files_for_week(reviews_dir, week_start, today)
+def evaluate(
+    today: date,
+    timezone: str,
+    timezone_status: str,
+    reviews_dir: Path,
+    sessions_dir: Path,
+) -> ReviewCheckResult:
+    require_directory(reviews_dir, "reviews")
+    require_directory(sessions_dir, "sessions")
 
-    if matches:
+    week_start = current_review_week_start(today)
+    reviews = dated_matches(
+        reviews_dir, ((NEW_WEEKLY_REVIEW_RE, False), (OLD_WEEKLY_REVIEW_RE, True))
+    )
+    current_week_reviews = [
+        path.name
+        for path, created_on in reviews
+        if week_start <= created_on <= today
+    ]
+
+    sessions = dated_matches(
+        sessions_dir, ((NEW_SESSION_RE, False), (OLD_SESSION_RE, True))
+    )
+    prior_sessions = [
+        path.name for path, session_on in sessions if session_on < week_start
+    ]
+
+    if current_week_reviews:
         return ReviewCheckResult(
             status="NOT_DUE",
             today=today,
             week_start=week_start,
-            reason="weekly review already exists for the current review week",
-            matches=matches,
+            timezone=timezone,
+            timezone_status=timezone_status,
+            reason="weekly review already exists for the current calendar week",
+            matches=current_week_reviews,
+            prior_sessions=prior_sessions,
         )
 
-    if today.weekday() == 0:
+    if not prior_sessions:
         return ReviewCheckResult(
-            status="DUE",
+            status="NOT_DUE",
             today=today,
             week_start=week_start,
-            reason="it is Monday and no weekly review exists for the current review week",
+            timezone=timezone,
+            timezone_status=timezone_status,
+            reason="no completed session exists before the current calendar week",
             matches=[],
+            prior_sessions=[],
         )
 
-    if today.weekday() == 1:
+    if timezone_status not in {"confirmed", "date_override"}:
         return ReviewCheckResult(
-            status="DUE",
+            status="NOT_DUE",
             today=today,
             week_start=week_start,
-            reason="Monday was missed and Tuesday late-review rule applies",
+            timezone=timezone,
+            timezone_status=timezone_status,
+            reason="timezone is unconfirmed; confirm an IANA timezone before creating a calendar-week review",
             matches=[],
+            prior_sessions=prior_sessions,
         )
 
     return ReviewCheckResult(
-        status="NOT_DUE",
+        status="DUE",
         today=today,
         week_start=week_start,
-        reason="automatic weekly reviews are only due on Monday or missed-Monday Tuesday",
+        timezone=timezone,
+        timezone_status=timezone_status,
+        reason="first returning session this week; prior-week session exists and no current-week review exists",
         matches=[],
+        prior_sessions=prior_sessions,
     )
 
 
 def main() -> int:
     args = parse_args()
-    reviews_dir = Path(args.reviews_dir)
-    if not reviews_dir.exists():
-        print(f"ERROR=reviews directory not found: {reviews_dir}")
-        return 1
-
     try:
-        today = resolve_today(args.date_override, args.timezone)
+        today, timezone, timezone_status = resolve_clock(
+            args.date_override, args.timezone
+        )
+        result = evaluate(
+            today=today,
+            timezone=timezone,
+            timezone_status=timezone_status,
+            reviews_dir=Path(args.reviews_dir),
+            sessions_dir=Path(args.sessions_dir),
+        )
     except Exception as exc:
-        print(f"ERROR=failed to resolve date: {exc}")
+        print(f"ERROR={exc}")
         return 1
 
-    result = evaluate(today, reviews_dir)
     print(f"STATUS={result.status}")
     print(f"TODAY={result.today.isoformat()}")
     print(f"REVIEW_WEEK_START={result.week_start.isoformat()}")
+    print(f"TIMEZONE={result.timezone}")
+    print(f"TIMEZONE_STATUS={result.timezone_status}")
     print(f"REASON={result.reason}")
-    print("MATCHES=" + ",".join(result.matches) if result.matches else "MATCHES=")
+    print("MATCHES=" + ",".join(result.matches))
+    print("PRIOR_SESSION_MATCHES=" + ",".join(result.prior_sessions))
     return 0
 
 

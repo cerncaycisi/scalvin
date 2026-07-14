@@ -1,51 +1,54 @@
-<!-- version: 1.0.0 -->
-# Disambiguation Grid
+<!-- version: 2.0.0 -->
+# Disambiguation Grid — Base Schema
 
-*This is a living operational layer. Update it when an important line keeps getting confused with another line.*
+This shipped file is intentionally generic. It must not contain a developer's or example user's relationship history, desires, family dynamics, or clinical formulations.
+
+User-specific entries live in an approved `.therapy/user-overrides/disambiguation.md` overlay under `SELF-MODIFICATION.md` change control.
 
 ## Purpose
 
-- separate the live line before interpreting it
-- reduce wrong-depth interventions
-- stop one clinically strong thread from swallowing everything else
+- slow down before choosing an interpretive line
+- distinguish what the user reports from what the companion infers
+- keep one familiar formulation from swallowing new material
+- invite correction without forcing multiple-choice framing
 
-## 1. Shame / Worth Line
+## Entry Schema
 
-- markers: humiliation, status threat, feeling small, being lowered
-- first question: is the pain about not being wanted, not being chosen, or being diminished?
+```markdown
+## line-<uuid> — Neutral Pair Or Tension
 
-## 2. Attachment / Loss Line
+- Status: proposed | approved | retired
+- Evidence: user_requested | observed_once | observed_repeatedly
+- Markers actually observed:
+- Often confused with:
+- Open first question:
+- What would disconfirm this line:
+- Body prompts: allowed | ask_first | off
+- Approved change ID: chg-<uuid>
+```
 
-- markers: preserving contact, fear of being given up on, grief, losing a witness
-- first question: is this about worth, abandonment, or losing someone who actually held them?
+## Generic Example
 
-## 3. Current Relationship Deadlock
+```markdown
+## example-only — Practical overload / emotional hurt
 
-- markers: burden, deadened play, resentment, distance, lack of mutual appetite
-- first question: which channel is failing right now: attraction, play, embodied wanting, admiration, or bond?
+- Status: example_only
+- Markers actually observed: user says there is too much to do while also naming feeling unseen
+- Often confused with: assuming all distress is logistical or all distress is relational
+- Open first question: “What part of this feels most important to understand first?”
+- What would disconfirm this line: the user says neither distinction fits
+- Body prompts: ask_first
+- Approved change ID: none
+```
 
-## 4. Over-Functioning / Invisible Load
+Do not copy the example into a user overlay. Create an entry only after a user request or observed evidence and explicit approval.
 
-- markers: carrying everything, initiating everything, fixing without recognition
-- first question: is the pain the effort itself or the invisibility of the effort?
+## Use Rules
 
-## 5. Reanimation Desire
-
-- markers: wanting to feel back online, potent, awake, alive
-- first question: is the real object the person, or the state change?
-
-## 6. Emptiness Versus Flatness
-
-- markers for emptiness: void, unrealness, existential drop
-- markers for flatness: fatigue, boredom, ordinary depletion, protest against dead routine
-- first question: is this old void, ordinary low battery, or protest?
-
-## 7. Role / Container Conflict
-
-- markers: pressure to define, choose, or collapse complexity into one acceptable role
-- first question: is the pain about desire itself, or about the container imposed on it?
-
-## 8. Family Authority / Repair Line
-
-- markers: competence proving, recognition hunger, old authority wounds, repair role
-- first question: is the charge about authority, competence, interruption, or being unseen?
+- ask an open question before offering categories
+- do not assign motive, attachment style, physiology, or diagnosis
+- let the user reject the whole frame
+- one clarification is usually enough; stay with the live answer
+- respect low-cognitive-load and one-question preferences
+- a body-prompt opt-out overrides any candidate question
+- revise/retire entries through a visible diff, not silent self-editing

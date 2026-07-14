@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "type": "person",
+  "id": "person-00000000-0000-4000-8000-000000000001",
+  "status": "Provisional",
+  "label": "minimal user-approved label",
+  "aliases": [],
+  "summary": "",
+  "eventTime": null,
+  "participantIds": [],
+  "placeIds": [],
+  "relatedEntityIds": [],
+  "memoryIds": [],
+  "consentEventId": "consent-00000000-0000-4000-8000-000000000004",
+  "provenance": {
+    "origin": "live",
+    "firstObservedAt": "2026-01-01T00:00:00.000Z",
+    "importedAt": null,
+    "lastLiveConfirmedAt": null,
+    "lastRelevantAt": "2026-01-01T00:00:00.000Z"
+  },
+  "sourceRefs": [],
+  "sessionRefs": [],
+  "revision": 1,
+  "revisionHistory": [
+    {
+      "revision": 1,
+      "at": "2026-01-01T00:00:00.000Z",
+      "action": "add",
+      "sessionId": null
+    }
+  ]
+}

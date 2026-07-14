@@ -1,0 +1,224 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      stable_version:
+        description: Stable version without the v prefix; leave empty for CI only
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'rolling' }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: "20"
+          - os: ubuntu-latest
+            node: "22"
+          - os: ubuntu-latest
+            node: "24"
+          - os: macos-latest
+            node: "20"
+          - os: macos-latest
+            node: "24"
+          - os: windows-latest
+            node: "20"
+          - os: windows-latest
+            node: "24"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Install development dependencies
+        run: npm ci --ignore-scripts
+      - name: Static and repository checks
+        run: npm run check
+      - name: Unit and integration tests
+        run: npm test
+      - name: Package dry run
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '24'
+        run: npm pack --dry-run
+
+  compatibility-python:
+    name: Python review-due compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: python tests/compatibility/test_review_due_check.py
+
+  required-ci:
+    name: Required CI
+    if: ${{ always() }}
+    needs:
+      - test
+      - compatibility-python
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require the complete CI matrix
+        shell: bash
+        env:
+          MATRIX_RESULT: ${{ needs.test.result }}
+          PYTHON_RESULT: ${{ needs.compatibility-python.result }}
+        run: |
+          if [[ "$MATRIX_RESULT" != "success" || "$PYTHON_RESULT" != "success" ]]; then
+            echo "Required CI failed: matrix=$MATRIX_RESULT python=$PYTHON_RESULT" >&2
+            exit 1
+          fi
+
+  release-preflight:
+    name: Stable release preflight
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.stable_version != '' }}
+    needs:
+      - required-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+      - name: Validate stable candidate
+        shell: bash
+        env:
+          VERSION: ${{ inputs.stable_version }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Stable version must be a canonical x.y.z value without a v prefix." >&2
+            exit 1
+          fi
+
+          package_version="$(node -p "require('./package.json').version")"
+          manifest_version="$(node -p "require('./manifest.json').product.version")"
+          release_version="$(node -p "require('./manifest.json').release.version")"
+          release_channel="$(node -p "require('./manifest.json').release.channel")"
+
+          test "$VERSION" = "$package_version"
+          test "$package_version" = "$manifest_version"
+          test "$manifest_version" = "$release_version"
+          test "$release_channel" = "stable"
+
+          npm run manifest:verify
+
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+
+          if git ls-remote --exit-code --tags origin \
+            "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "Stable tag already exists: v${VERSION}" >&2
+            exit 1
+          fi
+
+  stable-release:
+    name: Stable release
+    needs:
+      - release-preflight
+    runs-on: ubuntu-latest
+    environment: stable-release
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+      - name: Materialize private release evidence
+        shell: bash
+        env:
+          EVIDENCE_01: ${{ secrets.SCALVIN_RELEASE_EVIDENCE_B64_01 }}
+          EVIDENCE_02: ${{ secrets.SCALVIN_RELEASE_EVIDENCE_B64_02 }}
+          EVIDENCE_03: ${{ secrets.SCALVIN_RELEASE_EVIDENCE_B64_03 }}
+          EVIDENCE_04: ${{ secrets.SCALVIN_RELEASE_EVIDENCE_B64_04 }}
+          EVIDENCE_05: ${{ secrets.SCALVIN_RELEASE_EVIDENCE_B64_05 }}
+          EVIDENCE_06: ${{ secrets.SCALVIN_RELEASE_EVIDENCE_B64_06 }}
+          EVIDENCE_07: ${{ secrets.SCALVIN_RELEASE_EVIDENCE_B64_07 }}
+          EVIDENCE_08: ${{ secrets.SCALVIN_RELEASE_EVIDENCE_B64_08 }}
+        run: |
+          test -n "$EVIDENCE_01" || {
+            echo "Signed clinical review and real captured-response evidence are mandatory for stable release tags." >&2
+            exit 1
+          }
+          evidence="$RUNNER_TEMP/scalvin-release-evidence.json.gz"
+          temporary="${evidence}.tmp"
+          trap 'rm -f "$temporary"' EXIT
+          umask 077
+          printf '%s%s%s%s%s%s%s%s' \
+            "$EVIDENCE_01" "$EVIDENCE_02" "$EVIDENCE_03" "$EVIDENCE_04" \
+            "$EVIDENCE_05" "$EVIDENCE_06" "$EVIDENCE_07" "$EVIDENCE_08" \
+            | base64 --decode > "$temporary"
+          unset EVIDENCE_01 EVIDENCE_02 EVIDENCE_03 EVIDENCE_04
+          unset EVIDENCE_05 EVIDENCE_06 EVIDENCE_07 EVIDENCE_08
+          test -s "$temporary"
+          mv "$temporary" "$evidence"
+          trap - EXIT
+      - name: Verify signed review and complete captured-response matrix
+        shell: bash
+        env:
+          SCALVIN_CLINICAL_REVIEWER_KEY_SHA256: ${{ vars.SCALVIN_CLINICAL_REVIEWER_KEY_SHA256 }}
+        run: |
+          evidence="$RUNNER_TEMP/scalvin-release-evidence.json.gz"
+          trap 'rm -f "$evidence"' EXIT
+          test -n "$SCALVIN_CLINICAL_REVIEWER_KEY_SHA256" || {
+            echo "The independent clinical-reviewer key fingerprint is not pinned." >&2
+            exit 1
+          }
+          package_version="$(node -p "require('./package.json').version")"
+          node cli/verify-release-evidence.js \
+            --input "$evidence" \
+            --expected-commit "$GITHUB_SHA" \
+            --expected-version "$package_version" \
+            --reviewer-key-sha256 "$SCALVIN_CLINICAL_REVIEWER_KEY_SHA256"
+      - name: Create immutable stable tag
+        shell: bash
+        env:
+          VERSION: ${{ inputs.stable_version }}
+        run: |
+          tag="v${VERSION}"
+
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+
+          if git ls-remote --exit-code --tags origin \
+            "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "Stable tag already exists: ${tag}" >&2
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" "$GITHUB_SHA" -m "Scalvin ${tag}"
+          git push origin "refs/tags/${tag}"
+
+          remote_commit="$(
+            git ls-remote origin "refs/tags/${tag}^{}" |
+              awk 'NR == 1 { print $1 }'
+          )"
+          test "$remote_commit" = "$GITHUB_SHA"

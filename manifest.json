@@ -1,128 +1,1730 @@
 {
-  "version": "0.8.1",
-  "description": "Scalvin components",
-  "base_url": "https://raw.githubusercontent.com/cerncaycisi/scalvin/main/",
-  "components": {
-    "safety-protocol": {
-      "file": "safety-protocol.md",
-      "target": ".therapy/safety-protocol.md",
-      "required": true,
-      "description": "Crisis protocols and safety guidelines"
-    },
-    "commands": {
-      "file": "commands.md",
-      "target": ".therapy/commands.md",
-      "required": true,
-      "description": "Customization and update instructions"
-    }
+  "$schema": "./schemas/manifest-v2.schema.json",
+  "schemaVersion": 2,
+  "product": {
+    "name": "scalvin",
+    "version": "1.0.0",
+    "minimumNode": ">=20.0.0",
+    "repository": "https://github.com/cerncaycisi/scalvin"
   },
-  "runtime_components": {
-    "start-session": "3.0.1",
-    "next-primer": "1.0.0",
-    "session-start-cheatsheet": "2.0.0",
-    "memory-inflation-guard": "2.0.0",
-    "live-moveset": "3.0.0",
-    "disambiguation-grid": "1.0.0",
-    "rupture-and-repair": "2.0.0",
-    "session-note-standard": "2.0.0",
-    "session-close-review": "3.0.1",
-    "weekly-review": "3.0.1",
-    "review-due-check": "2.0.0",
-    "source-triggers": "2.0.1",
-    "client-told-memories": "1.0.1",
-    "context-compression": "1.1.0",
-    "profile-template": "2.0.1",
-    "active-themes-template": "1.0.0",
-    "current-focus-template": "1.0.0",
-    "setup-notes-template": "1.0.0",
-    "review-due-check-py": "1.0.0"
+  "release": {
+    "channel": "development",
+    "version": "1.0.0"
   },
-  "library": {
-    "personas": {
-      "target": ".therapy/library/personas/",
-      "description": "Communication style options",
-      "files": [
-        "personas/warm-4o.md",
-        "personas/direct-challenging.md",
-        "personas/warm-supportive.md",
-        "personas/coach.md",
-        "personas/grounded-real.md",
-        "personas/contemplative.md",
-        "personas/philosophical.md",
-        "personas/creative.md",
-        "personas/susan.md"
-      ]
-    },
-    "modalities": {
-      "target": ".therapy/library/modalities/",
-      "description": "Therapeutic approach options",
-      "files": [
-        "modalities/cbt.md",
-        "modalities/act.md",
-        "modalities/cft.md",
-        "modalities/dbt-skills.md",
-        "modalities/ifs.md",
-        "modalities/lifespan-integration.md",
-        "modalities/motivational-interviewing.md",
-        "modalities/narrative.md",
-        "modalities/polyvagal.md",
-        "modalities/psychodynamic.md",
-        "modalities/sfbt.md",
-        "modalities/somatic-experiencing.md"
-      ]
-    },
-    "structures": {
-      "target": ".therapy/library/structures/",
-      "description": "Session structure options",
-      "files": [
-        "structures/structured.md",
-        "structures/moderate.md",
-        "structures/freeform.md"
-      ]
-    },
-    "runtime": {
-      "target": ".therapy/library/runtime/",
-      "description": "Living runtime templates and operational layers",
-      "files": [
-        "runtime/START-SESSION.md",
-        "runtime/NEXT-PRIMER.template.md",
-        "runtime/SESSION-START-CHEATSHEET.md",
-        "runtime/MEMORY-INFLATION-GUARD.md",
-        "runtime/LIVE-MOVESET.md",
-        "runtime/DISAMBIGUATION-GRID.md",
-        "runtime/RUPTURE-AND-REPAIR.md",
-        "runtime/SESSION-NOTE-STANDARD.md",
-        "runtime/SESSION-CLOSE-REVIEW.md",
-        "runtime/WEEKLY-REVIEW.md",
-        "runtime/REVIEW-DUE-CHECK.md",
-        "runtime/SOURCE-TRIGGERS.md",
-        "runtime/CLIENT-TOLD-MEMORIES.md",
-        "runtime/CONTEXT-COMPRESSION.md",
-        "runtime/profile.template.md",
-        "runtime/ACTIVE-THEMES.template.md",
-        "runtime/CURRENT-FOCUS.template.md",
-        "runtime/SETUP-NOTES.template.md",
-        "runtime/review_due_check.py"
-      ]
-    },
-    "adapters": {
-      "target": ".therapy/library/adapters/",
-      "description": "Workspace entry-file templates",
-      "files": [
-        "adapters/workspace/AGENTS.template.md",
-        "adapters/workspace/CLAUDE.template.md",
-        "adapters/workspace/START-CODEX-SESSION.template.md",
-        "adapters/workspace/START-CLAUDE-SESSION.template.md",
-        "adapters/workspace/STARTER.template.md"
+  "consentNoticeVersion": "1.0.0",
+  "defaults": {
+    "workspace": "~/scalvin-workspace",
+    "companionName": "Scalvin",
+    "language": "auto",
+    "persona": "scalvin",
+    "structure": "moderate",
+    "modalities": [
+      "act",
+      "cft",
+      "motivational-interviewing"
+    ]
+  },
+  "state": {
+    "path": ".scalvin/state.json",
+    "localPointer": ".scalvin/local-state.json",
+    "legacyPaths": [
+      ".therapy/version.json"
+    ]
+  },
+  "workspaceDirectories": [
+    "sessions",
+    "sources",
+    "archive/reviews",
+    ".therapy/state",
+    ".therapy/runtime",
+    ".therapy/modalities",
+    ".therapy/hooks",
+    ".therapy/user-overrides",
+    ".therapy/templates",
+    ".therapy/change-control/pending",
+    ".therapy/change-control/history"
+  ],
+  "protectedPaths": [
+    "profile.md",
+    "ACTIVE-THEMES.md",
+    "CURRENT-FOCUS.md",
+    "NEXT-PRIMER.md",
+    "SETUP-NOTES.md",
+    "sessions/**",
+    "sources/**",
+    "archive/**",
+    "context/**",
+    ".therapy/state/**",
+    ".therapy/user-overrides/**",
+    ".scalvin/**"
+  ],
+  "clientIntegrations": {
+    "claude": {
+      "settingsPath": ".claude/settings.json",
+      "event": "UserPromptSubmit",
+      "hooks": [
+        {
+          "target": ".therapy/hooks/current-time.cjs",
+          "command": "node .therapy/hooks/current-time.cjs",
+          "timeoutSeconds": 2
+        },
+        {
+          "target": ".therapy/hooks/safety-net.cjs",
+          "command": "node .therapy/hooks/safety-net.cjs",
+          "timeoutSeconds": 2
+        }
       ]
     }
   },
-  "workspace_templates": {
-      "files": [
-        "templates/archive/README.template.md",
-        "templates/archive/reviews/REVIEW-INDEX.template.md",
-        "templates/archive/transcripts/README.template.md",
-        "templates/sources/README.template.md"
+  "files": [
+    {
+      "path": "adapters/workspace/AGENTS.template.md",
+      "source": "repo:adapters/workspace/AGENTS.template.md",
+      "version": "1.0.0",
+      "sha256": "2beaa237646d145801d48ae0e8a2510b2adc3667a2ae322e7277f1d2e8aebee9",
+      "role": "client-adapter",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/adapters/workspace/AGENTS.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "AGENTS.md",
+          "protection": "active",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "adapters/workspace/CLAUDE.template.md",
+      "source": "repo:adapters/workspace/CLAUDE.template.md",
+      "version": "1.0.0",
+      "sha256": "ff2b9b4adf40b8fb023c632153672dacb5c322a521695f27dbda81ea1d393fa9",
+      "role": "client-adapter",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/adapters/workspace/CLAUDE.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "CLAUDE.md",
+          "protection": "active",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "adapters/workspace/START-CLAUDE-SESSION.template.md",
+      "source": "repo:adapters/workspace/START-CLAUDE-SESSION.template.md",
+      "version": "1.0.0",
+      "sha256": "4bac703db3759d0259656db60be437bbcad4b6cea93099e6b58700cb040b2ea9",
+      "role": "client-adapter",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/adapters/workspace/START-CLAUDE-SESSION.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "START-CLAUDE-SESSION.md",
+          "protection": "active",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "adapters/workspace/START-CODEX-SESSION.template.md",
+      "source": "repo:adapters/workspace/START-CODEX-SESSION.template.md",
+      "version": "1.0.0",
+      "sha256": "b82dac62a638eb03b689f80a7a6344ab4cc94797e2dde0fbe2a824b16cd40068",
+      "role": "client-adapter",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/adapters/workspace/START-CODEX-SESSION.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "START-CODEX-SESSION.md",
+          "protection": "active",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "adapters/workspace/STARTER.template.md",
+      "source": "repo:adapters/workspace/STARTER.template.md",
+      "version": "1.0.0",
+      "sha256": "27520aa9deae07f81a3638acf444708e44f62e438d9e289b12dd3b86af996bd5",
+      "role": "client-adapter",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/adapters/workspace/STARTER.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "{{COMPANION_SLUG}}.md",
+          "protection": "active",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "commands.md",
+      "source": "repo:commands.md",
+      "version": "1.0.0",
+      "sha256": "77b213c0bc84a1b69a128d6ac7b86cd603d8465ba34bd11c11b3dca644da235b",
+      "role": "command-router",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/commands.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "hooks/current-time.cjs",
+      "source": "repo:hooks/current-time.cjs",
+      "version": "1.0.0",
+      "sha256": "6a0b397c343ade0f49b6c03d3c0e027de6ef9fc002db36926b74e0e007f08a78",
+      "role": "client-hook:current-time",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/hooks/current-time.cjs",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "hooks/safety-locales/en.json",
+      "source": "repo:hooks/safety-locales/en.json",
+      "version": "1.0.0",
+      "sha256": "7dc4a15c83a6282fa16a5d7db91f15d4b65ee13a7128c874182ea492c5afad60",
+      "role": "client-hook-data:safety-locale",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/hooks/safety-locales/en.json",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "hooks/safety-locales/tr.json",
+      "source": "repo:hooks/safety-locales/tr.json",
+      "version": "1.0.0",
+      "sha256": "7d2e7d20ca8d06aaec1e821505cc49ff18dc4e08d1c952c3a9f683ebe6a9be54",
+      "role": "client-hook-data:safety-locale",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/hooks/safety-locales/tr.json",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "hooks/safety-net.cjs",
+      "source": "repo:hooks/safety-net.cjs",
+      "version": "1.2.0",
+      "sha256": "2c2580502c19ed4219b7879452788fe52ddd63c6c8143814f89ab256efb8b01f",
+      "role": "client-hook:safety-net",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/hooks/safety-net.cjs",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "modalities/act.md",
+      "source": "repo:modalities/act.md",
+      "version": "3.0.0",
+      "sha256": "711a58ed786dec1fa0499565d6dd58e4c461e73ffde754d43b8a056044c25727",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/act.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/act.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "act"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/cbt.md",
+      "source": "repo:modalities/cbt.md",
+      "version": "3.0.0",
+      "sha256": "efc2e8e043e61dc28e6d10ea55fa967e5ac070fb1bf9fae72cfcc5952d0e4d73",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/cbt.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/cbt.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "cbt"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/cft.md",
+      "source": "repo:modalities/cft.md",
+      "version": "3.0.0",
+      "sha256": "1194f7411d555b947db27f3466f1f1008dc07119d4b4d28d35269cdf0716b050",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/cft.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/cft.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "cft"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/dbt-skills.md",
+      "source": "repo:modalities/dbt-skills.md",
+      "version": "3.0.0",
+      "sha256": "f2ef7757eb1791a446f5d0c65a6daaa5ba4dd9a2aeedf149e12d983af1f71a93",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/dbt-skills.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/dbt-skills.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "dbt-skills"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/ideal-parent-figure.md",
+      "source": "repo:modalities/ideal-parent-figure.md",
+      "version": "1.0.0",
+      "sha256": "02ddb36e09063b8d87af4feb4ed118664b3dd1534166f618256d8f6be883cdb6",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/ideal-parent-figure.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/ideal-parent-figure.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "ideal-parent-figure"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/ifs.md",
+      "source": "repo:modalities/ifs.md",
+      "version": "3.0.0",
+      "sha256": "f452c66390aa6073dcc02fa025f717ee1cae91144f7cd9751068fc50d3ca65d6",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/ifs.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/ifs.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "ifs"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/lifespan-integration.md",
+      "source": "repo:modalities/lifespan-integration.md",
+      "version": "3.0.0",
+      "sha256": "c03b42ad399ab0c3f9f6aa8140ccc6322b5347576f5c8a6fba3c6997b017f007",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/lifespan-integration.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/lifespan-integration.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "lifespan-integration"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/motivational-interviewing.md",
+      "source": "repo:modalities/motivational-interviewing.md",
+      "version": "3.0.0",
+      "sha256": "62d24c6fdc6a669c7ed183f8ff571cca4c2041e25477d2a09856f27d4fd0430c",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/motivational-interviewing.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/motivational-interviewing.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "motivational-interviewing"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/narrative.md",
+      "source": "repo:modalities/narrative.md",
+      "version": "3.0.0",
+      "sha256": "b495a8907096e72e3a5a1b9eed1493e676a1e011cbc4e34d399a0a6d96112d89",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/narrative.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/narrative.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "narrative"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/polyvagal.md",
+      "source": "repo:modalities/polyvagal.md",
+      "version": "3.0.0",
+      "sha256": "964e787c85b62ea8bb192087d9d61ff392f2f0af9e4cd67f45934c497b609afb",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/polyvagal.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/polyvagal.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "polyvagal"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/psychodynamic.md",
+      "source": "repo:modalities/psychodynamic.md",
+      "version": "3.0.0",
+      "sha256": "7c0984b1066d657e8263f48b94b13bcc8e2acb3b7a77903839c58e247f60a051",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/psychodynamic.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/psychodynamic.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "psychodynamic"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/sfbt.md",
+      "source": "repo:modalities/sfbt.md",
+      "version": "3.0.0",
+      "sha256": "ec1288c624e928f7db961dc9a4d7cb716f4f44fc15eee54426c0c5feb2cf72f7",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/sfbt.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/sfbt.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "sfbt"
+          }
+        }
+      ]
+    },
+    {
+      "path": "modalities/somatic-experiencing.md",
+      "source": "repo:modalities/somatic-experiencing.md",
+      "version": "3.0.0",
+      "sha256": "22959b759b0efcf731a9d43d4f564b97d456249e60f5548acfdf0a52965af7ed",
+      "role": "modality",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/modalities/somatic-experiencing.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/modalities/somatic-experiencing.md",
+          "protection": "active",
+          "activation": {
+            "group": "modality",
+            "name": "somatic-experiencing"
+          }
+        }
+      ]
+    },
+    {
+      "path": "personas/casual-warm.md",
+      "source": "repo:personas/casual-warm.md",
+      "version": "2.0.0",
+      "sha256": "5084438142fac4701d85c9e613d5affce2595a600825b052fa445cff86bf192e",
+      "role": "persona",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/personas/casual-warm.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/persona.md",
+          "protection": "active",
+          "activation": {
+            "group": "persona",
+            "name": "casual-warm"
+          }
+        }
+      ]
+    },
+    {
+      "path": "personas/coach.md",
+      "source": "repo:personas/coach.md",
+      "version": "2.0.0",
+      "sha256": "3e225fc36d37204a3977f32cd8e1c40a3912be70bc924868885157067922ebd0",
+      "role": "persona",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/personas/coach.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/persona.md",
+          "protection": "active",
+          "activation": {
+            "group": "persona",
+            "name": "coach"
+          }
+        }
+      ]
+    },
+    {
+      "path": "personas/contemplative.md",
+      "source": "repo:personas/contemplative.md",
+      "version": "2.0.0",
+      "sha256": "e5e9869f1e08cb0065cefee48dfc69bf93bcf04609acceefbd610a495e49bc51",
+      "role": "persona",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/personas/contemplative.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/persona.md",
+          "protection": "active",
+          "activation": {
+            "group": "persona",
+            "name": "contemplative"
+          }
+        }
+      ]
+    },
+    {
+      "path": "personas/creative.md",
+      "source": "repo:personas/creative.md",
+      "version": "2.0.0",
+      "sha256": "b61dbc554cc05aa91bb8e70ea22d62a0801bd1b085a21a6697279736360f12f1",
+      "role": "persona",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/personas/creative.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/persona.md",
+          "protection": "active",
+          "activation": {
+            "group": "persona",
+            "name": "creative"
+          }
+        }
+      ]
+    },
+    {
+      "path": "personas/direct-challenging.md",
+      "source": "repo:personas/direct-challenging.md",
+      "version": "2.0.0",
+      "sha256": "a1be21d26420ecbe6832989f10e54ab1561cb09853644c3a9bbbbf3da5e18420",
+      "role": "persona",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/personas/direct-challenging.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/persona.md",
+          "protection": "active",
+          "activation": {
+            "group": "persona",
+            "name": "direct-challenging"
+          }
+        }
+      ]
+    },
+    {
+      "path": "personas/grounded-real.md",
+      "source": "repo:personas/grounded-real.md",
+      "version": "2.0.0",
+      "sha256": "1fb534e5f213db087cfa2180bc9d823b940bcf75f29b5319437b04956f944685",
+      "role": "persona",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/personas/grounded-real.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/persona.md",
+          "protection": "active",
+          "activation": {
+            "group": "persona",
+            "name": "grounded-real"
+          }
+        }
+      ]
+    },
+    {
+      "path": "personas/philosophical.md",
+      "source": "repo:personas/philosophical.md",
+      "version": "2.0.0",
+      "sha256": "9c1894e25a9d055f3974925d037fd983ed143f480867343196352aeced41f6a8",
+      "role": "persona",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/personas/philosophical.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/persona.md",
+          "protection": "active",
+          "activation": {
+            "group": "persona",
+            "name": "philosophical"
+          }
+        }
+      ]
+    },
+    {
+      "path": "personas/scalvin.md",
+      "source": "repo:personas/scalvin.md",
+      "version": "1.0.0",
+      "sha256": "5e51cfe0eacbbbe86c6885b73d4882b3d2b9e5b80b9fe5b04c47cebd798ab374",
+      "role": "persona",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/personas/scalvin.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/persona.md",
+          "protection": "active",
+          "activation": {
+            "group": "persona",
+            "name": "scalvin"
+          }
+        }
+      ]
+    },
+    {
+      "path": "personas/susan.md",
+      "source": "repo:personas/susan.md",
+      "version": "3.0.0",
+      "sha256": "756dda05739e95549f51d434e3a33cea4552b2d741a71d05a9a7658c833f466a",
+      "role": "persona",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/personas/susan.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/persona.md",
+          "protection": "active",
+          "activation": {
+            "group": "persona",
+            "name": "susan"
+          }
+        }
+      ]
+    },
+    {
+      "path": "personas/warm-supportive.md",
+      "source": "repo:personas/warm-supportive.md",
+      "version": "2.0.0",
+      "sha256": "6002a1e800cb85545fcebf875a7c820a5edef264975cc705616b2463d35d9a2e",
+      "role": "persona",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/personas/warm-supportive.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/persona.md",
+          "protection": "active",
+          "activation": {
+            "group": "persona",
+            "name": "warm-supportive"
+          }
+        }
+      ]
+    },
+    {
+      "path": "runtime/ACTIVE-THEMES.template.md",
+      "source": "repo:runtime/ACTIVE-THEMES.template.md",
+      "version": "2.0.0",
+      "sha256": "01c4b480a46ff7916dfc59fafda00e9a27d7a9d1358b2ee044178882914bbd0a",
+      "role": "living-template",
+      "protection": "seed",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/ACTIVE-THEMES.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "ACTIVE-THEMES.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "runtime/CLIENT-TOLD-MEMORIES.md",
+      "source": "repo:runtime/CLIENT-TOLD-MEMORIES.md",
+      "version": "2.0.0",
+      "sha256": "961bb363d75cb85c720e2792091c5dc76b36a48ec95d594bdd78c3933f869a51",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/CLIENT-TOLD-MEMORIES.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/CLIENT-TOLD-MEMORIES.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/CONTEXT-COMPRESSION.md",
+      "source": "repo:runtime/CONTEXT-COMPRESSION.md",
+      "version": "2.0.0",
+      "sha256": "643f861332c45adf9dd5985556556ee157c675cb43861866a28773afc7c54fca",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/CONTEXT-COMPRESSION.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/CONTEXT-COMPRESSION.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/CONTEXT-GRAPH.md",
+      "source": "repo:runtime/CONTEXT-GRAPH.md",
+      "version": "2.0.0",
+      "sha256": "fc28933c3e141a7c6ff91534f55c057a77444ebd26bb661e8746d43b6f07f668",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/CONTEXT-GRAPH.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/CONTEXT-GRAPH.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/CURRENT-FOCUS.template.md",
+      "source": "repo:runtime/CURRENT-FOCUS.template.md",
+      "version": "2.0.0",
+      "sha256": "d42944bdd5b88e5dfc1d5ed2e88ed7387d415ba43a5b2a60d6fa30d5ef914456",
+      "role": "living-template",
+      "protection": "seed",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/CURRENT-FOCUS.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "CURRENT-FOCUS.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "runtime/DATA-AND-CONSENT.md",
+      "source": "repo:runtime/DATA-AND-CONSENT.md",
+      "version": "1.0.0",
+      "sha256": "f191d51bb1378e0e61ef00889d327d8f522ae7bb9ce459e684e2b36b4cde8e9e",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/DATA-AND-CONSENT.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/DATA-AND-CONSENT.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/DISAMBIGUATION-GRID.md",
+      "source": "repo:runtime/DISAMBIGUATION-GRID.md",
+      "version": "2.0.0",
+      "sha256": "92d8ce94b1a66372cafec67edaec6427e94dc4b5ee5ff1b739b8bd9e21c78c2f",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/DISAMBIGUATION-GRID.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/DISAMBIGUATION-GRID.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/LIVE-MOVESET.md",
+      "source": "repo:runtime/LIVE-MOVESET.md",
+      "version": "4.0.0",
+      "sha256": "694755c78c5b329c2bbf2f7493612ca7e1ebd3afab9acf449c82e92494b3472e",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/LIVE-MOVESET.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/LIVE-MOVESET.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/MEMORY-INFLATION-GUARD.md",
+      "source": "repo:runtime/MEMORY-INFLATION-GUARD.md",
+      "version": "3.0.0",
+      "sha256": "420a7bf1ac863a63fd16f65eefe7b648e37f888294a086df3de384b81e062dd9",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/MEMORY-INFLATION-GUARD.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/MEMORY-INFLATION-GUARD.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/MEMORY-PROVENANCE.md",
+      "source": "repo:runtime/MEMORY-PROVENANCE.md",
+      "version": "1.0.0",
+      "sha256": "d38090e45da3b91a073978e9a396728c63153e43237472fbe55857d16674d6f3",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/MEMORY-PROVENANCE.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/MEMORY-PROVENANCE.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/NEXT-PRIMER.template.md",
+      "source": "repo:runtime/NEXT-PRIMER.template.md",
+      "version": "2.0.0",
+      "sha256": "9b1def9976772404b9dc9bfd2281c9fd2456164bea8b6576bbcff7258f6542e3",
+      "role": "living-template",
+      "protection": "seed",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/NEXT-PRIMER.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "NEXT-PRIMER.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "runtime/REVIEW-DUE-CHECK.md",
+      "source": "repo:runtime/REVIEW-DUE-CHECK.md",
+      "version": "3.1.0",
+      "sha256": "3d4177e7dbbbaa8bb0f3d660b17ace840cbe9eb6d648425fdcc1bf697703ea53",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/REVIEW-DUE-CHECK.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/REVIEW-DUE-CHECK.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/RUPTURE-AND-REPAIR.md",
+      "source": "repo:runtime/RUPTURE-AND-REPAIR.md",
+      "version": "3.0.0",
+      "sha256": "fefae944541f79b0665c933bfa5d8a45f59a69aa5d5c04b77969835177616817",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/RUPTURE-AND-REPAIR.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/RUPTURE-AND-REPAIR.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/SELF-MODIFICATION.md",
+      "source": "repo:runtime/SELF-MODIFICATION.md",
+      "version": "1.0.0",
+      "sha256": "ac2ad4a0ce438366ca870db60beefec739d274fa9896d4a64163e81ce0a03eed",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/SELF-MODIFICATION.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/SELF-MODIFICATION.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/SESSION-CLOSE-REVIEW.md",
+      "source": "repo:runtime/SESSION-CLOSE-REVIEW.md",
+      "version": "4.0.0",
+      "sha256": "47433fa9e3a85bd12cf165af434f604518527c479435e0196cefd594338a0749",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/SESSION-CLOSE-REVIEW.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/SESSION-CLOSE-REVIEW.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/SESSION-LIFECYCLE.md",
+      "source": "repo:runtime/SESSION-LIFECYCLE.md",
+      "version": "1.1.0",
+      "sha256": "4b96e8f1db3b6b3fbcf818483f9ec12a7f310eb2c679824a180984c97f115df9",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/SESSION-LIFECYCLE.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/SESSION-LIFECYCLE.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/SESSION-NOTE-STANDARD.md",
+      "source": "repo:runtime/SESSION-NOTE-STANDARD.md",
+      "version": "3.0.0",
+      "sha256": "118dac466f20e29e4f1d870882ffac443cd02f880c1105dd614eb0713d0867e8",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/SESSION-NOTE-STANDARD.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/SESSION-NOTE-STANDARD.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/SESSION-START-CHEATSHEET.md",
+      "source": "repo:runtime/SESSION-START-CHEATSHEET.md",
+      "version": "3.0.0",
+      "sha256": "dee3c6c563f084064f4456cf679220babbe770cc74a3ac3f386d47a6f9a8e822",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/SESSION-START-CHEATSHEET.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/SESSION-START-CHEATSHEET.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/SETUP-NOTES.template.md",
+      "source": "repo:runtime/SETUP-NOTES.template.md",
+      "version": "2.0.0",
+      "sha256": "c8e487c8663e93786374986ce29ec0c2bb3c08e4418c337236049eb2f13a28ee",
+      "role": "living-template",
+      "protection": "seed",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/SETUP-NOTES.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "SETUP-NOTES.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "runtime/SOURCE-TRIGGERS.md",
+      "source": "repo:runtime/SOURCE-TRIGGERS.md",
+      "version": "3.0.0",
+      "sha256": "fd3bf3f8fe7a680e209d12cc0cfe74fad936ad6d8939f7f7a71276173586d529",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/SOURCE-TRIGGERS.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/SOURCE-TRIGGERS.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/START-SESSION.md",
+      "source": "repo:runtime/START-SESSION.md",
+      "version": "4.0.0",
+      "sha256": "3115bc6506bfb9641b1b79b1fbde84e15f3088321cfb08ce849c005af3ca4790",
+      "role": "session-entrypoint",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/START-SESSION.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/START-SESSION.md",
+          "protection": "framework"
+        },
+        {
+          "path": "START-SESSION.md",
+          "protection": "active"
+        }
+      ]
+    },
+    {
+      "path": "runtime/WEEKLY-REVIEW.md",
+      "source": "repo:runtime/WEEKLY-REVIEW.md",
+      "version": "4.1.0",
+      "sha256": "40b5afce6358106b2e927cc2447b86136533889b48084b561b1a4385545868f2",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/WEEKLY-REVIEW.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/WEEKLY-REVIEW.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "runtime/profile.template.md",
+      "source": "repo:runtime/profile.template.md",
+      "version": "3.0.0",
+      "sha256": "4700156cd6970bca39538b1a396871abe3d5095c8bfdda11761cf48c4feace66",
+      "role": "living-template",
+      "protection": "seed",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/profile.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "profile.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "runtime/review_due_check.py",
+      "source": "repo:runtime/review_due_check.py",
+      "version": "2.1.0",
+      "sha256": "53ae56ae4028c4bc1837b334d10d37c1d420029d2e7031fb059d97db870c20c4",
+      "role": "runtime",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/runtime/review_due_check.py",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/runtime/review_due_check.py",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "safety-protocol.md",
+      "source": "repo:safety-protocol.md",
+      "version": "2.0.0",
+      "sha256": "c90a08d9b9d2e70fdcf4e29ff5cadbf04e5c545985b26201479ec74df291618c",
+      "role": "safety-protocol",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/safety-protocol.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "schemas/manifest-v2.schema.json",
+      "source": "repo:schemas/manifest-v2.schema.json",
+      "version": "1.0.0",
+      "sha256": "43774bebc6db69c68bccf3109ee43c36e269f75d271ce4db72cf4326e08dcf70",
+      "role": "manifest-schema",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/schemas/manifest-v2.schema.json",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "structures/freeform.md",
+      "source": "repo:structures/freeform.md",
+      "version": "3.0.0",
+      "sha256": "d6f4d9d9e1ab858401c482d3c7a6e155d931a29564b9e604a78ee0302859d9e0",
+      "role": "session-structure",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/structures/freeform.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/session-structure.md",
+          "protection": "active",
+          "activation": {
+            "group": "structure",
+            "name": "freeform"
+          }
+        }
+      ]
+    },
+    {
+      "path": "structures/moderate.md",
+      "source": "repo:structures/moderate.md",
+      "version": "3.0.0",
+      "sha256": "7a044c4a2057c892f0f902397459479410589d641cdc6330443e679ecc9a0871",
+      "role": "session-structure",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/structures/moderate.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/session-structure.md",
+          "protection": "active",
+          "activation": {
+            "group": "structure",
+            "name": "moderate"
+          }
+        }
+      ]
+    },
+    {
+      "path": "structures/structured.md",
+      "source": "repo:structures/structured.md",
+      "version": "3.0.0",
+      "sha256": "9e9cac58a79eb1066f23dde4a2a7c0cf745281a9d5f15c283f699cdd76ddc00b",
+      "role": "session-structure",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/structures/structured.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/session-structure.md",
+          "protection": "active",
+          "activation": {
+            "group": "structure",
+            "name": "structured"
+          }
+        }
+      ]
+    },
+    {
+      "path": "templates/archive/DEEP-DIVE.template.md",
+      "source": "repo:templates/archive/DEEP-DIVE.template.md",
+      "version": "1.0.0",
+      "sha256": "593707d2758b6fdcb40ec485d0c4a8d5372aa3677e60b05ea227e2e81bb359bd",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/archive/DEEP-DIVE.template.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/archive/README.template.md",
+      "source": "repo:templates/archive/README.template.md",
+      "version": "1.0.0",
+      "sha256": "939b1e2f2b8770784b455d3985b3bff0b3b136ea47521391c831feda7d56c7f2",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/archive/README.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "archive/README.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/archive/checkpoints/CHECKPOINT.template.md",
+      "source": "repo:templates/archive/checkpoints/CHECKPOINT.template.md",
+      "version": "1.0.0",
+      "sha256": "4e5a0d2f5bc212c1e769c31951d9b44c3fec390a350be05c5827fd8c45cb755f",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/archive/checkpoints/CHECKPOINT.template.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/archive/reviews/REVIEW-INDEX.template.md",
+      "source": "repo:templates/archive/reviews/REVIEW-INDEX.template.md",
+      "version": "1.0.0",
+      "sha256": "c274afc15bfec5890a293f3fbdfcf56ac7a36bf34ff375c0fe5f156959d7b4c5",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/archive/reviews/REVIEW-INDEX.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "archive/reviews/REVIEW-INDEX.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/archive/transcripts/README.template.md",
+      "source": "repo:templates/archive/transcripts/README.template.md",
+      "version": "1.0.0",
+      "sha256": "c69cfe66b0008717d5ddf62a85455ecd4c52591be4f3eb13f891a8fb007547d3",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/archive/transcripts/README.template.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/archive/transcripts/TRANSCRIPT.template.md",
+      "source": "repo:templates/archive/transcripts/TRANSCRIPT.template.md",
+      "version": "1.0.0",
+      "sha256": "d35c7ec182a46b0be79a0693902f273a3e07b00ba6f76f4d5056e5308b6f393c",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/archive/transcripts/TRANSCRIPT.template.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/change-control/CHANGE-PROPOSAL.template.json",
+      "source": "repo:templates/change-control/CHANGE-PROPOSAL.template.json",
+      "version": "1.0.0",
+      "sha256": "0b563b1fecf321e5396e79a6b99b06bad7c59dbbe496b016438d9979f2a538a3",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/change-control/CHANGE-PROPOSAL.template.json",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/context/README.template.md",
+      "source": "repo:templates/context/README.template.md",
+      "version": "1.0.0",
+      "sha256": "20190a0f43512388fcc10c6528eaf947a8d170b4f714b27c724e1b1e67264e49",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/context/README.template.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/context/events/EVENT.template.json",
+      "source": "repo:templates/context/events/EVENT.template.json",
+      "version": "1.0.0",
+      "sha256": "fd5a17e82a3be212a0cbba5d70a0ccb412a8b56ae955fa3b0676f03a5a41832b",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/context/events/EVENT.template.json",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/context/index.template.md",
+      "source": "repo:templates/context/index.template.md",
+      "version": "1.0.0",
+      "sha256": "7ff47ed105c77b7318767b7871e8ae691ecbf84fa5ca9641eec28301462ad6fa",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/context/index.template.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/context/people/PERSON.template.json",
+      "source": "repo:templates/context/people/PERSON.template.json",
+      "version": "1.0.0",
+      "sha256": "c768a160031476957d10d041b12f3193fc89ffcddde6645a97a63b7c72ddc9f4",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/context/people/PERSON.template.json",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/context/places/PLACE.template.json",
+      "source": "repo:templates/context/places/PLACE.template.json",
+      "version": "1.0.0",
+      "sha256": "48a829ce454d89fdc7ca188a39b41f30beebeb152434c161396f326c7a82e309",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/context/places/PLACE.template.json",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/sessions/SESSION-NOTE.template.md",
+      "source": "repo:templates/sessions/SESSION-NOTE.template.md",
+      "version": "1.0.0",
+      "sha256": "5372474d4330f3e59a5ef7f47fc8b31f453fc94ca2d819c7ae88865f8164788f",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/sessions/SESSION-NOTE.template.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/sources/CLIENT-TOLD-MEMORIES.template.md",
+      "source": "repo:templates/sources/CLIENT-TOLD-MEMORIES.template.md",
+      "version": "1.0.0",
+      "sha256": "cfe997652d8bdb56c896a581c8fd5880d7c977926088b114853109e00e2ccbbc",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/sources/CLIENT-TOLD-MEMORIES.template.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/sources/EXTERNAL-CARE-NOTE.template.md",
+      "source": "repo:templates/sources/EXTERNAL-CARE-NOTE.template.md",
+      "version": "1.0.0",
+      "sha256": "6508d6ab4dcf390772268ba3f3cefe8b87cfc818abbb8614ac1ec19941e87fdd",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/sources/EXTERNAL-CARE-NOTE.template.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/sources/README.template.md",
+      "source": "repo:templates/sources/README.template.md",
+      "version": "1.0.0",
+      "sha256": "7b2b892332442a875d08133bde20dbec5920d8fb78a98c6f79799cf48e870074",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/sources/README.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "sources/README.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/sources/SOURCE-RECORD.template.md",
+      "source": "repo:templates/sources/SOURCE-RECORD.template.md",
+      "version": "1.0.0",
+      "sha256": "a940c315f921b9705400c8d31631f8d81571ddea987f0aa306d891197b7b2115",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/sources/SOURCE-RECORD.template.md",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "templates/state/BACKUP-LEDGER.template.md",
+      "source": "repo:templates/state/BACKUP-LEDGER.template.md",
+      "version": "1.0.0",
+      "sha256": "392243abf9461b8074ca92240aaf9790674c2c07b4a12943d1ae3e178dcb6cf2",
+      "role": "workspace-template",
+      "protection": "protected",
+      "targets": [
+        {
+          "path": ".therapy/templates/state/BACKUP-LEDGER.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/state/BACKUP-LEDGER.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/state/CHANGE-LOG.template.md",
+      "source": "repo:templates/state/CHANGE-LOG.template.md",
+      "version": "1.0.0",
+      "sha256": "ecbd92dff8d4315be36049f771b01ebbee519c62d0e48c0060c94fee924be8bf",
+      "role": "workspace-template",
+      "protection": "protected",
+      "targets": [
+        {
+          "path": ".therapy/templates/state/CHANGE-LOG.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/state/CHANGE-LOG.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/state/CONSENT-LEDGER.template.md",
+      "source": "repo:templates/state/CONSENT-LEDGER.template.md",
+      "version": "1.0.0",
+      "sha256": "bf77bd56f49cbe4cc3044c9eb6a96b59c96d52c75551de08d33353a503ebe2f8",
+      "role": "workspace-template",
+      "protection": "protected",
+      "targets": [
+        {
+          "path": ".therapy/templates/state/CONSENT-LEDGER.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/state/CONSENT-LEDGER.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/state/DATA-CONTROLS.template.md",
+      "source": "repo:templates/state/DATA-CONTROLS.template.md",
+      "version": "1.0.0",
+      "sha256": "fd6d46a36f0abf906e587c009154612bf84296620a73bb6bb500abe88e3f9aac",
+      "role": "workspace-template",
+      "protection": "protected",
+      "targets": [
+        {
+          "path": ".therapy/templates/state/DATA-CONTROLS.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/state/DATA-CONTROLS.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/state/DELETION-LEDGER.template.md",
+      "source": "repo:templates/state/DELETION-LEDGER.template.md",
+      "version": "1.0.0",
+      "sha256": "1da848a9f737ef556cd1ebd28a193e11cd8cc43c0b791181ee99d7e1d567d7dd",
+      "role": "workspace-template",
+      "protection": "protected",
+      "targets": [
+        {
+          "path": ".therapy/templates/state/DELETION-LEDGER.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/state/DELETION-LEDGER.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/state/README.template.md",
+      "source": "repo:templates/state/README.template.md",
+      "version": "1.0.0",
+      "sha256": "006750a12d392611b8162b1cbb3dca385ddfdbd88c3e0a947b1cba9180451565",
+      "role": "workspace-template",
+      "protection": "protected",
+      "targets": [
+        {
+          "path": ".therapy/templates/state/README.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/state/README.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/state/SOURCE-LEDGER.template.md",
+      "source": "repo:templates/state/SOURCE-LEDGER.template.md",
+      "version": "1.0.0",
+      "sha256": "41648abab1b659df9975b71128f4fa7836a73cc08378633b0611f81d83a9b593",
+      "role": "workspace-template",
+      "protection": "protected",
+      "targets": [
+        {
+          "path": ".therapy/templates/state/SOURCE-LEDGER.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/state/SOURCE-LEDGER.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/user-overrides/README.template.md",
+      "source": "repo:templates/user-overrides/README.template.md",
+      "version": "1.0.0",
+      "sha256": "34f15cfb27e9f3ebd9ed1983695455f8b467fef79160413c9d9efaee7e8886ed",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/user-overrides/README.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": ".therapy/user-overrides/README.md",
+          "protection": "seed",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/workspace/README.template.md",
+      "source": "repo:templates/workspace/README.template.md",
+      "version": "1.0.0",
+      "sha256": "fb0fbe62f8ac7a781c5b45a3613595a9c53951ae5b011b60ef9826852dc1e512",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/workspace/README.template.md",
+          "protection": "framework"
+        },
+        {
+          "path": "README.md",
+          "protection": "framework",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "templates/workspace/gitignore.template",
+      "source": "repo:templates/workspace/gitignore.template",
+      "version": "1.0.0",
+      "sha256": "044c95cd3ca05c3aff0a0211c5d48e1c0d09b49fb7d46b2387a7123a409464c1",
+      "role": "workspace-template",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/templates/workspace/gitignore.template",
+          "protection": "framework"
+        },
+        {
+          "path": ".gitignore",
+          "protection": "framework",
+          "render": "placeholders"
+        }
       ]
     }
+  ]
 }

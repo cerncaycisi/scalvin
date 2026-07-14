@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security report
+    url: https://github.com/cerncaycisi/scalvin/security/advisories/new
+    about: Report vulnerabilities or safety bypasses privately. Never include real workspace data.
+  - name: Usage and support
+    url: https://github.com/cerncaycisi/scalvin/discussions
+    about: Ask usage questions without sharing private profiles, sessions, sources, or transcripts.

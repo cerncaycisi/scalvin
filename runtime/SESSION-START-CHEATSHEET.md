@@ -1,47 +1,66 @@
-<!-- version: 2.0.0 -->
+<!-- version: 3.0.0 -->
 # Session Start Cheatsheet
 
-The fastest possible orientation layer at the start of a returning session. Read NEXT-PRIMER.md first; this file is the second fastest layer.
+Use after the immutable safety/data/lifecycle rules are loaded. This is a fast orientation layer, not permission to read everything.
 
-## Fast Re-Entry In 9 Points
+## Before Reading User Memory
 
-1. **Who** -- what name does the user go by; what is the companion's name for this workspace
-2. **Language** -- what is the default session language
-3. **Time** -- local time of day; was there a same-day session earlier
-4. **Gap** -- when was the last session; is a reconnecting opening appropriate
-5. **Last thread** -- what was live at the end of the last session (from NEXT-PRIMER or last session note)
-6. **Carry-forward** -- any between-session experiment, reflection, or open question that was assigned
-7. **Current focus** -- what is the short working direction (CURRENT-FOCUS.md)
-8. **Active themes** -- what medium-term threads are still alive even if not in the last note
-9. **Safety check** -- are there any active safety flags in profile.md or safety-protocol.md
+1. Load safety and `DATA-AND-CONSENT.md`.
+2. Check consent, retention, memory pause, transcript state, timezone status, and accessibility/body-prompt preferences.
+3. If `sealed_pause` is active, do not read primer/profile/themes/focus/sessions/sources/archive/checkpoints.
+4. Apply expirations before retrieval; do not use material pending deletion.
+5. Check for an interrupted checkpoint and offer continue/partial-close/delete/ignore without claiming a full record.
 
-If any point cannot be answered in under 10 seconds from the fast-entry files, the answer is "unknown" -- proceed without guessing.
+## Returning-Session Orientation
 
-## System-Eye Scan (Pre-Session)
+When reading is permitted, use the smallest sufficient set:
 
-Before the first reply, scan the workspace for what the client cannot see from inside their current state. A human therapist cannot hold 20+ sessions of detail; the companion can. Use this advantage.
+1. `NEXT-PRIMER.md`
+2. approved current user overlays
+3. `CURRENT-FOCUS.md`
+4. `ACTIVE-THEMES.md`
+5. relevant lean profile items
+6. `context/index.md` only when context-graph consent/retention is active
+7. latest session note only if the primer is insufficient
 
-### What is absent
-- A theme that was live a few weeks ago and has not been mentioned since -- is it resolved, or avoided?
-- A person or relationship that was central and has gone quiet
-- An emotion the client used to name and no longer names
+Do not auto-read context entity files, transcripts, sources, full archive, client-told scenes, external-care records, or change history.
 
-### What is repeating
-- A specific phrase the client keeps using
-- A situation the client keeps returning to with no movement
-- A question the client asks the companion that the companion never actually answers
+## Ten-Point Check
 
-### What contradicts
-- Two recent statements that cannot both be true
-- A stated value and a repeated behavior that diverge
-- A formulation from last week that does not fit what the client is saying today
+1. preferred name and companion name, if consented
+2. language and low-cognitive-load preference
+3. confirmed timezone/local time; otherwise mark unknown
+4. previous session ID, close state, and gap
+5. last live thread
+6. optional carry-forward and whether experiments are allowed/ask-first/off
+7. current focus IDs
+8. active theme IDs
+9. any current, consented safety information; absence of a flag is not proof of safety
+10. memory/transcript pause and retention state
 
-### Usage
+If an answer is not supported, use `unknown`; do not infer.
 
-The system-eye scan is not a checklist to report to the client. It is a preparation layer. One or two observations from the scan may land naturally during the session. The rest stays in the companion's awareness.
+## Weekly Review Trigger
 
-### Opening Question Rule
+Run the deterministic due check at session start. A weekly review is session-triggered on the first returning session in a new Monday-based local calendar week when a completed session exists before that week and no current-week weekly review exists. It may be any weekday; there is no background scheduler.
 
-Do not open with "how are you" if the last session was active and something was carrying forward. Open from the live material. "How are you" is a default, not a move.
+Do not run it during a first-ever week with no earlier-week session. A manual review request still works any day.
 
-If genuinely nothing carries forward and the gap is long, an open question is fine -- but make it specific to the client, not generic.
+## Stale Memory Offer
+
+Eligible items require roughly 90 days since live confirmation and at least 3 completed sessions since. Offer at most 1–3 neutrally. A decline creates a cooldown of at least 30 days and 3 more sessions. Do not treat stale as false.
+
+## System-Eye Scan
+
+Use provenance-aware observations, not confident mind-reading:
+
+- absence: a previously active item is no longer mentioned; it may be resolved, irrelevant, private, or avoided
+- repetition: a user phrase or situation recurs without apparent movement
+- contradiction: two current user-confirmed statements appear in tension
+- counter-evidence: strengths or exceptions complicate a dominant hypothesis
+
+Present these as invitations. A correction updates the map; silence does not confirm it.
+
+## Opening
+
+Open from live material when it genuinely remains current. If the gap is long, memory is stale, or the user starts elsewhere, follow the user's present lead. Avoid generic “how are you?” only when a more grounded, consented opening is clearly available.

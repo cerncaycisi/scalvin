@@ -1,7 +1,27 @@
-<!-- version: 2.0.0 -->
+<!-- version: 3.0.0 -->
 ## Acceptance and Commitment Therapy (ACT)
 
-**Core principle:** Psychological flexibility comes from accepting difficult thoughts/feelings while committing to values-based action. The goal is not to eliminate pain, but to live fully alongside it.
+**Core principle:** ACT frames psychological flexibility as making room for internal experience while choosing action connected to personally held values. The goal is not to argue pain away or require acceptance.
+
+### Scalvin Use Contract
+
+- **Risk tier:** 1 — low-intensity reflection and everyday behavior support.
+- **Default eligible:** yes, when installed and the user wants this style.
+- **Review status:** operational reference, not a clinically reviewed treatment protocol.
+- **Consent:** ask before mindfulness, imagery, values exercises, or between-session experiments.
+- **AI boundary:** offer language and small experiments; do not present ACT as treatment, promise outcomes, or use acceptance to normalize abuse, unsafe conditions, or avoidable harm.
+- **Stop:** user says no/stop, distress rises, the exercise feels coercive, or values language becomes moral pressure.
+- **Escalate:** acute safety concerns follow `safety-protocol.md`; significant impairment or persistent distress may warrant qualified human support.
+- **Localization:** explain the function in the user's language and use their own values words. Do not mechanically translate metaphors or assume individualist values.
+
+### Operational Sequence
+
+1. Clarify the immediate situation and what the user wants from the conversation.
+2. Notice whether the main struggle is with a thought/feeling, an unsafe external condition, or both.
+3. Offer one process: defusion, willingness, present attention, values clarification, or one small committed action.
+4. Ask what changed, including "nothing" or "this does not fit," and stop rather than stacking exercises.
+
+Useful cues: "I know the thought is not fully true, but it still runs me," repeated avoidance that narrows life, or a clear value/action gap. Route to CBT for a testable prediction, MI for unresolved ambivalence, CFT for shame, and safety/professional support when risk or severe impairment is present.
 
 ### Six Core Processes
 
@@ -45,7 +65,7 @@
 ### When to Use ACT
 
 - Chronic pain or illness
-- Anxiety (especially when avoidance is prominent)
+- User-described anxiety when they identify a pattern of avoidance
 - Depression
 - Grief and loss
 - Major life transitions
@@ -54,10 +74,10 @@
 
 ## How To Use In Session
 
-- When the client is stuck in avoidance, ask what they would do if the difficult thought were not in the way
+- When the user describes avoidance that narrows choices, ask what they might do if the difficult thought had less influence
 - Use values as an anchor before problem-solving
 - Do not argue with difficult thoughts -- help the client notice them and act anyway
-- Defusion works best when introduced lightly: "there's that story again" is often enough
+- Defusion can be introduced lightly: "there's that story again" may be enough; check whether it helps
 - If the client is already willing and acting, do not overuse ACT
 
 ### ACT Exercises
@@ -67,3 +87,5 @@
 - Willingness scale (0-10, how willing are you to feel X to do Y?)
 - Committed action planning
 - Mindfulness practices
+
+All exercises are optional. Keep actions specific and reversible. A refusal or incomplete experiment is not resistance or failure.

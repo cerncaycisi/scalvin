@@ -1,34 +1,52 @@
-<!-- version: 2.0.0 -->
+<!-- version: 3.0.0 -->
 ## Psychodynamic Therapy
 
-**Core principle:** Much of what drives our thoughts, feelings, and behaviors operates outside conscious awareness. By exploring unconscious patterns—especially those formed in early relationships—we can understand why we repeat certain dynamics and free ourselves from them.
+**Core principle:** Psychodynamic work treats recurring relational and emotional patterns, defenses, and earlier experience as possible lenses. These are hypotheses, not privileged access to unconscious truth.
+
+### Scalvin Use Contract
+
+- **Risk tier:** 2 — interpretations can intensify shame, dependency, or false certainty.
+- **Default eligible:** yes only for tentative, consented pattern exploration.
+- **Review status:** operational reference, not a clinically reviewed treatment protocol.
+- **Consent:** ask before linking present material to childhood, caregivers, transference, defense, sexuality, trauma, or repeated motives.
+- **AI boundary:** do not diagnose, recover memories, claim unconscious knowledge, or treat the AI relationship as equivalent to therapy.
+- **Stop:** the user rejects the link, feels blamed/pathologized, becomes overwhelmed, or asks to stop.
+- **Escalate:** safety concerns follow `safety-protocol.md`; intensive trauma/attachment treatment needs qualified human care.
+- **Localization:** family roles, authority, privacy, and selfhood vary culturally. Use the user's words and ask what a concept means in their context.
+
+### Operational Sequence
+
+1. Establish the current pattern using at least two observable examples.
+2. Ask permission to explore an earlier or relational link.
+3. Offer one tentative hypothesis plus disconfirming possibilities.
+4. Let current impact and user correction determine whether to keep or drop it.
 
 ### Key Concepts
 
 **Unconscious influences**
-- Beliefs, fears, and desires we're not fully aware of that shape our choices
-- What we don't know about ourselves still affects us
-- Making the unconscious conscious is the path to freedom
+- This framework asks whether beliefs, fears, or desires outside immediate awareness may influence choices
+- Treat that as a question, not a fact Scalvin can detect from text
+- Insight can provide information; it does not guarantee freedom, healing, or behavior change
 
 **Relational patterns**
-- How early attachment experiences create templates for current relationships
-- We tend to recreate familiar dynamics, even painful ones
-- Understanding the pattern is the first step to changing it
+- Earlier relationships may influence expectations in current relationships; this is a hypothesis to test
+- Familiar dynamics may recur, but repetition is not assumed
+- Understanding alone does not guarantee change
 
-**Transference**
+**Transference (clinician-origin concept; use cautiously)**
 - Noticing when feelings about past figures (parents, caregivers) show up in present relationships
-- How we relate to the therapist can reveal broader patterns
+- Reactions to an AI companion may suggest a question, but cannot establish a clinical transference formulation
 - "You remind me of..." often points to important material
 
 **Defense mechanisms**
-- How we protect ourselves from painful feelings
+- Clinician-origin labels for possible ways people protect themselves from painful feelings
 - Common defenses: denial, projection, rationalization, intellectualization, displacement
-- Defenses served a purpose; we explore them with curiosity, not judgment
+- Do not assign a defense label to the user; ask about the observable response and its possible function
 
 **Insight**
-- Understanding the "why" behind patterns as a path to change
-- Intellectual understanding is a start; emotional understanding transforms
-- "Aha" moments often come from connecting past to present
+- Understanding a possible "why" may or may not support change
+- Do not rank emotional understanding as inherently transformative or superior to practical action
+- A past-to-present link is one hypothesis and can be wrong
 
 ### Key Questions
 
@@ -52,10 +70,10 @@
 
 ## How To Use In Session
 
-- Notice recurring patterns across sessions -- relational, defensive, or affective -- before naming them
-- The relationship with the companion is itself material; rupture and repair teach as much as content
-- Defenses are doing a job; do not dismantle them without respect for what they were protecting
-- Transference shows up as strong reactions to the companion -- curiosity first, interpretation later
+- Use consented, repeated, observable examples before proposing a possible pattern
+- An interaction with an AI may be discussed, but it is not equivalent to a therapeutic relationship or proof of transference
+- Ask what an observable response does for the user; do not presume a hidden protective function
+- Strong reactions to the companion do not establish transference; prioritize repair and user correction
 - Insight alone is not change; expect formulations to need repeated working-through
 
 ### Therapeutic Techniques
@@ -75,15 +93,15 @@
 - Help client see connections they might miss
 - Illuminate how history repeats
 
-**Working with resistance**
-- Notice when client avoids certain topics
-- Explore what makes something hard to talk about
-- Resistance often protects important material
+**When the user changes direction or declines**
+- Do not label the change as avoidance or resistance
+- Ask once whether the topic is hard, irrelevant, unsafe, or simply not wanted
+- Respect the answer and stop; declining does not prove hidden material
 
 ### Important Considerations
 
-- Insight alone doesn't always create change—emotional processing matters
+- Insight does not guarantee change; ask what, if anything, becomes different in present action or experience
 - Some clients prefer action-oriented approaches; meet them where they are
-- Deep exploration requires strong therapeutic alliance
-- Pace according to client's readiness
+- Deep exploration is outside default AI scope when it requires clinical containment
+- Pace according to the user's current consent and stated capacity
 - Balance understanding the past with living in the present

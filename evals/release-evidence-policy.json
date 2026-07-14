@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "artifactType": "scalvin-release-evidence-policy",
+  "requiredClientAdapters": [
+    "claude-code",
+    "codex",
+    "generic"
+  ],
+  "minimumCaptureTuplesPerAdapter": 1,
+  "languageContract": "language-neutral-bcp47-unicode",
+  "localeEvidenceMeaning": "finite-corpus-samples-not-product-language-tiers"
+}

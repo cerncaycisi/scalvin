@@ -1,63 +1,47 @@
-<!-- version: 2.0.0 -->
+<!-- version: 3.0.0 -->
 # Session Note Standard
 
-- keep notes lean
-- preserve continuity
-- avoid turning a session file into a full dossier
+Session notes are optional continuity records, written only when continuity consent is on and memory is not paused. Use `templates/sessions/SESSION-NOTE.template.md`.
 
-## Recommended Length
+## Identity And Filename
 
-- target: 8 to 15 bullets total
-- normal max: roughly 400 to 900 words
-- if the session becomes unusually deep, keep the main note short and move dense material to `archive/`
+Follow `SESSION-LIFECYCLE.md`:
 
-## Standard Structure
+`sessions/YYYY-MM-DD-HHMMSS--<session-uuid>--session.md`
 
-```markdown
-# Session Note - YYYY-MM-DD-HHMM
+Use exclusive/no-clobber creation. Frontmatter records AI authorship, session ID, timezone-aware start/close timestamps, completion state, consent event, and optional transcript reference.
 
-- No acute crisis disclosed.
-- One-line summary of the session.
+## Truth Standard
 
-## Main Threads
-- 3 to 6 bullets covering the live themes
+- Do not insert a default “No acute crisis disclosed.”
+- Include a safety assessment only if it was actually conducted.
+- Distinguish `User-Reported`, `Companion Observations`, and `Working Hypotheses` where needed.
+- Text behavior is not proof of diagnosis, physiology, intent, truth, or absence of risk.
+- Use `unknown` rather than a confident negative when evidence is missing.
+- Preserve user wording for key phrases; label companion reframing separately.
+- AI-authored content never inherits a human clinician's author fields.
 
-## Deeper Formulations
-- 2 to 5 bullets covering the most useful meaning-making
+## Recommended Shape
 
-## Useful Carries Forward
-- 2 to 4 bullets for what should stay live next time
+- lean target: 8–15 bullets, roughly 400–900 words maximum
+- 1–3 main threads, not every topic mentioned
+- current shifts and concrete carry-forward
+- source IDs/references without pasting source content
+- memory item IDs when the note updates or references durable memory
+- optional between-session experiment only when consent/accessibility/structure precedence allows
 
-## Next Session Focus
-- 1 to 2 bullets only
-```
+## Dense Sessions
 
-## What Belongs In The Main Note
+Put historical richness in a unique deep-dive artifact using the same session UUID and seconds-based timestamp. Create with no-clobber semantics and link it from the note. Do not create a date-only file that can overwrite another session.
 
-- the key thread(s) the session actually turned on
-- any shift or new formulation the client produced
-- concrete carry-forward items
-- enough context that a future read can reconstruct what happened without reading the full transcript
+## Multiple Sessions
 
-## What Does Not Belong In The Main Note
+Every session has its own UUID and note. Same-second sessions remain distinct. A continuation references the earlier session ID rather than duplicating it.
 
-- verbatim transcript of the exchange (transcripts live in `archive/transcripts/` if the workspace tracks them)
-- long quotations from sources that were re-read
-- the companion's internal process about why it made a particular move
-- exhaustive enumeration of every topic touched -- prefer the 1 to 3 that mattered
+## Interrupted Sessions
 
-## Rule For Dense Sessions
+When the user chooses `close interrupted`, set `completion: interrupted_partial`. Record only confirmed available material, state meaningful gaps, and never reconstruct a full session from a checkpoint.
 
-If a session produced more durable material than fits cleanly in a short note, keep the main note short and create an `archive/YYYY-MM-DD-deep-dive.md` file for the detail. Link to it from the main note.
+## Retention And Deletion
 
-Heuristic: if the main note is pushing past about 60 lines and still feels crowded, move detail to archive.
-
-## Rule For Multiple Sessions On The Same Day
-
-If there is more than one session on the same day, each gets its own note with the `YYYY-MM-DD-HHMM.md` filename format. Do not collapse multiple sessions into one note; the temporal sequence matters.
-
-If a later same-day session clearly continues an earlier one, reference the earlier note by filename rather than restating its content.
-
-## Rule For Source Material
-
-If a source document was re-read during the session, note which source and what shifted because of it -- but do not paste source content into the session note. The source lives in `sources/`.
+Apply the `continuity_memory` retention policy. Expired or user-deleted notes are removed, not archived. Update derived indexes and primers so deleted content is not reintroduced. Backups remain separate copies.
