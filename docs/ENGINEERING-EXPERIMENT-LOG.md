@@ -165,3 +165,8 @@ when they establish a reusable engineering rule.
   objects and a clean object check; then force-push only reviewed branch/tag
   refs. GitHub pull-request refs are read-only and cached historical views must
   never be described as purged by an ordinary force-push.
+- Failed command: a ref-specific `force-with-lease` push initially stopped with
+  `fatal: --mirror can't be combined with refspecs` because a mirror clone sets
+  `remote.origin.mirror=true`. Disable that local mirror-push setting before
+  the reviewed ref push; do not replace the lease with an unrestricted mirror
+  push.
