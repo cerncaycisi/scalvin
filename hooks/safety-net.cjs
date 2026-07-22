@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// <!-- version: 1.2.0 -->
+// <!-- version: 1.4.0 -->
 // Locale-pack-driven mechanical safety backstop for UserPromptSubmit-compatible
 // clients. It is deliberately bounded and fail-open. It does not assess risk,
 // replace safety-protocol.md, or prove that an unflagged message is safe.
@@ -10,12 +10,39 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Worker, isMainThread, parentPort, workerData } = require('node:worker_threads');
 
+let emergencyResourceTools = null;
+try {
+  emergencyResourceTools = require('./emergency-resources.cjs');
+} catch (_) {
+  // A fixed degraded state is emitted below; never expose loader details.
+}
+
 const MAX_STDIN_CHARS = 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 1500;
 const MAX_PACKS = 64;
 const MAX_PACK_BYTES = 64 * 1024;
 const MAX_PATTERNS_PER_LIST = 128;
 const MAX_PATTERN_CHARS = 1200;
+const HEALTH_SCHEMA_VERSION = 1;
+const HEALTH_CAPABILITY = 'mechanical_safety_backstop';
+const SELF_TEST_PROMPT = 'I want to die.';
+const HEALTH_REASON_CODES = new Set([
+  'LOCALE_PACK_LOAD_FAILED',
+  'LOCALE_PACK_UNAVAILABLE',
+  'EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED',
+  'EMERGENCY_RESOURCE_REGISTRY_NOT_YET_VALID',
+  'EMERGENCY_RESOURCE_REGISTRY_STALE',
+  'SYNTHETIC_CLASSIFICATION_FAILED',
+  'SELF_TEST_FAILED',
+  'SELF_TEST_ARGUMENTS_INVALID',
+  'HOOK_TIMEOUT',
+  'HOOK_INPUT_ERROR',
+  'INPUT_BOUNDED',
+  'HOOK_INPUT_INVALID',
+  'CLASSIFIER_UNAVAILABLE',
+  'HOOK_PROCESSING_FAILED',
+  'HOOK_START_FAILED'
+]);
 const ALLOWED_DOMAINS = new Set([
   'self_harm', 'overdose', 'medical_emergency', 'harm_to_others',
   'psychosis_or_disorientation', 'abuse_or_safeguarding'
@@ -112,13 +139,44 @@ function loadLocalePacks(directory = path.join(__dirname, 'safety-locales')) {
 
 // A malformed or unavailable optional pack must never make the client hook
 // block a user prompt. The standalone loader still throws so doctor/tests can
-// fail closed; the runtime hook degrades to silence and leaves the prose safety
-// authority in control.
+// fail closed; the runtime hook emits only a fixed content-free degraded notice
+// and leaves the prose safety authority in control.
 let LOCALE_PACKS = [];
+let LOCALE_PACK_HEALTH = { state: 'available', reasonCode: null };
 try {
   LOCALE_PACKS = loadLocalePacks();
 } catch (_) {
   LOCALE_PACKS = [];
+  LOCALE_PACK_HEALTH = { state: 'degraded', reasonCode: 'LOCALE_PACK_LOAD_FAILED' };
+}
+
+let EMERGENCY_RESOURCE_HEALTH = {
+  state: 'degraded',
+  reasonCode: 'EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED'
+};
+if (emergencyResourceTools) {
+  try {
+    const registry = emergencyResourceTools.loadRegistry();
+    const assessment = emergencyResourceTools.assessRegistry(registry);
+    EMERGENCY_RESOURCE_HEALTH = assessment.state === 'current'
+      ? { state: 'available', reasonCode: null }
+      : { state: 'degraded', reasonCode: assessment.reasonCode };
+  } catch (_) {
+    EMERGENCY_RESOURCE_HEALTH = {
+      state: 'degraded',
+      reasonCode: 'EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED'
+    };
+  }
+}
+
+function installedSafetyHealth() {
+  if (LOCALE_PACK_HEALTH.state !== 'available' || LOCALE_PACKS.length === 0) {
+    return {
+      state: 'degraded',
+      reasonCode: LOCALE_PACK_HEALTH.reasonCode || 'LOCALE_PACK_UNAVAILABLE'
+    };
+  }
+  return EMERGENCY_RESOURCE_HEALTH;
 }
 
 function normalize(input) {
@@ -216,11 +274,44 @@ function buildNotice(result) {
       hookEventName: 'UserPromptSubmit',
       additionalContext: [
         'SCALVIN SAFETY BACKSTOP: A bounded locale-pack matcher flagged possible safety-relevant language.',
+        'Mechanical safety backstop capability state: available.',
         `Classifier level: ${result.level}; domains: ${domainList}.`,
         'This is not a risk assessment and can both miss crises and over-fire. Never treat silence as proof of safety.',
         'Re-read .therapy/safety-protocol.md before replying. Use the user\'s current meaning and context; distinguish passive thoughts, active/imminent self-harm, harm to others, abuse/safeguarding, psychosis, and medical emergency.',
-        'State capability truth: you cannot call services, locate the user, contact anyone, or monitor them. Ask only the minimum questions needed. Ask for location only when necessary, verify current jurisdiction-appropriate resources, and phrase them in the user\'s current language.'
+        'State capability truth: you cannot call services, locate the user, contact anyone, or monitor them. Ask only the minimum questions needed. Ask for location only when necessary, use only non-expired registry-backed or live-verified jurisdiction-appropriate resources, and phrase them in the user\'s current language.'
       ].join('\n')
+    }
+  };
+}
+
+function healthState(state, reasonCode = null) {
+  const safeState = ['available', 'degraded', 'unsupported'].includes(state) ? state : 'degraded';
+  const safeReason = safeState === 'available'
+    ? null
+    : HEALTH_REASON_CODES.has(reasonCode) ? reasonCode : 'HOOK_PROCESSING_FAILED';
+  return {
+    schemaVersion: HEALTH_SCHEMA_VERSION,
+    capability: HEALTH_CAPABILITY,
+    state: safeState,
+    reasonCode: safeReason
+  };
+}
+
+function buildHealthNotice(reasonCode) {
+  const safeReason = HEALTH_REASON_CODES.has(reasonCode) ? reasonCode : 'HOOK_PROCESSING_FAILED';
+  const resourceGuidance = safeReason.startsWith('EMERGENCY_RESOURCE_')
+    ? 'Bundled emergency-resource verification is unavailable or stale. Do not present bundled contacts as current without live official verification; do not delay immediate local emergency help.'
+    : null;
+  return {
+    hookSpecificOutput: {
+      hookEventName: 'UserPromptSubmit',
+      additionalContext: [
+        'SCALVIN SAFETY BACKSTOP HEALTH: The mechanical safety backstop is degraded for this prompt.',
+        `Capability state: degraded; reason code: ${safeReason}.`,
+        'The prompt was not blocked, and this notice contains no prompt content.',
+        resourceGuidance,
+        'Do not claim that mechanical screening ran. Re-read .therapy/safety-protocol.md before replying and use the full prose safety protocol as the authority.'
+      ].filter(Boolean).join('\n')
     }
   };
 }
@@ -250,12 +341,42 @@ function classifyIsolated(prompt, timeoutMs) {
   });
 }
 
+async function runSelfTest(timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const installedHealth = installedSafetyHealth();
+  if (installedHealth.state !== 'available') {
+    return healthState('degraded', installedHealth.reasonCode);
+  }
+  const result = await classifyIsolated(SELF_TEST_PROMPT, Math.max(1, timeoutMs - 25));
+  if (!result || result.fire !== true || !result.domains.includes('self_harm')) {
+    return healthState('degraded', 'SYNTHETIC_CLASSIFICATION_FAILED');
+  }
+  return healthState('available');
+}
+
+function writeJsonLine(value, callback) {
+  const output = `${JSON.stringify(value)}\n`;
+  if (callback) process.stdout.write(output, callback);
+  else process.stdout.write(output);
+}
+
 function runFromStdin() {
   let input = '';
   let overflowed = false;
+  let settled = false;
   const configured = Number(process.env.SCALVIN_HOOK_TIMEOUT_MS);
   const timeoutMs = Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_TIMEOUT_MS;
-  const timer = setTimeout(() => process.exit(0), timeoutMs);
+  const finish = (output, forceExit = false) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    if (output) {
+      if (forceExit) writeJsonLine(output, () => process.exit(0));
+      else writeJsonLine(output);
+    } else if (forceExit) {
+      process.exit(0);
+    }
+  };
+  const timer = setTimeout(() => finish(buildHealthNotice('HOOK_TIMEOUT'), true), timeoutMs);
   if (timer.unref) timer.unref();
 
   process.stdin.setEncoding('utf8');
@@ -268,38 +389,69 @@ function runFromStdin() {
     }
     input += chunk;
   });
-  process.stdin.on('error', () => process.exit(0));
+  process.stdin.on('error', () => finish(buildHealthNotice('HOOK_INPUT_ERROR'), true));
   process.stdout.on('error', () => process.exit(0));
   process.stdin.on('end', async () => {
     if (overflowed) {
-      clearTimeout(timer);
+      finish(buildHealthNotice('INPUT_BOUNDED'));
       return;
     }
     try {
       const payload = JSON.parse(input);
-      if (typeof payload?.prompt !== 'string' || payload.prompt.length === 0 || payload.prompt.length > MAX_STDIN_CHARS || LOCALE_PACKS.length === 0) return;
+      if (typeof payload?.prompt !== 'string' || payload.prompt.length === 0 || payload.prompt.length > MAX_STDIN_CHARS) {
+        finish(buildHealthNotice('HOOK_INPUT_INVALID'));
+        return;
+      }
+      const installedHealth = installedSafetyHealth();
+      if (installedHealth.state !== 'available') {
+        finish(buildHealthNotice(installedHealth.reasonCode));
+        return;
+      }
       const result = await classifyIsolated(payload.prompt, Math.max(1, timeoutMs - 25));
-      if (result.fire) process.stdout.write(`${JSON.stringify(buildNotice(result))}\n`);
+      if (!result) {
+        finish(buildHealthNotice('CLASSIFIER_UNAVAILABLE'));
+        return;
+      }
+      finish(result.fire ? buildNotice(result) : null);
     } catch (_) {
-      // Fail open: malformed hook input must not block the session.
-    } finally {
-      clearTimeout(timer);
+      // Fail open: report a content-free degraded state without blocking.
+      finish(buildHealthNotice('HOOK_PROCESSING_FAILED'));
     }
   });
 }
 
-module.exports = { MAX_STDIN_CHARS, normalize, classify, buildNotice, loadLocalePacks, classifyIsolated };
+module.exports = {
+  MAX_STDIN_CHARS,
+  normalize,
+  classify,
+  buildNotice,
+  buildHealthNotice,
+  healthState,
+  installedSafetyHealth,
+  loadLocalePacks,
+  classifyIsolated,
+  runSelfTest
+};
 
 if (!isMainThread && workerData?.kind === 'classify') {
   try {
     parentPort.postMessage(classify(workerData.prompt));
   } catch (_) {
-    // A failed worker produces no hook output; the parent enforces the deadline.
+    // The parent converts a missing worker result into a content-free degraded notice.
   }
 } else if (require.main === module) {
-  try {
-    runFromStdin();
-  } catch (_) {
-    process.exit(0);
+  const args = process.argv.slice(2);
+  if (args.length === 2 && args[0] === '--self-test' && args[1] === '--json') {
+    runSelfTest()
+      .then((result) => writeJsonLine(result))
+      .catch(() => writeJsonLine(healthState('degraded', 'SELF_TEST_FAILED')));
+  } else if (args.length === 0) {
+    try {
+      runFromStdin();
+    } catch (_) {
+      writeJsonLine(buildHealthNotice('HOOK_START_FAILED'));
+    }
+  } else {
+    writeJsonLine(healthState('degraded', 'SELF_TEST_ARGUMENTS_INVALID'));
   }
 }

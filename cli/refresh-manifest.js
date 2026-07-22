@@ -10,7 +10,8 @@ const ROOT = path.resolve(__dirname, '..');
 const MANIFEST_PATH = path.join(ROOT, 'manifest.json');
 const ROOT_FILES = ['safety-protocol.md', 'commands.md'];
 const ROOTS = ['personas', 'modalities', 'structures', 'runtime', 'adapters/workspace', 'templates', 'hooks', 'schemas'];
-const ALLOWED_EXTENSIONS = new Set(['.md', '.py', '.cjs', '.template', '.json']);
+const ALLOWED_EXTENSIONS = new Set(['.js', '.md', '.py', '.cjs', '.template', '.json', '.toml']);
+const PACKAGE_FILES = require('../package.json').files;
 
 async function discoverFiles() {
   const output = [...ROOT_FILES];
@@ -34,6 +35,16 @@ async function discoverFiles() {
       }
     }
   }
+  // Hash exactly the executable bin/CLI closure shipped by npm. Walking the
+  // entire source-only cli directory would put development helpers in the
+  // manifest even though they are absent from an installed package, making a
+  // clean packed install fail its own distribution-integrity check.
+  for (const packaged of PACKAGE_FILES.filter((entry) => entry === 'bin/' || entry.startsWith('cli/'))) {
+    const relative = packaged.replace(/\/$/, '');
+    const stat = await fsp.lstat(path.join(ROOT, relative));
+    if (stat.isDirectory()) await visit(relative);
+    else if (stat.isFile() && ALLOWED_EXTENSIONS.has(path.extname(relative))) output.push(relative);
+  }
   for (const root of ROOTS) await visit(root);
   return [...new Set(output)].sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
 }
@@ -55,6 +66,9 @@ function stripTemplate(relative) {
 function infer(relative) {
   const name = path.posix.basename(relative);
   const stem = name.replace(/\.(?:md|py|cjs)$/, '').replace(/\.template$/, '');
+  if (relative.startsWith('bin/') || relative.startsWith('cli/')) {
+    return { role: 'distribution-code', protection: 'framework', targets: [] };
+  }
   if (relative === 'safety-protocol.md') {
     return { role: 'safety-protocol', protection: 'framework', targets: [baseTarget('.therapy/safety-protocol.md', 'framework')] };
   }
@@ -112,7 +126,8 @@ function infer(relative) {
       'CLAUDE.template.md': 'CLAUDE.md',
       'START-CODEX-SESSION.template.md': 'START-CODEX-SESSION.md',
       'START-CLAUDE-SESSION.template.md': 'START-CLAUDE-SESSION.md',
-      'STARTER.template.md': '{{COMPANION_SLUG}}.md'
+      'STARTER.template.md': '{{COMPANION_SLUG}}.md',
+      'codex.config.template.toml': '.codex/config.toml'
     };
     if (rootMap[name]) targets.push(baseTarget(rootMap[name], 'active', { render: 'placeholders' }));
     return { role: 'client-adapter', protection: 'framework', targets };
@@ -122,6 +137,12 @@ function infer(relative) {
       return {
         role: 'client-hook-data:safety-locale', protection: 'framework',
         targets: [baseTarget(`.therapy/${relative}`, 'framework')]
+      };
+    }
+    if (/^hooks\/emergency-resources\.(?:cjs|json)$/.test(relative)) {
+      return {
+        role: 'client-hook-data:emergency-resources', protection: 'framework',
+        targets: [baseTarget(`.therapy/hooks/${name}`, 'framework')]
       };
     }
     return { role: `client-hook:${stem}`, protection: 'framework', targets: [baseTarget(`.therapy/hooks/${name}`, 'framework')] };

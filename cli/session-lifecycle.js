@@ -16,6 +16,7 @@ const {
   pathExists,
   sha256Buffer
 } = require('./lib/fs-safe');
+const { renderPrimerSingleton, validatePrimerSingletonMarkdown } = require('./memory-data');
 
 const SESSION_ID_PATTERN = /^s-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -33,11 +34,19 @@ const MAX_TRANSCRIPT_TURNS = 10_000;
 const MAX_TRANSCRIPT_GAPS = 1_000;
 const MAX_PAUSED_INTERVALS = 1_000;
 
+const LEGACY_SESSION_CHECKPOINT_FRONTMATTER_KEYS = Object.freeze([
+  'record_kind', 'session_id', 'started_at', 'updated_at', 'timezone', 'lifecycle_state',
+  'consent_state', 'transcript_state', 'capture_grade', 'covered_turns', 'known_gaps',
+  'last_persisted_turn', 'resumed_at'
+]);
+
 const ARTIFACT_FRONTMATTER_KEYS = Object.freeze({
   session_checkpoint: Object.freeze([
     'record_kind', 'session_id', 'started_at', 'updated_at', 'timezone', 'lifecycle_state',
-    'consent_state', 'transcript_state', 'capture_grade', 'covered_turns', 'known_gaps',
-    'last_persisted_turn', 'resumed_at'
+    'consent_state', 'transcript_state', 'capture_grade', 'capture_method',
+    'capability_proof_verified', 'covered_turns', 'known_gaps', 'paused_intervals',
+    'finalized_at', 'full_coverage_proven', 'verbatim_claim', 'last_persisted_turn',
+    'resumed_at'
   ]),
   ai_authored_session_note: Object.freeze([
     'record_kind', 'author_role', 'author_name', 'session_id', 'started_at', 'closed_at',
@@ -299,12 +308,49 @@ function validateSessionLifecyclePatch(patch) {
   for (const key of ['state', 'sessionId', 'captureGrade', 'captureMethod', 'coveredTurns', 'knownGaps', 'pausedIntervals', 'finalizedAt', 'fullCoverageProven', 'capabilityProofVerified', 'verbatimClaim']) {
     invariant(JSON.stringify(transcript[key]) === JSON.stringify(normalizedTranscript[key]), 'Lifecycle transcript metadata is not normalized.', 'SESSION_PATCH_INVALID', { field: key });
   }
-  if (transcript.state !== 'off') invariant(transcript.sessionId === lifecycle.sessionId, 'Lifecycle transcript belongs to another session.', 'SESSION_PATCH_INVALID');
+  invariant(transcript.capabilityProofVerified === false && transcript.fullCoverageProven === false,
+    'This preview has no independently attested transcript capability channel.', 'SESSION_PATCH_INVALID');
+  if (transcript.state === 'off') {
+    invariant(transcript.sessionId === null && transcript.captureGrade === null && transcript.captureMethod === null
+      && transcript.coveredTurns === null && transcript.knownGaps.length === 0 && transcript.pausedIntervals.length === 0
+      && transcript.finalizedAt === null && transcript.fullCoverageProven === false && transcript.capabilityProofVerified === false,
+    'Off lifecycle transcript state must not retain capture evidence.', 'SESSION_PATCH_INVALID');
+  } else {
+    invariant(transcript.sessionId === lifecycle.sessionId, 'Lifecycle transcript belongs to another session.', 'SESSION_PATCH_INVALID');
+    invariant(transcript.captureGrade !== null && transcript.captureMethod !== null, 'Active or terminal lifecycle transcript evidence requires a capture grade.', 'SESSION_PATCH_INVALID');
+  }
+  const lifecycleStartedAt = Date.parse(lifecycle.startedAt);
+  const lifecycleEndedAt = lifecycle.closedAt === null ? null : Date.parse(lifecycle.closedAt);
+  if (transcript.finalizedAt !== null) {
+    const finalizedAt = Date.parse(transcript.finalizedAt);
+    invariant(finalizedAt >= lifecycleStartedAt && (lifecycleEndedAt === null || finalizedAt <= lifecycleEndedAt),
+      'Lifecycle transcript finalization falls outside the session.', 'SESSION_PATCH_INVALID');
+  }
+  const openPauses = transcript.pausedIntervals.filter((interval) => interval.endedAt === null);
+  invariant(transcript.state === 'paused' ? openPauses.length === 1 && transcript.pausedIntervals.at(-1)?.endedAt === null : openPauses.length === 0,
+    'Lifecycle transcript pause state is inconsistent.', 'SESSION_PATCH_INVALID');
+  invariant(['stopped', 'finalized'].includes(transcript.state) ? transcript.finalizedAt !== null : transcript.finalizedAt === null,
+    'Lifecycle transcript terminal timestamp is inconsistent.', 'SESSION_PATCH_INVALID');
+  for (const interval of transcript.pausedIntervals) {
+    const startedAt = Date.parse(interval.startedAt);
+    const endedAt = interval.endedAt === null ? null : Date.parse(interval.endedAt);
+    invariant(startedAt >= lifecycleStartedAt && (lifecycleEndedAt === null || startedAt <= lifecycleEndedAt)
+      && (endedAt === null || lifecycleEndedAt === null || endedAt <= lifecycleEndedAt),
+    'Lifecycle transcript pause interval falls outside the session.', 'SESSION_PATCH_INVALID');
+  }
+  for (const gap of transcript.knownGaps) {
+    if (gap.from === undefined) continue;
+    const startedAt = Date.parse(gap.from);
+    const endedAt = gap.to === null ? null : Date.parse(gap.to);
+    invariant(startedAt >= lifecycleStartedAt && (lifecycleEndedAt === null || startedAt <= lifecycleEndedAt)
+      && (endedAt === null || lifecycleEndedAt === null || endedAt <= lifecycleEndedAt),
+    'Lifecycle transcript gap falls outside the session.', 'SESSION_PATCH_INVALID');
+  }
   if (transcript.fullCoverageProven) {
     invariant(transcript.capabilityProofVerified && ['client_captured', 'turn_captured'].includes(transcript.captureGrade), 'Full transcript coverage lacks verified capture capability.', 'SESSION_PATCH_INVALID');
     invariant(transcript.knownGaps.length === 0 && transcript.coveredTurns && transcript.coveredTurns.first === 1 && transcript.coveredTurns.count === transcript.coveredTurns.last, 'Full transcript coverage metadata is inconsistent.', 'SESSION_PATCH_INVALID');
   }
-  if (lifecycle.state === 'closed') invariant(!['recording', 'paused'].includes(transcript.state), 'Closed lifecycle cannot keep active transcript capture.', 'SESSION_PATCH_INVALID');
+  if (['closed', 'abandoned'].includes(lifecycle.state)) invariant(!['recording', 'paused'].includes(transcript.state), 'Terminal lifecycle cannot keep active transcript capture.', 'SESSION_PATCH_INVALID');
   return patch;
 }
 
@@ -341,6 +387,11 @@ async function beginSession(options = {}) {
   assertTimezone(timezone, now);
   invariant(options.canonicalState?.consent, 'Canonical consent state is required.', 'CONSENT_STATE_INVALID');
   invariant(!options.canonicalState.consent.currentSessionId, 'A canonical session is already active.', 'SESSION_ALREADY_ACTIVE');
+  invariant(
+    !['recording', 'paused'].includes(options.canonicalState.consent.transcriptState?.state),
+    'A new session cannot begin while transcript capture is still active.',
+    'TRANSCRIPT_STATE_INVALID'
+  );
   const noteGate = persistenceDecision(options.canonicalState, 'session_notes');
   const checkpointGate = persistenceDecision(options.canonicalState, 'primers_and_checkpoints');
   const transcriptGate = transcriptDecision(options.canonicalState);
@@ -365,17 +416,11 @@ async function beginSession(options = {}) {
     closedAt: null,
     completion: null,
     consentEventId: options.canonicalState.consent.eventId || null,
-    authorName: options.authorName || 'Scalvin',
+    authorName: options.authorName || 'Susan',
     lastPersistedTurn: null,
     paths,
     checkpoint: null,
-    transcript: transcriptSnapshot({
-      state: options.canonicalState.consent.transcriptState?.state || 'off',
-      sessionId,
-      captureGrade: options.canonicalState.consent.transcriptState?.captureGrade || null,
-      knownGaps: options.canonicalState.consent.transcriptState?.knownGaps || [],
-      pausedIntervals: options.canonicalState.consent.transcriptState?.pausedIntervals || []
-    })
+    transcript: transcriptSnapshot()
   };
   return {
     status: mayPersist ? 'active' : 'active_ephemeral',
@@ -409,7 +454,9 @@ function frontmatter(raw, options = {}) {
   const actualKeys = Object.keys(fields).sort(compareCodePoint);
   const allowedSets = expectedRecordKind === 'ai_authored_session_note'
     ? [expectedKeys, [...expectedKeys, 'deep_dive']]
-    : [expectedKeys];
+    : expectedRecordKind === 'session_checkpoint'
+      ? [expectedKeys, LEGACY_SESSION_CHECKPOINT_FRONTMATTER_KEYS]
+      : [expectedKeys];
   invariant(allowedSets.some((keys) => {
     const sorted = [...keys].sort(compareCodePoint);
     return sorted.length === actualKeys.length && sorted.every((key, index) => key === actualKeys[index]);
@@ -513,6 +560,24 @@ async function writeExclusiveArtifact(filename, data, recordKind, sessionId) {
   }
 }
 
+async function planExclusiveArtifact(filename, data, recordKind, sessionId) {
+  await rejectSymlinkPath(filename, { allowMissing: true });
+  if (!await pathExists(filename)) return 'would_create_exclusively';
+  const existing = await readRegularFile(filename);
+  const parsed = frontmatter(existing, { expectedRecordKind: recordKind });
+  invariant(parsed.fields.record_kind === recordKind && parsed.fields.session_id === sessionId, 'Existing artifact belongs to a different session.', 'ARTIFACT_COLLISION');
+  invariant(sha256Buffer(Buffer.from(existing)) === sha256Buffer(Buffer.from(data)), 'Existing session artifact differs and was not overwritten.', 'ARTIFACT_COLLISION');
+  return 'already_present';
+}
+
+function checkpointHeader(session, transcriptInput, updatedAtInput, turnInput) {
+  const transcript = transcriptSnapshot(transcriptInput || {});
+  const updatedAt = assertTimestamp(updatedAtInput, 'Checkpoint update');
+  const turn = Number(turnInput);
+  invariant(Number.isSafeInteger(turn) && turn > 0, 'Checkpoint turn number must be a positive integer.', 'INVALID_TURN_NUMBER');
+  return `record_kind: session_checkpoint\nsession_id: ${session.id}\nstarted_at: ${session.startedAt}\nupdated_at: ${updatedAt}\ntimezone: ${session.timezone}\nlifecycle_state: ${session.state}\nconsent_state: on\ntranscript_state: ${transcript.state}\ncapture_grade: ${transcript.captureGrade || 'none'}\ncapture_method: ${transcript.captureMethod || 'none'}\ncapability_proof_verified: ${transcript.capabilityProofVerified === true}\ncovered_turns: ${JSON.stringify(transcript.coveredTurns)}\nknown_gaps: ${JSON.stringify(transcript.knownGaps)}\npaused_intervals: ${JSON.stringify(transcript.pausedIntervals)}\nfinalized_at: ${transcript.finalizedAt || 'null'}\nfull_coverage_proven: ${transcript.fullCoverageProven === true}\nverbatim_claim: false\nlast_persisted_turn: ${turn}\nresumed_at: ${JSON.stringify(session.resumedAt || [])}`;
+}
+
 function checkpointMarkdown(session, options) {
   const transcript = transcriptSnapshot(options.transcript || session.transcript || {});
   const turn = options.turnNumber;
@@ -523,7 +588,7 @@ function checkpointMarkdown(session, options) {
   return {
     updatedAt,
     transcript,
-    data: `---\nrecord_kind: session_checkpoint\nsession_id: ${session.id}\nstarted_at: ${session.startedAt}\nupdated_at: ${updatedAt}\ntimezone: ${session.timezone}\nlifecycle_state: ${session.state}\nconsent_state: on\ntranscript_state: ${transcript.state}\ncapture_grade: ${transcript.captureGrade || 'none'}\ncovered_turns: ${JSON.stringify(transcript.coveredTurns)}\nknown_gaps: ${JSON.stringify(transcript.knownGaps)}\nlast_persisted_turn: ${turn}\nresumed_at: ${JSON.stringify(session.resumedAt || [])}\n---\n\n# Session Checkpoint\n\n- Live thread: ${liveThread}\n- Unresolved: ${unresolved}\n- Carry-forward if interrupted: ${carryForward}\n\nThis is a partial continuity marker, not a complete session note or transcript.\n`
+    data: `---\n${checkpointHeader(session, transcript, updatedAt, turn)}\n---\n\n# Session Checkpoint\n\n- Live thread: ${liveThread}\n- Unresolved: ${unresolved}\n- Carry-forward if interrupted: ${carryForward}\n\nThis is a partial continuity marker, not a complete session note or transcript.\n`
   };
 }
 
@@ -538,7 +603,13 @@ async function checkpointTurn(options = {}) {
   const turnNumber = Number(options.turnNumber);
   invariant(Number.isSafeInteger(turnNumber) && turnNumber > 0, 'Checkpoint turn number must be a positive integer.', 'INVALID_TURN_NUMBER');
   invariant(session.lastPersistedTurn === null || turnNumber > session.lastPersistedTurn, 'Checkpoint turns must increase monotonically.', 'NON_MONOTONIC_TURN');
-  const rendered = checkpointMarkdown(session, { ...options, turnNumber });
+  const canonicalTranscript = transcriptSnapshot(session.transcript || {});
+  if (options.transcript !== undefined) {
+    const suppliedTranscript = transcriptSnapshot(options.transcript);
+    invariant(JSON.stringify(suppliedTranscript) === JSON.stringify(canonicalTranscript),
+      'Checkpoint transcript metadata must exactly match canonical session evidence.', 'TRANSCRIPT_EVIDENCE_MISMATCH');
+  }
+  const rendered = checkpointMarkdown(session, { ...options, turnNumber, transcript: canonicalTranscript });
   const filename = resolveArtifact(options.workspace, session.paths.checkpoint);
   await rejectSymlinkPath(filename, { allowMissing: true });
   if (process.env.SCALVIN_TEST_LIFECYCLE_FAILPOINT === 'checkpoint-before-write') throw lifecycleError('Injected lifecycle failure before checkpoint write.', 'TEST_FAILPOINT');
@@ -547,13 +618,13 @@ async function checkpointTurn(options = {}) {
     const existing = await readRegularFile(filename);
     const parsed = frontmatter(existing, { expectedRecordKind: 'session_checkpoint' });
     invariant(parsed.fields.record_kind === 'session_checkpoint' && parsed.fields.session_id === session.id, 'Checkpoint path belongs to another session.', 'ARTIFACT_COLLISION');
-    await atomicWriteFile(filename, rendered.data, { mode: PRIVATE_FILE_MODE });
-    disposition = 'replaced_atomically';
+    if (!options.planOnly) await atomicWriteFile(filename, rendered.data, { mode: PRIVATE_FILE_MODE });
+    disposition = options.planOnly ? 'would_replace_atomically' : 'replaced_atomically';
   } else {
-    await atomicExclusiveWrite(filename, rendered.data);
-    disposition = 'created_exclusively';
+    if (!options.planOnly) await atomicExclusiveWrite(filename, rendered.data);
+    disposition = options.planOnly ? 'would_create_exclusively' : 'created_exclusively';
   }
-  await verifyExactFile(filename, rendered.data);
+  if (!options.planOnly) await verifyExactFile(filename, rendered.data);
   const updated = clone(session);
   updated.lastPersistedTurn = turnNumber;
   updated.transcript = rendered.transcript;
@@ -587,6 +658,9 @@ function normalizeGap(gap) {
 function normalizeTranscript(input, session, finalizedAt) {
   assertSessionDescriptor(session);
   invariant(input && CAPTURE_GRADES.has(input.captureGrade), 'A valid transcript capture grade is required.', 'INVALID_CAPTURE_GRADE');
+  const sessionStartedAt = Date.parse(session.startedAt);
+  const transcriptFinalizedAt = Date.parse(assertTimestamp(finalizedAt, 'Transcript finalization'));
+  invariant(transcriptFinalizedAt >= sessionStartedAt, 'Transcript finalization precedes the session start.', 'INVALID_TRANSCRIPT_COVERAGE');
   const turns = clone(input.turns || []);
   invariant(Array.isArray(turns) && turns.length <= MAX_TRANSCRIPT_TURNS, 'Transcript turns must be a bounded array.', 'INVALID_TRANSCRIPT_COVERAGE');
   let previous = 0;
@@ -594,7 +668,8 @@ function normalizeTranscript(input, session, finalizedAt) {
   for (const turn of turns) {
     invariant(Number.isSafeInteger(turn.number) && turn.number > previous, 'Transcript turns must be positive and strictly increasing.', 'INVALID_TRANSCRIPT_COVERAGE');
     invariant(SPEAKERS.has(turn.speaker), 'Transcript speaker must be user or companion.', 'INVALID_TRANSCRIPT_COVERAGE');
-    assertTimestamp(turn.capturedAt, 'Transcript turn timestamp');
+    const capturedAt = Date.parse(assertTimestamp(turn.capturedAt, 'Transcript turn timestamp'));
+    invariant(capturedAt >= sessionStartedAt && capturedAt <= transcriptFinalizedAt, 'Transcript turn timestamp falls outside the session.', 'INVALID_TRANSCRIPT_COVERAGE');
     assertText(turn.content, 'Transcript turn');
     if (previous === 0 && turn.number > 1) computedGaps.push({ fromTurn: 1, toTurn: turn.number - 1, reason: 'capture_started_late' });
     else if (previous > 0 && turn.number > previous + 1) computedGaps.push({ fromTurn: previous + 1, toTurn: turn.number - 1, reason: 'not_captured' });
@@ -605,23 +680,44 @@ function normalizeTranscript(input, session, finalizedAt) {
   if (previous > 0 && expectedLastTurn > previous) computedGaps.push({ fromTurn: previous + 1, toTurn: expectedLastTurn, reason: 'capture_ended_early' });
   invariant(Array.isArray(input.knownGaps || []) && (input.knownGaps || []).length <= MAX_TRANSCRIPT_GAPS, 'Transcript gaps must be a bounded array.', 'INVALID_TRANSCRIPT_COVERAGE');
   invariant(Array.isArray(input.pausedIntervals || []) && (input.pausedIntervals || []).length <= MAX_PAUSED_INTERVALS, 'Transcript pauses must be a bounded array.', 'INVALID_TRANSCRIPT_COVERAGE');
-  const knownGaps = [...(input.knownGaps || []).map(normalizeGap), ...computedGaps];
-  const pausedIntervals = (input.pausedIntervals || []).map(normalizePausedInterval);
-  if (pausedIntervals.length && !knownGaps.some((gap) => gap.reason === 'paused_no_backfill')) {
-    for (const interval of pausedIntervals) knownGaps.push({ from: interval.startedAt, to: interval.endedAt, reason: 'paused_no_backfill' });
+  const knownGaps = [...(input.knownGaps || []).map(normalizeGap), ...computedGaps].map((gap) => {
+    if (gap.from === undefined) return gap;
+    const closedGap = gap.to === null ? { ...gap, to: finalizedAt } : gap;
+    const startedAt = Date.parse(closedGap.from);
+    const endedAt = Date.parse(closedGap.to);
+    invariant(startedAt >= sessionStartedAt && startedAt <= transcriptFinalizedAt && endedAt <= transcriptFinalizedAt,
+      'Transcript gap falls outside the session.', 'INVALID_TRANSCRIPT_COVERAGE');
+    return closedGap;
+  });
+  const pausedIntervals = (input.pausedIntervals || []).map(normalizePausedInterval).map((interval) => (
+    interval.endedAt === null ? { ...interval, endedAt: finalizedAt } : interval
+  ));
+  for (const interval of pausedIntervals) {
+    const startedAt = Date.parse(interval.startedAt);
+    const endedAt = interval.endedAt === null ? transcriptFinalizedAt : Date.parse(interval.endedAt);
+    invariant(startedAt >= sessionStartedAt && startedAt <= transcriptFinalizedAt && endedAt <= transcriptFinalizedAt,
+      'Transcript pause interval falls outside the session.', 'INVALID_TRANSCRIPT_COVERAGE');
+    invariant(!turns.some((turn) => {
+      const capturedAt = Date.parse(turn.capturedAt);
+      return capturedAt >= startedAt && capturedAt < endedAt;
+    }), 'Transcript contains a captured turn inside a no-backfill pause interval.', 'INVALID_TRANSCRIPT_COVERAGE');
+  }
+  for (const interval of pausedIntervals) {
+    if (!knownGaps.some((gap) => gap.reason === 'paused_no_backfill'
+      && gap.from === interval.startedAt && gap.to === interval.endedAt)) {
+      knownGaps.push({ from: interval.startedAt, to: interval.endedAt, reason: 'paused_no_backfill' });
+    }
   }
   invariant(knownGaps.length <= MAX_TRANSCRIPT_GAPS, 'Transcript gap metadata is too large.', 'INVALID_TRANSCRIPT_COVERAGE');
-  const proof = input.capabilityProof;
   const expectedCapability = input.captureGrade === 'client_captured'
     ? 'authoritative_client_event_stream'
     : input.captureGrade === 'turn_captured'
       ? 'transactional_per_turn_capture'
       : null;
-  const capabilityProofVerified = Boolean(expectedCapability
-    && proof?.verified === true
-    && proof.sessionId === session.id
-    && proof.captureGrade === input.captureGrade
-    && proof.capability === expectedCapability);
+  // Transcript JSON is caller-controlled. No public field can attest a capture
+  // capability; high-grade evidence stays downgraded until a non-forgeable
+  // adapter channel is implemented.
+  const capabilityProofVerified = false;
   const baseGrade = expectedCapability && !capabilityProofVerified ? 'best_effort_context' : input.captureGrade;
   const fullCoverageProven = capabilityProofVerified && input.captureComplete === true && turns.length > 0 && turns[0].number === 1 && previous === expectedLastTurn && knownGaps.length === 0;
   const captureGrade = knownGaps.length ? 'partial' : baseGrade;
@@ -659,7 +755,7 @@ function sessionNoteMarkdown(session, options, transcriptRelative, deepDiveRelat
   invariant(!body.startsWith('---\n'), 'Session note body must not supply frontmatter.', 'INVALID_ARTIFACT_CONTENT');
   const completion = options.completion || 'complete';
   invariant(['complete', 'interrupted_partial'].includes(completion), 'Session completion is invalid.', 'SESSION_STATE_INVALID');
-  const authorName = assertText(session.authorName || 'Scalvin', 'Companion author name');
+  const authorName = assertText(session.authorName || 'Susan', 'Companion author name');
   invariant(!/[\r\n]/.test(authorName), 'Companion author name cannot contain newlines.', 'INVALID_ARTIFACT_CONTENT');
   const deepDiveField = deepDiveRelative ? `\ndeep_dive: ${deepDiveRelative}` : '';
   return `---\nrecord_kind: ai_authored_session_note\nauthor_role: ai_companion\nauthor_name: ${JSON.stringify(authorName)}\nsession_id: ${session.id}\nstarted_at: ${session.startedAt}\nclosed_at: ${options.closedAt}\ntimezone: ${session.timezone}\ncompletion: ${completion}\nsource_transcript: ${transcriptRelative || 'none'}\nconsent_event_id: ${session.consentEventId || 'unknown'}${deepDiveField}\n---\n\n${body.endsWith('\n') ? body : `${body}\n`}`;
@@ -668,7 +764,7 @@ function sessionNoteMarkdown(session, options, transcriptRelative, deepDiveRelat
 function deepDiveMarkdown(session, options) {
   const body = assertText(options.deepDiveBody, 'Deep dive');
   invariant(!body.startsWith('---\n'), 'Deep-dive body must not supply frontmatter.', 'INVALID_ARTIFACT_CONTENT');
-  const authorName = assertText(session.authorName || 'Scalvin', 'Companion author name');
+  const authorName = assertText(session.authorName || 'Susan', 'Companion author name');
   invariant(!/[\r\n]/.test(authorName), 'Companion author name cannot contain newlines.', 'INVALID_ARTIFACT_CONTENT');
   const artifactId = `artifact-${session.id.slice(2).toLowerCase()}`;
   const data = `---\nrecord_kind: ai_authored_deep_dive\nartifact_id: ${artifactId}\nauthor_role: ai_companion\nauthor_name: ${JSON.stringify(authorName)}\nsession_id: ${session.id}\ncreated_at: ${options.closedAt}\ntimezone: ${session.timezone}\nconsent_event_id: ${session.consentEventId || 'unknown'}\nsource_memory_ids: []\nsource_ids: []\n---\n\n${body.endsWith('\n') ? body : `${body}\n`}`;
@@ -690,8 +786,10 @@ async function removeOwnedCheckpoint(workspace, session, options = {}) {
     const parsed = frontmatter(existing, { expectedRecordKind: 'session_checkpoint' });
     invariant(parsed.fields.record_kind === 'session_checkpoint' && parsed.fields.session_id === session.id, 'Checkpoint path belongs to another session.', 'ARTIFACT_COLLISION');
   }
-  await fsp.unlink(filename);
-  await fsyncDirectory(path.dirname(filename));
+  if (!options.planOnly) {
+    await fsp.unlink(filename);
+    await fsyncDirectory(path.dirname(filename));
+  }
   return true;
 }
 
@@ -707,38 +805,115 @@ async function closeSession(options = {}) {
   const closedAt = assertTimestamp(options.now || new Date().toISOString(), 'Session close');
   const completion = options.completion || (session.state === 'interrupted' ? 'interrupted_partial' : 'complete');
   invariant(completion === 'complete' || completion === 'interrupted_partial', 'Session completion is invalid.', 'SESSION_STATE_INVALID');
+  invariant(!(options.primerBody !== undefined && options.primerFields !== undefined), 'Next primer accepts either canonical fields or a complete file body, not both.', 'INVALID_ARGUMENT');
   const noteGate = persistenceDecision(options.canonicalState, 'session_notes');
   const primerGate = persistenceDecision(options.canonicalState, 'primers_and_checkpoints');
   const transcriptGate = transcriptDecision(options.canonicalState);
+  const primer = primerGate.allowed && (options.primerBody !== undefined || options.primerFields !== undefined)
+    ? options.primerFields === undefined
+      ? validatePrimerSingletonMarkdown(assertText(options.primerBody, 'Next primer'))
+      : renderPrimerSingleton({
+        ...options.primerFields,
+        closedSession: session.id,
+        closedAt
+      })
+    : null;
   const shouldWriteTranscript = Boolean(options.transcript) && transcriptGate.allowed;
+  let normalizedTranscript = transcriptSnapshot(session.transcript || {});
+  invariant(normalizedTranscript.finalizedAt === null || Date.parse(normalizedTranscript.finalizedAt) <= Date.parse(closedAt),
+    'Session close cannot precede transcript finalization.', 'INVALID_TRANSCRIPT_COVERAGE');
+  const terminalPausedIntervals = clone(normalizedTranscript.pausedIntervals);
+  const terminalKnownGaps = clone(normalizedTranscript.knownGaps);
+  if (normalizedTranscript.state === 'stopped' && normalizedTranscript.finalizedAt
+    && Date.parse(normalizedTranscript.finalizedAt) < Date.parse(closedAt)
+    && !terminalKnownGaps.some((gap) => gap.reason === 'capture_ended_early'
+      && gap.from === normalizedTranscript.finalizedAt && gap.to === closedAt)) {
+    terminalKnownGaps.push({ from: normalizedTranscript.finalizedAt, to: closedAt, reason: 'capture_ended_early' });
+  }
+  if (normalizedTranscript.state === 'paused') {
+    const interval = terminalPausedIntervals.at(-1);
+    if (interval?.endedAt === null) interval.endedAt = closedAt;
+  }
+  for (const interval of terminalPausedIntervals) {
+    if (interval.endedAt !== null && !terminalKnownGaps.some((gap) => gap.reason === 'paused_no_backfill' && gap.from === interval.startedAt)) {
+      terminalKnownGaps.push({ from: interval.startedAt, to: interval.endedAt, reason: 'paused_no_backfill' });
+    }
+  }
+  if (normalizedTranscript.state === 'stopped') {
+    normalizedTranscript = transcriptSnapshot({
+      ...normalizedTranscript,
+      pausedIntervals: terminalPausedIntervals,
+      knownGaps: terminalKnownGaps,
+      fullCoverageProven: false
+    });
+  }
+  if (shouldWriteTranscript) {
+    const suppliedGaps = Array.isArray(options.transcript.knownGaps) ? options.transcript.knownGaps : [];
+    const suppliedPauses = Array.isArray(options.transcript.pausedIntervals) ? options.transcript.pausedIntervals : [];
+    const suppliedTurns = Array.isArray(options.transcript.turns) ? options.transcript.turns : [];
+    for (const gap of terminalKnownGaps) {
+      if (gap.from === undefined) continue;
+      const from = Date.parse(gap.from);
+      const to = gap.to === null ? Date.parse(closedAt) : Date.parse(gap.to);
+      invariant(!suppliedTurns.some((turn) => {
+        const capturedAt = Date.parse(turn?.capturedAt);
+        return Number.isFinite(capturedAt) && capturedAt >= from && capturedAt < to;
+      }), 'Transcript contains a captured turn inside canonical no-capture evidence.', 'INVALID_TRANSCRIPT_COVERAGE');
+    }
+    const mergeUnique = (left, right) => {
+      const seen = new Set();
+      return [...left, ...right].filter((item) => {
+        const key = JSON.stringify(item);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    };
+    normalizedTranscript = normalizeTranscript({
+      ...options.transcript,
+      knownGaps: mergeUnique(terminalKnownGaps, suppliedGaps),
+      pausedIntervals: mergeUnique(terminalPausedIntervals, suppliedPauses)
+    }, session, closedAt);
+  } else if (['recording', 'paused'].includes(normalizedTranscript.state)) {
+    normalizedTranscript = transcriptSnapshot({
+      ...normalizedTranscript,
+      state: 'stopped',
+      finalizedAt: closedAt,
+      pausedIntervals: terminalPausedIntervals,
+      knownGaps: terminalKnownGaps,
+      fullCoverageProven: false
+    });
+  }
   const pause = options.canonicalState?.consent?.memoryPause?.state || 'none';
   const anyWriteAllowed = noteGate.allowed || primerGate.allowed || transcriptGate.allowed;
   if (pause !== 'none' || !anyWriteAllowed) {
+    const currentSessionId = options.canonicalState?.consent?.currentSessionId;
+    const canonicalLifecycle = options.canonicalState?.sessionLifecycle;
+    const closesCanonicalSession = typeof currentSessionId === 'string'
+      && currentSessionId.toLowerCase() === session.id.toLowerCase()
+      && typeof canonicalLifecycle?.sessionId === 'string'
+      && canonicalLifecycle.sessionId.toLowerCase() === session.id.toLowerCase()
+      && ['active', 'interrupted'].includes(canonicalLifecycle.state)
+      && canonicalLifecycle.startedAt === session.startedAt;
     session.state = 'closed';
     session.closedAt = closedAt;
     session.completion = completion;
+    session.transcript = normalizedTranscript;
     return {
       status: 'closed_ephemeral', writeDisposition: 'no_write',
       reason: pause !== 'none' ? pause : 'persistence_consent_off',
-      session, canonicalPatch: null, written: [], checkpointRetained: Boolean(session.checkpoint)
+      session,
+      canonicalPatch: closesCanonicalSession
+        ? canonicalPatch(session, {
+          state: 'closed', currentSessionId: null, checkpoint: session.checkpoint || null,
+          transcript: normalizedTranscript, closedAt, completion
+        })
+        : null,
+      written: [], checkpointRetained: Boolean(session.checkpoint)
     };
   }
 
   const written = [];
-  let normalizedTranscript = transcriptSnapshot(session.transcript || {});
-  if (shouldWriteTranscript) normalizedTranscript = normalizeTranscript(options.transcript, session, closedAt);
-  else if (['recording', 'paused'].includes(normalizedTranscript.state)) {
-    const pausedIntervals = clone(normalizedTranscript.pausedIntervals);
-    const knownGaps = clone(normalizedTranscript.knownGaps);
-    if (normalizedTranscript.state === 'paused') {
-      const interval = pausedIntervals.at(-1);
-      if (interval?.endedAt === null) interval.endedAt = closedAt;
-      if (interval && !knownGaps.some((gap) => gap.reason === 'paused_no_backfill' && gap.from === interval.startedAt)) {
-        knownGaps.push({ from: interval.startedAt, to: interval.endedAt, reason: 'paused_no_backfill' });
-      }
-    }
-    normalizedTranscript = transcriptSnapshot({ ...normalizedTranscript, state: 'stopped', finalizedAt: closedAt, pausedIntervals, knownGaps, fullCoverageProven: false });
-  }
   const transcriptRelative = shouldWriteTranscript ? session.paths.transcript : null;
   const shouldWriteDeepDive = options.deepDiveBody !== undefined && noteGate.allowed;
   const deepDiveRelative = shouldWriteDeepDive ? session.paths.deepDive : null;
@@ -747,7 +922,8 @@ async function closeSession(options = {}) {
   if (shouldWriteDeepDive) {
     const deepDive = deepDiveMarkdown(session, { ...options, closedAt });
     const deepDivePath = resolveArtifact(options.workspace, session.paths.deepDive);
-    await writeExclusiveArtifact(deepDivePath, deepDive, 'ai_authored_deep_dive', session.id);
+    if (options.planOnly) await planExclusiveArtifact(deepDivePath, deepDive, 'ai_authored_deep_dive', session.id);
+    else await writeExclusiveArtifact(deepDivePath, deepDive, 'ai_authored_deep_dive', session.id);
     written.push(session.paths.deepDive);
   }
   failpoint('close-after-deep-dive');
@@ -756,7 +932,8 @@ async function closeSession(options = {}) {
     invariant(typeof options.noteBody === 'string', 'A consented close requires a session note body.', 'SESSION_NOTE_REQUIRED');
     const note = sessionNoteMarkdown(session, { ...options, closedAt, completion }, transcriptRelative, deepDiveRelative);
     const notePath = resolveArtifact(options.workspace, session.paths.sessionNote);
-    await writeExclusiveArtifact(notePath, note, 'ai_authored_session_note', session.id);
+    if (options.planOnly) await planExclusiveArtifact(notePath, note, 'ai_authored_session_note', session.id);
+    else await writeExclusiveArtifact(notePath, note, 'ai_authored_session_note', session.id);
     written.push(session.paths.sessionNote);
   }
   failpoint('close-after-note');
@@ -764,19 +941,20 @@ async function closeSession(options = {}) {
   if (shouldWriteTranscript) {
     const transcript = transcriptMarkdown(session, normalizedTranscript);
     const transcriptPath = resolveArtifact(options.workspace, session.paths.transcript);
-    await writeExclusiveArtifact(transcriptPath, transcript, 'transcript', session.id);
+    if (options.planOnly) await planExclusiveArtifact(transcriptPath, transcript, 'transcript', session.id);
+    else await writeExclusiveArtifact(transcriptPath, transcript, 'transcript', session.id);
     written.push(session.paths.transcript);
   }
   failpoint('close-after-transcript');
 
-  if (primerGate.allowed && options.primerBody !== undefined) {
-    const primer = assertText(options.primerBody, 'Next primer');
+  if (primer !== null) {
     const primerPath = resolveArtifact(options.workspace, 'NEXT-PRIMER.md');
-    await atomicWriteFile(primerPath, primer.endsWith('\n') ? primer : `${primer}\n`, { mode: PRIVATE_FILE_MODE });
+    await rejectSymlinkPath(primerPath, { allowMissing: true });
+    if (!options.planOnly) await atomicWriteFile(primerPath, primer.endsWith('\n') ? primer : `${primer}\n`, { mode: PRIVATE_FILE_MODE });
     written.push('NEXT-PRIMER.md');
   }
   failpoint('close-before-checkpoint-remove');
-  const checkpointRemoved = primerGate.allowed ? await removeOwnedCheckpoint(options.workspace, session) : false;
+  const checkpointRemoved = primerGate.allowed ? await removeOwnedCheckpoint(options.workspace, session, { planOnly: options.planOnly === true }) : false;
 
   session.state = 'closed';
   session.closedAt = closedAt;
@@ -811,6 +989,63 @@ function parseCheckpointArray(fields, name, maxItems) {
   return value;
 }
 
+function checkpointBoolean(fields, name) {
+  invariant(['true', 'false'].includes(fields[name]), 'Checkpoint boolean metadata is invalid.', 'CHECKPOINT_METADATA_INVALID', { field: name });
+  return fields[name] === 'true';
+}
+
+function parseCheckpointTranscript(fields, sessionId) {
+  const knownGaps = parseCheckpointArray(fields, 'known_gaps', MAX_TRANSCRIPT_GAPS).map(normalizeGap);
+  let coveredTurns;
+  try {
+    coveredTurns = normalizeCoveredTurns(JSON.parse(fields.covered_turns));
+  } catch (error) {
+    throw lifecycleError('Checkpoint coverage metadata is invalid.', 'CHECKPOINT_METADATA_INVALID', { causeCode: error.code || 'INVALID_JSON' });
+  }
+  const currentFormat = Object.hasOwn(fields, 'paused_intervals');
+  if (!currentFormat) {
+    invariant(
+      fields.transcript_state === 'off' && fields.capture_grade === 'none'
+        && coveredTurns === null && knownGaps.length === 0,
+      'Legacy checkpoint transcript evidence is incomplete and cannot be recovered safely.',
+      'CHECKPOINT_METADATA_INVALID'
+    );
+    return transcriptSnapshot();
+  }
+  const pausedIntervals = parseCheckpointArray(fields, 'paused_intervals', MAX_PAUSED_INTERVALS).map(normalizePausedInterval);
+  const finalizedAt = fields.finalized_at === 'null'
+    ? null
+    : assertTimestamp(fields.finalized_at, 'Checkpoint transcript finalization');
+  const captureGrade = fields.capture_grade === 'none' ? null : fields.capture_grade;
+  const captureMethod = fields.capture_method === 'none' ? null : fields.capture_method;
+  const capabilityProofVerified = checkpointBoolean(fields, 'capability_proof_verified');
+  const fullCoverageProven = checkpointBoolean(fields, 'full_coverage_proven');
+  invariant(fields.verbatim_claim === 'false', 'Checkpoint transcript cannot claim verbatim capture.', 'CHECKPOINT_METADATA_INVALID');
+  // Checkpoints are not signed adapter attestations. Until an attested channel
+  // exists, persisted recovery evidence must never elevate these claims.
+  invariant(capabilityProofVerified === false && fullCoverageProven === false,
+    'Checkpoint capability claims are not independently attested.', 'CHECKPOINT_METADATA_INVALID');
+  const input = {
+    state: fields.transcript_state,
+    sessionId: fields.transcript_state === 'off' ? null : sessionId,
+    captureGrade,
+    captureMethod,
+    coveredTurns,
+    knownGaps,
+    pausedIntervals,
+    finalizedAt,
+    capabilityProofVerified: false,
+    fullCoverageProven: false,
+    verbatimClaim: false
+  };
+  const transcript = transcriptSnapshot(input);
+  for (const key of ['state', 'sessionId', 'captureGrade', 'captureMethod', 'coveredTurns', 'knownGaps', 'pausedIntervals', 'finalizedAt', 'capabilityProofVerified', 'fullCoverageProven', 'verbatimClaim']) {
+    invariant(JSON.stringify(transcript[key]) === JSON.stringify(input[key]),
+      'Checkpoint transcript metadata is not canonical.', 'CHECKPOINT_METADATA_INVALID', { field: key });
+  }
+  return transcript;
+}
+
 async function findInterruptedSessions(options = {}) {
   const consent = options.canonicalState?.consent;
   invariant(consent, 'Canonical consent state is required.', 'CONSENT_STATE_INVALID');
@@ -830,6 +1065,11 @@ async function findInterruptedSessions(options = {}) {
     const parsed = frontmatter(raw, { expectedRecordKind: 'session_checkpoint', code: 'CHECKPOINT_METADATA_INVALID' });
     if (parsed.fields.record_kind !== 'session_checkpoint' || !SESSION_ID_PATTERN.test(parsed.fields.session_id || '')) continue;
     if (!['active', 'interrupted'].includes(parsed.fields.lifecycle_state)) continue;
+    const canonicalLifecycle = options.canonicalState?.sessionLifecycle;
+    if (['closed', 'abandoned'].includes(canonicalLifecycle?.state)
+      && canonicalLifecycle.sessionId?.toLowerCase() === parsed.fields.session_id.toLowerCase()) {
+      continue;
+    }
     try {
       assertTimestamp(parsed.fields.started_at, 'Checkpoint session start');
       assertTimestamp(parsed.fields.updated_at, 'Checkpoint update');
@@ -839,13 +1079,11 @@ async function findInterruptedSessions(options = {}) {
     }
     const lastPersistedTurn = parsed.fields.last_persisted_turn === 'null' ? null : Number(parsed.fields.last_persisted_turn);
     invariant(lastPersistedTurn === null || (Number.isSafeInteger(lastPersistedTurn) && lastPersistedTurn > 0), 'Checkpoint turn metadata is invalid.', 'CHECKPOINT_METADATA_INVALID');
-    let knownGaps;
     let resumedAt;
-    let coveredTurns;
+    let recoveredTranscript;
     try {
-      knownGaps = parseCheckpointArray(parsed.fields, 'known_gaps', MAX_TRANSCRIPT_GAPS).map(normalizeGap);
       resumedAt = parseCheckpointArray(parsed.fields, 'resumed_at', MAX_PAUSED_INTERVALS).map((value) => assertTimestamp(value, 'Checkpoint resume'));
-      coveredTurns = normalizeCoveredTurns(JSON.parse(parsed.fields.covered_turns));
+      recoveredTranscript = parseCheckpointTranscript(parsed.fields, parsed.fields.session_id);
     } catch (error) {
       if (error.code === 'CHECKPOINT_METADATA_INVALID') throw error;
       throw lifecycleError('Checkpoint coverage metadata is invalid.', 'CHECKPOINT_METADATA_INVALID', { causeCode: error.code || 'INVALID_JSON' });
@@ -859,14 +1097,7 @@ async function findInterruptedSessions(options = {}) {
       updatedAt: parsed.fields.updated_at,
       lastPersistedTurn
     };
-    const recoveredTranscript = transcriptSnapshot({
-      state: parsed.fields.transcript_state,
-      sessionId: parsed.fields.session_id,
-      captureGrade: parsed.fields.capture_grade === 'none' ? null : parsed.fields.capture_grade,
-      coveredTurns,
-      knownGaps
-    });
-    const recoveredSession = {
+    let recoveredSession = {
       id: parsed.fields.session_id,
       state: 'interrupted',
       startedAt: parsed.fields.started_at,
@@ -880,6 +1111,34 @@ async function findInterruptedSessions(options = {}) {
       checkpoint,
       transcript: recoveredTranscript
     };
+    const canonicalMatches = ['active', 'interrupted'].includes(canonicalLifecycle?.state)
+      && canonicalLifecycle.sessionId?.toLowerCase() === parsed.fields.session_id.toLowerCase()
+      && canonicalLifecycle.checkpoint?.path === relative;
+    if (canonicalMatches) {
+      invariant(canonicalLifecycle.startedAt === parsed.fields.started_at
+        && canonicalLifecycle.timezone === parsed.fields.timezone,
+      'Checkpoint identity conflicts with canonical lifecycle state.', 'CHECKPOINT_METADATA_INVALID');
+      recoveredSession = {
+        ...recoveredSession,
+        startedAt: canonicalLifecycle.startedAt,
+        startedAtUtc: canonicalLifecycle.startedAtUtc,
+        timezone: canonicalLifecycle.timezone,
+        resumedAt: clone(canonicalLifecycle.resumedAt),
+        lastPersistedTurn: canonicalLifecycle.checkpoint.lastPersistedTurn,
+        checkpoint: clone(canonicalLifecycle.checkpoint),
+        transcript: transcriptSnapshot(canonicalLifecycle.transcript)
+      };
+    }
+    validateSessionLifecyclePatch({
+      consent: { currentSessionId: recoveredSession.id },
+      sessionLifecycle: {
+        state: 'interrupted', sessionId: recoveredSession.id,
+        startedAt: recoveredSession.startedAt, startedAtUtc: recoveredSession.startedAtUtc,
+        timezone: recoveredSession.timezone, resumedAt: clone(recoveredSession.resumedAt),
+        closedAt: null, completion: null, checkpoint: clone(recoveredSession.checkpoint),
+        transcript: clone(recoveredSession.transcript)
+      }
+    });
     candidates.push({
       sessionId: parsed.fields.session_id,
       checkpointPath: relative,
@@ -888,8 +1147,8 @@ async function findInterruptedSessions(options = {}) {
       timezone: parsed.fields.timezone,
       lifecycleState: parsed.fields.lifecycle_state,
       lastPersistedTurn: checkpoint.lastPersistedTurn,
-      captureGrade: recoveredTranscript.captureGrade,
-      knownGaps: recoveredTranscript.knownGaps,
+      captureGrade: recoveredSession.transcript.captureGrade,
+      knownGaps: recoveredSession.transcript.knownGaps,
       recoveryReason: closeArtifactPresent ? 'close_incomplete' : 'interrupted',
       session: recoveredSession
     });
@@ -902,33 +1161,84 @@ async function findInterruptedSessions(options = {}) {
   };
 }
 
+function finalizeInterruptedTranscript(session, now) {
+  const current = transcriptSnapshot(session.transcript || {});
+  if (!['recording', 'paused'].includes(current.state)) return current;
+  const pausedIntervals = clone(current.pausedIntervals || []);
+  const knownGaps = clone(current.knownGaps || []);
+  if (current.state === 'paused') {
+    const interval = pausedIntervals.at(-1);
+    if (interval?.endedAt === null) interval.endedAt = now;
+    if (interval && !knownGaps.some((gap) => gap.reason === 'paused_no_backfill'
+      && gap.from === interval.startedAt && gap.to === interval.endedAt)) {
+      knownGaps.push({ from: interval.startedAt, to: interval.endedAt, reason: 'paused_no_backfill' });
+    }
+  }
+  const interruptedFrom = session.checkpoint?.updatedAt || session.startedAt;
+  if (!knownGaps.some((gap) => gap.reason === 'interrupted' && gap.from === interruptedFrom && gap.to === now)) {
+    knownGaps.push({ from: interruptedFrom, to: now, reason: 'interrupted' });
+  }
+  return transcriptSnapshot({
+    ...current,
+    state: 'stopped',
+    pausedIntervals,
+    knownGaps,
+    finalizedAt: now,
+    fullCoverageProven: false
+  });
+}
+
 async function recoverSession(options = {}) {
   const action = options.action;
   invariant(['continue', 'close_interrupted', 'delete', 'abandon'].includes(action), 'Recovery action is invalid.', 'INVALID_ARGUMENT');
   const session = clone(options.session);
   assertSessionDescriptor(session);
   invariant(session && ['active', 'interrupted'].includes(session.state), 'Recovery requires an interrupted session descriptor.', 'SESSION_STATE_INVALID');
+  const now = assertTimestamp(options.now || new Date().toISOString(), 'Recovery timestamp');
+  invariant(Date.parse(now) >= Date.parse(session.startedAt)
+    && (!session.checkpoint?.updatedAt || Date.parse(now) >= Date.parse(session.checkpoint.updatedAt)),
+  'Recovery timestamp precedes the persisted session state.', 'INVALID_TIMESTAMP');
+  session.transcript = finalizeInterruptedTranscript(session, now);
   if (action === 'close_interrupted') {
     session.state = 'interrupted';
-    return closeSession({ ...options, session, explicit: true, completion: 'interrupted_partial' });
+    return closeSession({ ...options, session, now, explicit: true, completion: 'interrupted_partial' });
   }
   if (action === 'delete') {
-    const deleted = await removeOwnedCheckpoint(options.workspace, session, { withoutContentRead: true });
-    session.state = 'abandoned';
+    const deleted = await removeOwnedCheckpoint(options.workspace, session, { withoutContentRead: true, planOnly: options.planOnly === true });
+    const terminalLifecycle = options.canonicalState?.sessionLifecycle;
+    const preserveTerminalLifecycle = ['closed', 'abandoned'].includes(terminalLifecycle?.state)
+      && terminalLifecycle.sessionId?.toLowerCase() === session.id.toLowerCase()
+      && terminalLifecycle.checkpoint?.path === session.paths.checkpoint;
+    session.state = preserveTerminalLifecycle ? terminalLifecycle.state : 'abandoned';
     session.checkpoint = null;
     return {
       status: 'deleted', session,
-      canonicalPatch: canonicalPatch(session, { state: 'abandoned', currentSessionId: null, checkpoint: null }),
+      canonicalPatch: preserveTerminalLifecycle
+        ? validateSessionLifecyclePatch({
+          consent: { currentSessionId: null },
+          sessionLifecycle: { ...clone(terminalLifecycle), checkpoint: null }
+        })
+        : canonicalPatch(session, { state: 'abandoned', currentSessionId: null, checkpoint: null }),
       written: [], deleted: deleted ? [session.paths.checkpoint] : []
     };
   }
   const gate = persistenceDecision(options.canonicalState, 'primers_and_checkpoints');
-  if (!gate.allowed) return { status: 'skipped', reason: gate.reason, session, canonicalPatch: null, written: [] };
+  if (!gate.allowed) {
+    if (action !== 'abandon') return { status: 'skipped', reason: gate.reason, session, canonicalPatch: null, written: [] };
+    session.state = 'abandoned';
+    return {
+      status: 'abandoned', reason: gate.reason, session,
+      canonicalPatch: canonicalPatch(session, {
+        state: 'abandoned', currentSessionId: null,
+        checkpoint: session.checkpoint || null, transcript: session.transcript
+      }),
+      written: []
+    };
+  }
   const filename = resolveArtifact(options.workspace, session.paths.checkpoint);
   const raw = await readRegularFile(filename);
   const parsed = frontmatter(raw, { expectedRecordKind: 'session_checkpoint' });
   invariant(parsed.fields.record_kind === 'session_checkpoint' && parsed.fields.session_id === session.id, 'Checkpoint path belongs to another session.', 'ARTIFACT_COLLISION');
-  const now = assertTimestamp(options.now || new Date().toISOString(), 'Recovery timestamp');
   if (action === 'continue') {
     invariant(options.canResumeContext === true, 'Continue requires proof that the same client context can resume.', 'RESUME_CONTEXT_UNAVAILABLE');
     session.state = 'active';
@@ -936,12 +1246,13 @@ async function recoverSession(options = {}) {
   } else {
     session.state = 'abandoned';
   }
-  let header = parsed.header.replace(/^lifecycle_state:.*$/m, `lifecycle_state: ${session.state}`);
-  header = header.replace(/^updated_at:.*$/m, `updated_at: ${now}`);
-  header = header.replace(/^resumed_at:.*$/m, `resumed_at: ${JSON.stringify(session.resumedAt || [])}`);
+  const turn = session.lastPersistedTurn || session.checkpoint?.lastPersistedTurn;
+  const header = checkpointHeader(session, session.transcript, now, turn);
   const updatedRaw = `---\n${header}\n---\n${parsed.body}`;
-  await atomicWriteFile(filename, updatedRaw, { mode: PRIVATE_FILE_MODE });
-  await verifyExactFile(filename, updatedRaw);
+  if (!options.planOnly) {
+    await atomicWriteFile(filename, updatedRaw, { mode: PRIVATE_FILE_MODE });
+    await verifyExactFile(filename, updatedRaw);
+  }
   session.checkpoint = { ...(session.checkpoint || {}), path: session.paths.checkpoint, updatedAt: now };
   return {
     status: action === 'continue' ? 'continued' : 'abandoned',
@@ -954,6 +1265,7 @@ async function recoverSession(options = {}) {
 module.exports = {
   SESSION_ID_PATTERN,
   CAPTURE_GRADES,
+  assertTimestamp,
   artifactPaths,
   persistenceDecision,
   transcriptDecision,

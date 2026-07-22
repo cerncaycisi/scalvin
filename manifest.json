@@ -14,9 +14,9 @@
   "consentNoticeVersion": "1.0.0",
   "defaults": {
     "workspace": "~/scalvin-workspace",
-    "companionName": "Scalvin",
+    "companionName": "Susan",
     "language": "auto",
-    "persona": "scalvin",
+    "persona": "susan",
     "structure": "moderate",
     "modalities": [
       "act",
@@ -81,7 +81,7 @@
       "path": "adapters/workspace/AGENTS.template.md",
       "source": "repo:adapters/workspace/AGENTS.template.md",
       "version": "1.0.0",
-      "sha256": "2beaa237646d145801d48ae0e8a2510b2adc3667a2ae322e7277f1d2e8aebee9",
+      "sha256": "155480a71cb114b0ac6a6ddd52493c4a7c6747fb3676d1cf92cf1244a1327551",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -97,10 +97,24 @@
       ]
     },
     {
+      "path": "adapters/workspace/CLAUDE-PERMISSIONS.template.json",
+      "source": "repo:adapters/workspace/CLAUDE-PERMISSIONS.template.json",
+      "version": "1.0.0",
+      "sha256": "2046f3046e6deb481593a7e91b190f34729f4a5dfdd6f7b71cffe7ca0437b993",
+      "role": "client-adapter",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/adapters/workspace/CLAUDE-PERMISSIONS.template.json",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
       "path": "adapters/workspace/CLAUDE.template.md",
       "source": "repo:adapters/workspace/CLAUDE.template.md",
       "version": "1.0.0",
-      "sha256": "ff2b9b4adf40b8fb023c632153672dacb5c322a521695f27dbda81ea1d393fa9",
+      "sha256": "1c6c5a718d0d0f0cb6da0b7c0668b06b3d5dee0fd39e0a617adfdb5aa2899ec9",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -119,7 +133,7 @@
       "path": "adapters/workspace/START-CLAUDE-SESSION.template.md",
       "source": "repo:adapters/workspace/START-CLAUDE-SESSION.template.md",
       "version": "1.0.0",
-      "sha256": "4bac703db3759d0259656db60be437bbcad4b6cea93099e6b58700cb040b2ea9",
+      "sha256": "cd8c37d6aa79ca591d971786b1ce7722bcbb084ffae72f142c8a198173825597",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -138,7 +152,7 @@
       "path": "adapters/workspace/START-CODEX-SESSION.template.md",
       "source": "repo:adapters/workspace/START-CODEX-SESSION.template.md",
       "version": "1.0.0",
-      "sha256": "b82dac62a638eb03b689f80a7a6344ab4cc94797e2dde0fbe2a824b16cd40068",
+      "sha256": "67db49f2f44bffcc28af8f7abc849d834dc923f1e6af853f2719efac699d6e44",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -157,7 +171,7 @@
       "path": "adapters/workspace/STARTER.template.md",
       "source": "repo:adapters/workspace/STARTER.template.md",
       "version": "1.0.0",
-      "sha256": "27520aa9deae07f81a3638acf444708e44f62e438d9e289b12dd3b86af996bd5",
+      "sha256": "f318841b2abe4049ef6f553c2ad91a30c53623eaf1b5f1f9c0daa135faadc205",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -173,10 +187,295 @@
       ]
     },
     {
+      "path": "adapters/workspace/claude.mcp.template.json",
+      "source": "repo:adapters/workspace/claude.mcp.template.json",
+      "version": "1.0.0",
+      "sha256": "5efba77297a312b887e859546a5b4586d7f491ca3444d3d472d866902215e72a",
+      "role": "client-adapter",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/adapters/workspace/claude.mcp.template.json",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "adapters/workspace/codex.config.template.toml",
+      "source": "repo:adapters/workspace/codex.config.template.toml",
+      "version": "2.0.0",
+      "sha256": "1457a3e7e9bc5e59d2e648d9cc466779ab7d6ad71570e7947355f951b68a36cd",
+      "role": "client-adapter",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/library/adapters/workspace/codex.config.template.toml",
+          "protection": "framework"
+        },
+        {
+          "path": ".codex/config.toml",
+          "protection": "active",
+          "render": "placeholders"
+        }
+      ]
+    },
+    {
+      "path": "bin/scalvin-mcp.js",
+      "source": "repo:bin/scalvin-mcp.js",
+      "version": "1.0.0",
+      "sha256": "8f74f090e97ac3f229182b0fc681f738ea8d7d6f408040455e860d83220c1068",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "bin/scalvin-source-worker.js",
+      "source": "repo:bin/scalvin-source-worker.js",
+      "version": "1.0.0",
+      "sha256": "31546dfe0a038aa1293ca774a195fd6b9f4cf8a60d68c0b3f9f53e1d30130bc4",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "bin/scalvin.js",
+      "source": "repo:bin/scalvin.js",
+      "version": "1.0.0",
+      "sha256": "e62bbaf569f95cf017e534c372d47d09b092590e0bf4478fd934d5ace9e5cf2f",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/change-control.js",
+      "source": "repo:cli/change-control.js",
+      "version": "1.0.0",
+      "sha256": "11f10c83c34ac8a54548cbb8273d25c92ed4375925688743a6d3e8fee8241df7",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/client-launcher.js",
+      "source": "repo:cli/client-launcher.js",
+      "version": "1.0.0",
+      "sha256": "03af177d00eac962af825738bdbe3e221490176d6e26be02d4911f5c0d706c15",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/context-graph.js",
+      "source": "repo:cli/context-graph.js",
+      "version": "1.0.0",
+      "sha256": "a1947c253998a026fcac84552241f4877e45a1184518c0d9b86a366d06f34c3c",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/doctor.js",
+      "source": "repo:cli/doctor.js",
+      "version": "1.0.0",
+      "sha256": "a2897a5109af8164cdf29b95ddaa03f9d44a40a47be5d989e4f7f10e3841b90e",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/index.js",
+      "source": "repo:cli/index.js",
+      "version": "1.0.0",
+      "sha256": "b711af350c406b56f9ea5192331731446d1316236f76704cfebfc7d76650e96c",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/args.js",
+      "source": "repo:cli/lib/args.js",
+      "version": "1.0.0",
+      "sha256": "99972ce31a1983ccdff16596f004b75e072ba84d3a9761a41b04ba2acd275f94",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/backup-crypto.js",
+      "source": "repo:cli/lib/backup-crypto.js",
+      "version": "1.0.0",
+      "sha256": "e7b00272d8af5a50a3ea4dfafe5241cdd10d23951e7b185a395e827a0e2da454",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/backup-reminder.js",
+      "source": "repo:cli/lib/backup-reminder.js",
+      "version": "1.0.0",
+      "sha256": "ca15d35aea7a863b2965de4454a364eeb750f1b03e7348d3291c8c1451324f26",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/backup.js",
+      "source": "repo:cli/lib/backup.js",
+      "version": "1.0.0",
+      "sha256": "7ddfa10de0be914c312492ecfab367eea9418fe7a607d91f29aace6ad435721f",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/errors.js",
+      "source": "repo:cli/lib/errors.js",
+      "version": "1.0.0",
+      "sha256": "8e9109924ba14b386a7df51ae525c4feed9605d84ec88d9582ed087b51a399c5",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/fs-safe.js",
+      "source": "repo:cli/lib/fs-safe.js",
+      "version": "1.0.0",
+      "sha256": "7ca364b7ed4eae645256cecca4011e4289efb38e312bf667947aeddbb98eed34",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/manifest.js",
+      "source": "repo:cli/lib/manifest.js",
+      "version": "1.0.0",
+      "sha256": "fb7f2b9efdb6c90e74fc6f68b71efc60c5806c8ba663d847d4916413c4c5c2ee",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/operation-journal.js",
+      "source": "repo:cli/lib/operation-journal.js",
+      "version": "1.0.0",
+      "sha256": "4b7d73bc9151a447b21f293c5b4e3c44774bbf1d897efc5d10dc83d67e410ca1",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/source-provenance.js",
+      "source": "repo:cli/lib/source-provenance.js",
+      "version": "1.0.0",
+      "sha256": "ba3275f4226ad3155078f11756131e952d1414f30c289d4adaed4735e983cdea",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/workspace.js",
+      "source": "repo:cli/lib/workspace.js",
+      "version": "1.0.0",
+      "sha256": "ca691c75e7e08ceaddb38ec0610a3604af7a66781ec308693873cd174b1e3c31",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/mcp-server.js",
+      "source": "repo:cli/mcp-server.js",
+      "version": "1.0.0",
+      "sha256": "d1db295e97ce73a39cc56642f4d3579cab8aa497b9c7f91cf85a67ca4561a29c",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/memory-data.js",
+      "source": "repo:cli/memory-data.js",
+      "version": "1.0.0",
+      "sha256": "05b10bc2397edbdeed68ff683c2fd928a66209e22726030e5e87dc55b66bae0d",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/memory-review.js",
+      "source": "repo:cli/memory-review.js",
+      "version": "1.0.0",
+      "sha256": "e4f4790669fc99e15cf291eb98e31067a739386e9934edbca0dff7a95e724032",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/operations.js",
+      "source": "repo:cli/operations.js",
+      "version": "1.0.0",
+      "sha256": "f631a449ec20bfe1301df642a409fe4c09e4962b749429388dac1ea3fdc40764",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/review-due.js",
+      "source": "repo:cli/review-due.js",
+      "version": "1.0.0",
+      "sha256": "c7d9d4c1f7c902e757b0384791fa219ba8a71c7efa5f7e6592a83a38a34ddf92",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/session-lifecycle.js",
+      "source": "repo:cli/session-lifecycle.js",
+      "version": "1.0.0",
+      "sha256": "5fd1dfece39fc5b666d8bdb68b0ddcf60221b9dd4da7088ae9fb0f704fe68249",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/session-supervisor.js",
+      "source": "repo:cli/session-supervisor.js",
+      "version": "1.0.0",
+      "sha256": "f71480acfc216a416fff9d791cb5979c8c6daa54eb38f8d7f94946f1c6e39bad",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/source-inspect.js",
+      "source": "repo:cli/source-inspect.js",
+      "version": "1.0.0",
+      "sha256": "78e259cf43bd606acc6e718d1dc54d6901e24e10ce8599d39378a8b48dc36a14",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/source-lifecycle.js",
+      "source": "repo:cli/source-lifecycle.js",
+      "version": "1.0.0",
+      "sha256": "e91394c287e50afa7fffb0a9b7ca6bc66ceb57465469c803ad3dfd307a4b4773",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/source-worker.js",
+      "source": "repo:cli/source-worker.js",
+      "version": "1.0.0",
+      "sha256": "c4892ddb8152d26fa6e91679435e82e1048bf9731b54983a7f43155ec2be01c9",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
       "path": "commands.md",
       "source": "repo:commands.md",
       "version": "1.0.0",
-      "sha256": "77b213c0bc84a1b69a128d6ac7b86cd603d8465ba34bd11c11b3dca644da235b",
+      "sha256": "1436fe0c172c6520048a5492fc2b6d1c9f485a00bbd408a37c3a2eba40388029",
       "role": "command-router",
       "protection": "framework",
       "targets": [
@@ -201,10 +500,38 @@
       ]
     },
     {
+      "path": "hooks/emergency-resources.cjs",
+      "source": "repo:hooks/emergency-resources.cjs",
+      "version": "1.0.0",
+      "sha256": "62126e04b50d490b9c0caac6f6427651719c62d76f241f6e9174889358d76ec6",
+      "role": "client-hook-data:emergency-resources",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/hooks/emergency-resources.cjs",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
+      "path": "hooks/emergency-resources.json",
+      "source": "repo:hooks/emergency-resources.json",
+      "version": "1.0.0",
+      "sha256": "7dba36cceabfb02ca5436a3168e9c3512072107bbfc6eeeeff16aaeb70b30f74",
+      "role": "client-hook-data:emergency-resources",
+      "protection": "framework",
+      "targets": [
+        {
+          "path": ".therapy/hooks/emergency-resources.json",
+          "protection": "framework"
+        }
+      ]
+    },
+    {
       "path": "hooks/safety-locales/en.json",
       "source": "repo:hooks/safety-locales/en.json",
       "version": "1.0.0",
-      "sha256": "7dc4a15c83a6282fa16a5d7db91f15d4b65ee13a7128c874182ea492c5afad60",
+      "sha256": "f71685e93fe901a873ea55cd42e1eab621edf424386dc5f67bcf54493372ddba",
       "role": "client-hook-data:safety-locale",
       "protection": "framework",
       "targets": [
@@ -218,7 +545,7 @@
       "path": "hooks/safety-locales/tr.json",
       "source": "repo:hooks/safety-locales/tr.json",
       "version": "1.0.0",
-      "sha256": "7d2e7d20ca8d06aaec1e821505cc49ff18dc4e08d1c952c3a9f683ebe6a9be54",
+      "sha256": "3e74b16fcb0fcd6d9f14b2ca1653ccc0f52f0d4ac1bbbc202e19d457551609cd",
       "role": "client-hook-data:safety-locale",
       "protection": "framework",
       "targets": [
@@ -231,8 +558,8 @@
     {
       "path": "hooks/safety-net.cjs",
       "source": "repo:hooks/safety-net.cjs",
-      "version": "1.2.0",
-      "sha256": "2c2580502c19ed4219b7879452788fe52ddd63c6c8143814f89ab256efb8b01f",
+      "version": "1.4.0",
+      "sha256": "c6273313be324ed3a220ce2743d000e34fdfecbba18fbb9bed8c12eaaef35df0",
       "role": "client-hook:safety-net",
       "protection": "framework",
       "targets": [
@@ -245,8 +572,8 @@
     {
       "path": "modalities/act.md",
       "source": "repo:modalities/act.md",
-      "version": "3.0.0",
-      "sha256": "711a58ed786dec1fa0499565d6dd58e4c461e73ffde754d43b8a056044c25727",
+      "version": "3.1.0",
+      "sha256": "b5c2c82311cdcdd274e5093fbf51b6ecf413c7679c082fcacc10c71ad3c73ed4",
       "role": "modality",
       "protection": "framework",
       "targets": [
@@ -267,8 +594,8 @@
     {
       "path": "modalities/cbt.md",
       "source": "repo:modalities/cbt.md",
-      "version": "3.0.0",
-      "sha256": "efc2e8e043e61dc28e6d10ea55fa967e5ac070fb1bf9fae72cfcc5952d0e4d73",
+      "version": "3.1.0",
+      "sha256": "b4a7c9ddb3e5f8a982593df65ae1afaf617c6c70bb8a6000712ba7f1e532ba24",
       "role": "modality",
       "protection": "framework",
       "targets": [
@@ -289,8 +616,8 @@
     {
       "path": "modalities/cft.md",
       "source": "repo:modalities/cft.md",
-      "version": "3.0.0",
-      "sha256": "1194f7411d555b947db27f3466f1f1008dc07119d4b4d28d35269cdf0716b050",
+      "version": "3.1.0",
+      "sha256": "a2b40144895c70fcd89fdbf494850739cf10bb049fe1f4e886b61016930d7e69",
       "role": "modality",
       "protection": "framework",
       "targets": [
@@ -399,8 +726,8 @@
     {
       "path": "modalities/motivational-interviewing.md",
       "source": "repo:modalities/motivational-interviewing.md",
-      "version": "3.0.0",
-      "sha256": "62d24c6fdc6a669c7ed183f8ff571cca4c2041e25477d2a09856f27d4fd0430c",
+      "version": "3.1.0",
+      "sha256": "d35d818842eb3f3abbfb9f41926432b9bb759a8749e6503ae12bae2f6c6b8b52",
       "role": "modality",
       "protection": "framework",
       "targets": [
@@ -421,8 +748,8 @@
     {
       "path": "modalities/narrative.md",
       "source": "repo:modalities/narrative.md",
-      "version": "3.0.0",
-      "sha256": "b495a8907096e72e3a5a1b9eed1493e676a1e011cbc4e34d399a0a6d96112d89",
+      "version": "3.1.0",
+      "sha256": "c3a6fcb3778499e7ce6733c23296ff3c891341aec9b341d28528614c5e6b5288",
       "role": "modality",
       "protection": "framework",
       "targets": [
@@ -465,8 +792,8 @@
     {
       "path": "modalities/psychodynamic.md",
       "source": "repo:modalities/psychodynamic.md",
-      "version": "3.0.0",
-      "sha256": "7c0984b1066d657e8263f48b94b13bcc8e2acb3b7a77903839c58e247f60a051",
+      "version": "3.1.0",
+      "sha256": "3029be630e8c46b15f709d027cd556ddd2097e1676487540d6c093f38f9e0e2b",
       "role": "modality",
       "protection": "framework",
       "targets": [
@@ -487,8 +814,8 @@
     {
       "path": "modalities/sfbt.md",
       "source": "repo:modalities/sfbt.md",
-      "version": "3.0.0",
-      "sha256": "ec1288c624e928f7db961dc9a4d7cb716f4f44fc15eee54426c0c5feb2cf72f7",
+      "version": "3.1.0",
+      "sha256": "700021e588cae0f10ae6ce05b51bc2f215365c9e42e1d8f6dbc6cd548586d3de",
       "role": "modality",
       "protection": "framework",
       "targets": [
@@ -683,32 +1010,10 @@
       ]
     },
     {
-      "path": "personas/scalvin.md",
-      "source": "repo:personas/scalvin.md",
-      "version": "1.0.0",
-      "sha256": "5e51cfe0eacbbbe86c6885b73d4882b3d2b9e5b80b9fe5b04c47cebd798ab374",
-      "role": "persona",
-      "protection": "framework",
-      "targets": [
-        {
-          "path": ".therapy/library/personas/scalvin.md",
-          "protection": "framework"
-        },
-        {
-          "path": ".therapy/persona.md",
-          "protection": "active",
-          "activation": {
-            "group": "persona",
-            "name": "scalvin"
-          }
-        }
-      ]
-    },
-    {
       "path": "personas/susan.md",
       "source": "repo:personas/susan.md",
-      "version": "3.0.0",
-      "sha256": "756dda05739e95549f51d434e3a33cea4552b2d741a71d05a9a7658c833f466a",
+      "version": "3.1.0",
+      "sha256": "734f57e57a0c4f3a56fb4a00d184fbf1d0e3f9c4e2b8f7ca4b2d54935807e83f",
       "role": "persona",
       "protection": "framework",
       "targets": [
@@ -771,7 +1076,7 @@
       "path": "runtime/CLIENT-TOLD-MEMORIES.md",
       "source": "repo:runtime/CLIENT-TOLD-MEMORIES.md",
       "version": "2.0.0",
-      "sha256": "961bb363d75cb85c720e2792091c5dc76b36a48ec95d594bdd78c3933f869a51",
+      "sha256": "c03807eb8d521fdd74cb7c6c2b1df1501850f886431deec531983cd5753e2777",
       "role": "runtime",
       "protection": "framework",
       "targets": [
@@ -844,7 +1149,7 @@
       "path": "runtime/DATA-AND-CONSENT.md",
       "source": "repo:runtime/DATA-AND-CONSENT.md",
       "version": "1.0.0",
-      "sha256": "f191d51bb1378e0e61ef00889d327d8f522ae7bb9ce459e684e2b36b4cde8e9e",
+      "sha256": "89779370f32d6b39f94c3e01c0af12023a93ad9a69901ddb248fee27c11e7581",
       "role": "runtime",
       "protection": "framework",
       "targets": [
@@ -953,7 +1258,7 @@
       "path": "runtime/REVIEW-DUE-CHECK.md",
       "source": "repo:runtime/REVIEW-DUE-CHECK.md",
       "version": "3.1.0",
-      "sha256": "3d4177e7dbbbaa8bb0f3d660b17ace840cbe9eb6d648425fdcc1bf697703ea53",
+      "sha256": "821be1211fac329db94f63713e32333f2f3933e10eebbd8bae2d00c221275af0",
       "role": "runtime",
       "protection": "framework",
       "targets": [
@@ -989,7 +1294,7 @@
       "path": "runtime/SELF-MODIFICATION.md",
       "source": "repo:runtime/SELF-MODIFICATION.md",
       "version": "1.0.0",
-      "sha256": "ac2ad4a0ce438366ca870db60beefec739d274fa9896d4a64163e81ce0a03eed",
+      "sha256": "96fe68d1dd56c385bd948303ba84acab67dde79034866399e6376deace8f12b4",
       "role": "runtime",
       "protection": "framework",
       "targets": [
@@ -1007,7 +1312,7 @@
       "path": "runtime/SESSION-CLOSE-REVIEW.md",
       "source": "repo:runtime/SESSION-CLOSE-REVIEW.md",
       "version": "4.0.0",
-      "sha256": "47433fa9e3a85bd12cf165af434f604518527c479435e0196cefd594338a0749",
+      "sha256": "3ce24fc3f64b542489e390ed29c503b9931eedf723278c9f124f009c6301ad26",
       "role": "runtime",
       "protection": "framework",
       "targets": [
@@ -1025,7 +1330,7 @@
       "path": "runtime/SESSION-LIFECYCLE.md",
       "source": "repo:runtime/SESSION-LIFECYCLE.md",
       "version": "1.1.0",
-      "sha256": "4b96e8f1db3b6b3fbcf818483f9ec12a7f310eb2c679824a180984c97f115df9",
+      "sha256": "5f2530d80ce0ffa7a73c07719b102ff8a2fa144a431ad7f700ae8f41ea33140f",
       "role": "runtime",
       "protection": "framework",
       "targets": [
@@ -1078,8 +1383,8 @@
     {
       "path": "runtime/SETUP-NOTES.template.md",
       "source": "repo:runtime/SETUP-NOTES.template.md",
-      "version": "2.0.0",
-      "sha256": "c8e487c8663e93786374986ce29ec0c2bb3c08e4418c337236049eb2f13a28ee",
+      "version": "3.0.0",
+      "sha256": "68ec48c11c0ae204e86ed308dfdc8caf30ed66c930524268e68d24000efae18b",
       "role": "living-template",
       "protection": "seed",
       "targets": [
@@ -1097,8 +1402,8 @@
     {
       "path": "runtime/SOURCE-TRIGGERS.md",
       "source": "repo:runtime/SOURCE-TRIGGERS.md",
-      "version": "3.0.0",
-      "sha256": "fd3bf3f8fe7a680e209d12cc0cfe74fad936ad6d8939f7f7a71276173586d529",
+      "version": "4.0.0",
+      "sha256": "28c86c286d196c8f9c77cfe91536c40cc250928f6b20d3833b7678371a6b9d65",
       "role": "runtime",
       "protection": "framework",
       "targets": [
@@ -1115,8 +1420,8 @@
     {
       "path": "runtime/START-SESSION.md",
       "source": "repo:runtime/START-SESSION.md",
-      "version": "4.0.0",
-      "sha256": "3115bc6506bfb9641b1b79b1fbde84e15f3088321cfb08ce849c005af3ca4790",
+      "version": "5.0.0",
+      "sha256": "b76f4d5ba077e4faa06483c2cea466cdb7eac46d180e4bf39e349944677f0e32",
       "role": "session-entrypoint",
       "protection": "framework",
       "targets": [
@@ -1138,7 +1443,7 @@
       "path": "runtime/WEEKLY-REVIEW.md",
       "source": "repo:runtime/WEEKLY-REVIEW.md",
       "version": "4.1.0",
-      "sha256": "40b5afce6358106b2e927cc2447b86136533889b48084b561b1a4385545868f2",
+      "sha256": "d757303ed7cb452e81d1177d0aeafc28ff2e689dbcc9008723299e3744d12d55",
       "role": "runtime",
       "protection": "framework",
       "targets": [
@@ -1192,8 +1497,8 @@
     {
       "path": "safety-protocol.md",
       "source": "repo:safety-protocol.md",
-      "version": "2.0.0",
-      "sha256": "c90a08d9b9d2e70fdcf4e29ff5cadbf04e5c545985b26201479ec74df291618c",
+      "version": "2.1.0",
+      "sha256": "385b61baff891ab64d3fe88649c6e6fdef3b9f586c5d1909c040ba0f925321b9",
       "role": "safety-protocol",
       "protection": "framework",
       "targets": [
@@ -1207,7 +1512,7 @@
       "path": "schemas/manifest-v2.schema.json",
       "source": "repo:schemas/manifest-v2.schema.json",
       "version": "1.0.0",
-      "sha256": "43774bebc6db69c68bccf3109ee43c36e269f75d271ce4db72cf4326e08dcf70",
+      "sha256": "07362b3c6800d00d8173fd330998319004a56c940029fff7bce531ea668b433a",
       "role": "manifest-schema",
       "protection": "framework",
       "targets": [
@@ -1287,7 +1592,7 @@
       "path": "templates/archive/DEEP-DIVE.template.md",
       "source": "repo:templates/archive/DEEP-DIVE.template.md",
       "version": "1.0.0",
-      "sha256": "593707d2758b6fdcb40ec485d0c4a8d5372aa3677e60b05ea227e2e81bb359bd",
+      "sha256": "5ca18c5578f245b750d4cab69dc1ed5729b5d10c36bc766cf4f4fd98ee53e763",
       "role": "workspace-template",
       "protection": "framework",
       "targets": [
@@ -1320,7 +1625,7 @@
       "path": "templates/archive/checkpoints/CHECKPOINT.template.md",
       "source": "repo:templates/archive/checkpoints/CHECKPOINT.template.md",
       "version": "1.0.0",
-      "sha256": "4e5a0d2f5bc212c1e769c31951d9b44c3fec390a350be05c5827fd8c45cb755f",
+      "sha256": "ace546f7d931e80f7dd1e73d2f2d44d19838f266b9b7e633177934e54e28e153",
       "role": "workspace-template",
       "protection": "framework",
       "targets": [
@@ -1465,7 +1770,7 @@
       "path": "templates/sessions/SESSION-NOTE.template.md",
       "source": "repo:templates/sessions/SESSION-NOTE.template.md",
       "version": "1.0.0",
-      "sha256": "5372474d4330f3e59a5ef7f47fc8b31f453fc94ca2d819c7ae88865f8164788f",
+      "sha256": "d2992dd6fa680ed76dab7a4c3e0ff756c68843b07f860f374e68b71d060fede0",
       "role": "workspace-template",
       "protection": "framework",
       "targets": [
@@ -1479,7 +1784,7 @@
       "path": "templates/sources/CLIENT-TOLD-MEMORIES.template.md",
       "source": "repo:templates/sources/CLIENT-TOLD-MEMORIES.template.md",
       "version": "1.0.0",
-      "sha256": "cfe997652d8bdb56c896a581c8fd5880d7c977926088b114853109e00e2ccbbc",
+      "sha256": "5421c005c04d2c46e7550b998deef753a3cff3934b348352babf6a222ea983cf",
       "role": "workspace-template",
       "protection": "framework",
       "targets": [
@@ -1507,7 +1812,7 @@
       "path": "templates/sources/README.template.md",
       "source": "repo:templates/sources/README.template.md",
       "version": "1.0.0",
-      "sha256": "7b2b892332442a875d08133bde20dbec5920d8fb78a98c6f79799cf48e870074",
+      "sha256": "c4e90620aa7d02ac4155f64f7336f671773f72187a22b5e3609189774f7d2d8b",
       "role": "workspace-template",
       "protection": "framework",
       "targets": [

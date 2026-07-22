@@ -14,22 +14,27 @@ Usage:
   scalvin update --workspace PATH --manifest-sha256 HASH [--release VERSION] [--force --confirm TOKEN]
   scalvin doctor --workspace PATH [--json]
   scalvin backup --workspace PATH [--action create|status|verify|delete] [--id BACKUP_ID] [--backup PATH] [backup options] [--json]
+  scalvin backup --action key-create --output RECOVERY_KEY_FILE [--dry-run] [--json]
   scalvin restore --backup BACKUP_DIR --workspace PATH [--passphrase-file FILE] [--force] [--confirm TOKEN] [--dry-run] [--json]
   scalvin consent --workspace PATH (--status STATUS | --category CATEGORY --value VALUE) [--retention POLICY] [--dry-run] [--json]
   scalvin memory --workspace PATH --action pause|seal|resume|status|view|export|correct|forget|delete-all|review-due|review-confirm|review-decline|review-suppress|review-unsuppress [memory options] [--json]
+  scalvin memory --workspace PATH --action retention-status [--data-class CLASS] [--now RFC3339] [--json]
+  scalvin memory --workspace PATH --action retention-set --data-class CLASS --policy POLICY [--days N | --expires-at RFC3339] [--now RFC3339] [--dry-run] [--json]
+  scalvin memory --workspace PATH --action retention-apply --data-class CLASS [--now RFC3339] [--confirm TOKEN] [--dry-run] [--json]
   scalvin transcript --workspace PATH --action start|pause|resume|stop|status|delete [--session-id ID | --scope all] [--confirm TOKEN] [--json]
   scalvin session begin|checkpoint|close|recover|status --workspace PATH [session options] [--json]
   scalvin context status|show|add|correct|status-change|forget|merge|backfill --workspace PATH [context options] [--json]
   scalvin changes propose|approve|reject|history|rollback --workspace PATH [change options] [--json]
+  scalvin client launch --workspace PATH [--client codex|claude] [--client-bin PATH] [--json]
   scalvin preferences --workspace PATH [--language auto|BCP-47] [--timezone IANA] [--preferred-user-name NAME | --clear-preferred-user-name] [accessibility flags] [--dry-run] [--json]
   scalvin source inspect --path FILE [--json]
-  scalvin source add|status|integrate|reject|delete --workspace PATH [source options] [--json]
+  scalvin source add|status|process|proposals|integrate|reject|delete --workspace PATH [source options] [--json]
   scalvin review-due --workspace PATH [--date YYYY-MM-DD] [--timezone IANA] [--json]
   scalvin help
   scalvin version
 
 Install selections:
-  --companion-name NAME   Companion display name (default: Scalvin)
+  --companion-name NAME   Companion display name (default: Susan)
   --language LANGUAGE     auto or a canonical BCP-47 conversation-language tag
   --persona SLUG          Active persona
   --structure SLUG        Active session structure
@@ -38,7 +43,7 @@ Install selections:
   --status STATUS         consent command target state: not-decided, granted, or declined
   --category CATEGORY     scoped consent category (for example raw_transcripts)
   --value VALUE           category-specific value such as on, off, ask, or ask_each_import
-  --retention POLICY      until_deleted or do_not_store; other policies fail closed as unsupported
+  --retention POLICY      Consent storage policy: until_deleted or do_not_store
 
 Safety and automation:
   --non-interactive       Confirm no prompts will be used (the CLI never prompts)
@@ -47,6 +52,10 @@ Safety and automation:
   --json                  Emit one machine-readable JSON result
   --backup-output DIR     Directory for automatic safety backups
   --passphrase-file FILE  Read an encryption passphrase from a private regular file
+  --backup-passphrase-file FILE  Protect an automatic safety backup with this private file
+  --recovery-key-output DIR  Private directory for generated recovery-key files
+  --allow-plaintext-backup  Explicitly create a confidentiality-unprotected backup
+  --allow-plaintext-export  Explicitly create a confidentiality-unprotected memory export
   --decline-reminder      Suppress backup reminders for 30 days
 
 Memory and deletion:
@@ -61,6 +70,17 @@ Memory and deletion:
   --reduced-metaphor MODE     unset, on, or off
   --extra-processing-time MODE  unset, on, or off
   Memory review actions always select one --id; review-due offers at most 3.
+
+Retention cleanup:
+  --data-class CLASS      Exact retained-data class; status may omit it to inspect all classes
+  --policy POLICY         inherit, session_only, rolling_days, or expire_at
+  --days N                1..36500; required only with rolling_days
+  --expires-at RFC3339    Exact expiry; required only with expire_at
+  --now RFC3339           Optional deterministic inspection/preview timestamp
+  retention-set changes the cleanup control only; it neither changes consent nor deletes data.
+  retention-apply is manual: it previews content-free counts and returns an exact
+  confirmation token before deleting supported due items. It is not a background scheduler.
+  Ambiguous or unsupported items remain blocked. Backups remain separate copies.
 
 Session lifecycle:
   --session-id ID         Exact s-<UUID-v4> session identity
@@ -107,9 +127,13 @@ Source lifecycle:
   --kind KIND             imported_source or external_care_note
   --locale BCP-47         Optional canonical source metadata only
   --provenance-file FILE  Bounded JSON provenance object; source text stays inert
-  --proposed-memory-id ID Proposed derived memory ID; repeat or comma-separate
-  Source integration previews its SHA-256 plus a plan token bound to revision,
-  consent proof, proposed IDs, and planned writes. Apply with that plan token.
+  --client NAME           Isolated source-worker client: codex or claude
+  --client-bin PATH       Optional exact absolute client executable
+  --proposed-memory-id ID Explicit user-approved candidate ID; repeat or comma-separate
+  Source processing uses a separate ephemeral client with built-in tools,
+  filesystem access, network tools, and session persistence disabled. The main
+  companion never receives raw source chunks. Integration requires the exact
+  attested proposal and an explicit candidate-ID selection.
   Reject/delete use a separate exact token.
 
 Update source:
@@ -122,7 +146,7 @@ Update source:
 function human(result) {
   const lines = [];
   if (result.status) lines.push(`status: ${result.status}`);
-  for (const key of ['workspacePath', 'workspaceId', 'version', 'language', 'backupPath', 'backupId', 'backupStatus', 'sourceId', 'revision', 'sha256', 'byteLength', 'files', 'changes', 'changeId', 'revisionId', 'sourceRevisionId', 'changeTarget', 'setting', 'entityId', 'type', 'contextStatus', 'counts', 'total', 'dormantCountOnly', 'entity', 'canonicalEntity', 'mergedEntity', 'proposedEntity', 'candidates', 'approvedIds', 'possibleDuplicates', 'addedCount', 'referenceRewrites', 'knownBackupRecords', 'backupLedgerAvailable', 'receiptPlanned', 'receiptReason', 'managedArtifactCount', 'deletedArtifactCount', 'resetArtifactCount', 'deletedCategories', 'retainedOperationalCategories', 'retainedSeparateCopies', 'activeWorkspaceUpdated', 'deletionComplete', 'workspaceApplied', 'localPointerWritten', 'restoreApplied', 'artifactDeleted', 'ledgerWritten', 'ledgerReason', 'mutationLockReleased', 'commandCompleted', 'fromRevision', 'toRevision', 'before', 'after', 'expectedHash', 'confirmationRequired', 'recordCount', 'operationReceiptCount', 'offeredCount', 'selectedCount', 'persisted', 'deepDiveWritten', 'operationReceiptWritten', 'errors', 'warnings', 'nextAction']) {
+  for (const key of ['workspacePath', 'workspaceId', 'version', 'language', 'client', 'clientVersion', 'projectPolicy', 'brokerRequired', 'historyPersistence', 'freshContextRequired', 'hardBoundaryAttested', 'backupPath', 'backupId', 'backupStatus', 'encrypted', 'recoveryKeyPath', 'recoveryKeyCreated', 'backupRecoveryKeyPath', 'displacedWorkspaceBackup', 'displacedWorkspaceRecoveryKeyPath', 'recoveryKeyDeleted', 'secretIncluded', 'sourceId', 'revision', 'sha256', 'byteLength', 'files', 'changes', 'changed', 'changeId', 'revisionId', 'sourceRevisionId', 'changeTarget', 'setting', 'entityId', 'type', 'contextStatus', 'counts', 'total', 'dormantCountOnly', 'entity', 'canonicalEntity', 'mergedEntity', 'proposedEntity', 'candidates', 'approvedIds', 'possibleDuplicates', 'addedCount', 'referenceRewrites', 'dataClass', 'basePolicy', 'previousPolicy', 'cleanupPolicy', 'enforcementMode', 'inspectedAt', 'planTimestamp', 'inventoryAvailable', 'dueCount', 'blockedCount', 'prePolicyCount', 'retainedCount', 'affectedFiles', 'contentIncluded', 'objectIdentifiersIncluded', 'backupCopies', 'backupsRemainSeparateCopies', 'knownBackupRecords', 'backupLedgerAvailable', 'receiptPlanned', 'receiptWritten', 'receiptReason', 'managedArtifactCount', 'deletedArtifactCount', 'resetArtifactCount', 'deletedCategories', 'retainedOperationalCategories', 'retainedSeparateCopies', 'activeWorkspaceUpdated', 'deletionComplete', 'workspaceApplied', 'localPointerWritten', 'restoreApplied', 'artifactDeleted', 'ledgerWritten', 'ledgerReason', 'mutationLockReleased', 'commandCompleted', 'fromRevision', 'toRevision', 'before', 'after', 'expectedHash', 'confirmationRequired', 'recordCount', 'operationReceiptCount', 'offeredCount', 'selectedCount', 'persisted', 'deepDiveWritten', 'operationReceiptWritten', 'errors', 'warnings', 'capabilities', 'nextAction']) {
     if (result[key] !== undefined && result[key] !== null) {
       const value = typeof result[key] === 'object' ? JSON.stringify(result[key]) : result[key];
       lines.push(`${key}: ${value}`);
@@ -131,6 +155,7 @@ function human(result) {
   if (Array.isArray(result.history)) for (const item of result.history) lines.push(`history: ${JSON.stringify(item)}`);
   if (Array.isArray(result.records)) for (const item of result.records) lines.push(`record: ${JSON.stringify(item)}`);
   if (Array.isArray(result.due)) for (const item of result.due) lines.push(`due: ${JSON.stringify(item)}`);
+  if (Array.isArray(result.classes)) for (const item of result.classes) lines.push(`retentionClass: ${JSON.stringify(item)}`);
   if (Array.isArray(result.conflicts) && result.conflicts.length) lines.push(`conflicts: ${result.conflicts.length}`);
   if (Array.isArray(result.findings)) {
     for (const item of result.findings) lines.push(`[${item.severity}] ${item.code}: ${item.message}`);
@@ -194,8 +219,8 @@ async function main(argv) {
     };
     let command = commands[parsed.command];
     if (parsed.command === 'source') {
-      if (parsed.positionals.length !== 1 || !['inspect', 'add', 'status', 'integrate', 'reject', 'delete'].includes(parsed.positionals[0])) {
-        throw new ScalvinError('Usage: scalvin source inspect|add|status|integrate|reject|delete [options]', 'INVALID_ARGUMENT', undefined, 2);
+      if (parsed.positionals.length !== 1 || !['inspect', 'add', 'status', 'process', 'proposals', 'integrate', 'reject', 'delete'].includes(parsed.positionals[0])) {
+        throw new ScalvinError('Usage: scalvin source inspect|add|status|process|proposals|integrate|reject|delete [options]', 'INVALID_ARGUMENT', undefined, 2);
       }
       const action = parsed.positionals[0];
       if (action === 'inspect') {
@@ -227,6 +252,19 @@ async function main(argv) {
         throw new ScalvinError('Usage: scalvin changes propose|approve|reject|history|rollback --workspace PATH', 'INVALID_ARGUMENT', undefined, 2);
       }
       parsed.options.action = parsed.positionals[0];
+      parsed.positionals = [];
+    }
+    if (parsed.command === 'client') {
+      if (parsed.positionals.length !== 1 || parsed.positionals[0] !== 'launch') {
+        throw new ScalvinError('Usage: scalvin client launch --workspace PATH [--client codex|claude]', 'INVALID_ARGUMENT', undefined, 2);
+      }
+      if (!parsed.options.target) throw new ScalvinError('client launch requires --workspace.', 'INVALID_ARGUMENT', undefined, 2);
+      const { launchSupervisedClient } = require('./session-supervisor');
+      command = (options) => launchSupervisedClient({
+        workspace: options.target,
+        client: options.client,
+        clientExecutable: options['client-bin']
+      });
       parsed.positionals = [];
     }
     if (!command) throw new ScalvinError(`Unknown command: ${parsed.command}`, 'UNKNOWN_COMMAND', undefined, 2);

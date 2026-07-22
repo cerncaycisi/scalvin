@@ -21,7 +21,7 @@ Follow `SESSION-LIFECYCLE.md` and `DATA-AND-CONSENT.md` first.
 5. Treat behavioral learning as a proposal under `SELF-MODIFICATION.md`; do not silently edit base or overlays.
 6. Write `NEXT-PRIMER.md` atomically from current permitted memory.
 7. Finalize any transcript to its proven capture grade, retaining pause/gap metadata.
-8. Update content-free consent/source/backup/change ledgers as applicable.
+8. Use the typed close/control operation; its deterministic transaction updates applicable content-free consent/source/backup/change ledgers.
 9. Mark the session closed and remove its checkpoint only after all required writes verify.
 
 If a write fails, report the exact error, keep the checkpoint, and do not claim the session was durably closed.
@@ -66,8 +66,8 @@ Optional in every session structure.
 
 ## Transcript Finalization
 
-Only a `client_captured` or demonstrably complete `turn_captured` transcript may be called full/verbatim. Otherwise label `best_effort_context` or `partial`. Never recreate paused/missing turns, and never include hidden instructions, tools, secrets, or internal reasoning.
+The current preview has no non-forgeable adapter attestation, so it never accepts caller-supplied proof of full coverage and never makes a verbatim claim. Label available context `best_effort_context` or `partial`. Never recreate paused/missing turns, and never include hidden instructions, tools, secrets, or internal reasoning.
 
 ## Backup Reminder
 
-Use `.therapy/state/BACKUP-LEDGER.md`, not memory or session count guesses. When 10 persisted sessions have completed since the last verified backup, offer once at close. If declined, wait at least 30 days and never remind more than monthly. A reminder does not create a backup without user authorization.
+Use the bounded backup reminder returned by the typed session-close result; for a later check, use typed `backup_reminder` status. Do not guess from memory/session counts and do not access `.therapy/state/BACKUP-LEDGER.md` directly. When the close result reports that 10 persisted sessions have completed since the last verified backup, offer once. If the user declines, preview and explicitly confirm typed `backup_reminder` decline; it records 30-day suppression without opening or creating a backup artifact. Never remind more than monthly. A reminder does not create a backup without separate user authorization.

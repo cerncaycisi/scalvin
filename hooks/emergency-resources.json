@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "ttlDays": 30,
+  "jurisdictions": [
+    {
+      "countryCode": "CA",
+      "countryName": "Canada",
+      "scope": "national",
+      "verifiedAt": "2026-07-14",
+      "expiresAt": "2026-08-13",
+      "resources": [
+        {
+          "purpose": "emergency",
+          "contact": "9-1-1",
+          "methods": [
+            "call"
+          ],
+          "officialSource": {
+            "label": "Public Health Agency of Canada",
+            "url": "https://www.canada.ca/en/public-health/services/suicide-prevention/warning-signs.html"
+          }
+        },
+        {
+          "purpose": "suicide_crisis",
+          "contact": "9-8-8",
+          "methods": [
+            "call",
+            "text"
+          ],
+          "officialSource": {
+            "label": "Public Health Agency of Canada",
+            "url": "https://www.canada.ca/en/public-health/services/suicide-prevention/warning-signs.html"
+          }
+        }
+      ]
+    },
+    {
+      "countryCode": "TR",
+      "countryName": "Türkiye",
+      "scope": "national",
+      "verifiedAt": "2026-07-14",
+      "expiresAt": "2026-08-13",
+      "resources": [
+        {
+          "purpose": "emergency",
+          "contact": "112",
+          "methods": [
+            "call"
+          ],
+          "officialSource": {
+            "label": "T.C. İçişleri Bakanlığı 112 Acil Çağrı Merkezi",
+            "url": "https://www.112.gov.tr/"
+          }
+        }
+      ]
+    },
+    {
+      "countryCode": "US",
+      "countryName": "United States",
+      "scope": "national",
+      "verifiedAt": "2026-07-14",
+      "expiresAt": "2026-08-13",
+      "resources": [
+        {
+          "purpose": "emergency",
+          "contact": "911",
+          "methods": [
+            "call"
+          ],
+          "officialSource": {
+            "label": "National 911 Program",
+            "url": "https://www.911.gov/calling-911/frequently-asked-questions/"
+          }
+        },
+        {
+          "purpose": "suicide_crisis",
+          "contact": "988",
+          "methods": [
+            "call",
+            "text"
+          ],
+          "officialSource": {
+            "label": "988 Lifeline",
+            "url": "https://988lifeline.org/"
+          }
+        }
+      ]
+    }
+  ]
+}

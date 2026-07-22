@@ -12,8 +12,11 @@ const {
   closeSession,
   findInterruptedSessions,
   recoverSession,
+  transcriptSnapshot,
+  validateSessionLifecyclePatch,
   normalizeTranscript
 } = require('../../cli/session-lifecycle');
+const { readPrimerSingleton, renderPrimerSingleton } = require('../../cli/memory-data');
 const { hardenTree, verifyWindowsPrivateAcl } = require('../../cli/lib/fs-safe');
 
 const FIXTURE = JSON.parse(require('node:fs').readFileSync(path.join(__dirname, '..', 'fixtures', 'session-lifecycle', 'cases.json'), 'utf8'));
@@ -41,6 +44,18 @@ async function workspace(label) {
 
 function oneId(id) {
   return () => id;
+}
+
+function primer(sessionId, closedAt, overrides = {}) {
+  return renderPrimerSingleton({
+    user: 'Alex',
+    closedSession: sessionId,
+    closedAt,
+    whereWeAre: 'Taking stock.',
+    whatsLive: 'One unfinished thread.',
+    carryForward: 'Ask before continuing.',
+    ...overrides
+  });
 }
 
 async function start(root, id = IDS.first, canonicalState = state()) {
@@ -88,6 +103,27 @@ test('session paths are derived from timestamp plus UUID and caller path substit
     assert.equal(await fsp.stat(path.join(box.root, 'NEXT-PRIMER.md')).then(() => true, () => false), false);
   } finally {
     await box.cleanup();
+  }
+});
+
+test('shared lifecycle rejects noncanonical or unsupported primer v2 bodies before writing artifacts', async () => {
+  for (const [label, primerBody] of [
+    ['missing-version', primer(`s-${IDS.first}`, CLOSE).replace('<!-- version: 2.0.0 -->\n', '')],
+    ['unknown-version', primer(`s-${IDS.first}`, CLOSE).replace('version: 2.0.0', 'version: 3.0.0')],
+    ['noncanonical-spacing', primer(`s-${IDS.first}`, CLOSE).replace('- User: Alex', '- User:  Alex')]
+  ]) {
+    const box = await workspace(`primer-${label}`);
+    try {
+      const begun = await start(box.root);
+      await assert.rejects(closeSession({
+        workspace: box.root, canonicalState: state(), session: begun.session,
+        explicit: true, now: CLOSE, noteBody: '# Session Note\n', primerBody
+      }), { code: 'PRIMER_FORMAT_UNSUPPORTED' });
+      await assert.rejects(fsp.access(path.join(box.root, 'NEXT-PRIMER.md')), { code: 'ENOENT' });
+      await assert.rejects(fsp.access(path.join(box.root, begun.session.paths.sessionNote)), { code: 'ENOENT' });
+    } finally {
+      await box.cleanup();
+    }
   }
 });
 
@@ -149,6 +185,18 @@ test('every persisted turn atomically replaces only its owned checkpoint and emi
   const box = await workspace('checkpoint');
   try {
     const begun = await start(box.root);
+    await assert.rejects(checkpointTurn({
+      workspace: box.root,
+      canonicalState: state(),
+      session: {
+        ...begun.session,
+        transcript: { state: 'recording', sessionId: begun.session.id, captureGrade: 'best_effort_context' }
+      },
+      turnNumber: 1,
+      now: '2026-07-14T14:33:00+03:00',
+      liveThread: 'Caller must not erase canonical transcript evidence.',
+      transcript: { state: 'off' }
+    }), { code: 'TRANSCRIPT_EVIDENCE_MISMATCH' });
     const first = await checkpointTurn({
       workspace: box.root,
       canonicalState: state(),
@@ -156,8 +204,7 @@ test('every persisted turn atomically replaces only its owned checkpoint and emi
       turnNumber: 1,
       now: '2026-07-14T14:33:00+03:00',
       liveThread: 'First safely persisted turn.',
-      unresolved: 'One question remains.',
-      transcript: { state: 'recording', sessionId: begun.session.id, captureGrade: 'turn_captured', coveredTurns: { first: 1, last: 1, count: 1 } }
+      unresolved: 'One question remains.'
     });
     const second = await checkpointTurn({
       workspace: box.root,
@@ -268,7 +315,7 @@ test('explicit close is retry-safe and retains the checkpoint until every artifa
       workspace: box.root, canonicalState: state(), session: checkpointed.session,
       explicit: true, now: CLOSE,
       noteBody: '# Session Note\n\nOnly confirmed material.',
-      primerBody: '# Next Primer\n\nContinue gently.'
+      primerBody: primer(checkpointed.session.id, CLOSE)
     };
     process.env.SCALVIN_TEST_LIFECYCLE_FAILPOINT = 'close-before-checkpoint-remove';
     await assert.rejects(closeSession(closeOptions), { code: 'TEST_FAILPOINT' });
@@ -288,6 +335,11 @@ test('explicit close is retry-safe and retains the checkpoint until every artifa
     assert.equal(closed.canonicalPatch.consent.currentSessionId, null);
     assert.equal(closed.canonicalPatch.sessionLifecycle.state, 'closed');
     assert.equal(closed.canonicalPatch.sessionLifecycle.checkpoint, null);
+    assert.deepEqual((await readPrimerSingleton(box.root)).fields, {
+      user: 'Alex', closedSession: checkpointed.session.id, closedAt: CLOSE,
+      whereWeAre: 'Taking stock.', whatsLive: 'One unfinished thread.',
+      carryForward: 'Ask before continuing.'
+    });
   } finally {
     delete process.env.SCALVIN_TEST_LIFECYCLE_FAILPOINT;
     await box.cleanup();
@@ -316,6 +368,49 @@ test('a prior checkpoint remains canonically referenced when its retention is la
     const discovery = await findInterruptedSessions({ workspace: box.root, canonicalState: changed });
     assert.equal(discovery.status, 'retention_disabled');
     assert.equal(discovery.checkpointFilesRead, false);
+  } finally {
+    await box.cleanup();
+  }
+});
+
+test('a checkpoint retained by a paused close is not rediscovered and can be deleted without rewriting terminal lifecycle', async () => {
+  const box = await workspace('paused-close-checkpoint-cleanup');
+  try {
+    const begun = await start(box.root);
+    const checkpointed = await checkpointTurn({
+      workspace: box.root, canonicalState: state(), session: begun.session,
+      turnNumber: 1, now: '2026-07-14T14:33:00+03:00', liveThread: 'Retained during pause.'
+    });
+    const pausedState = state();
+    pausedState.consent.currentSessionId = begun.session.id;
+    pausedState.consent.memoryPause = { state: 'write_pause', startedAt: '2026-07-14T14:40:00+03:00' };
+    pausedState.sessionLifecycle = structuredClone(checkpointed.canonicalPatch.sessionLifecycle);
+    const closed = await closeSession({
+      workspace: box.root, canonicalState: pausedState, session: checkpointed.session,
+      explicit: true, now: CLOSE, noteBody: '# Must not be written\n'
+    });
+    assert.equal(closed.status, 'closed_ephemeral');
+    assert.equal(closed.canonicalPatch.sessionLifecycle.state, 'closed');
+    assert.equal(closed.canonicalPatch.sessionLifecycle.checkpoint.path, checkpointed.session.paths.checkpoint);
+
+    const terminalState = structuredClone(pausedState);
+    terminalState.consent.currentSessionId = null;
+    terminalState.sessionLifecycle = structuredClone(closed.canonicalPatch.sessionLifecycle);
+    terminalState.consent.memoryPause = { state: 'none', startedAt: null };
+    const discovery = await findInterruptedSessions({ workspace: box.root, canonicalState: terminalState });
+    assert.equal(discovery.status, 'none');
+    assert.deepEqual(discovery.candidates, []);
+
+    const cleaned = await recoverSession({
+      workspace: box.root,
+      canonicalState: terminalState,
+      session: { ...checkpointed.session, state: 'interrupted' },
+      action: 'delete'
+    });
+    assert.equal(cleaned.canonicalPatch.sessionLifecycle.state, 'closed');
+    assert.equal(cleaned.canonicalPatch.sessionLifecycle.completion, 'complete');
+    assert.equal(cleaned.canonicalPatch.sessionLifecycle.checkpoint, null);
+    await assert.rejects(fsp.access(path.join(box.root, checkpointed.session.paths.checkpoint)), { code: 'ENOENT' });
   } finally {
     await box.cleanup();
   }
@@ -353,7 +448,8 @@ test('interrupted checkpoint discovery exposes metadata only and recovery requir
     const partial = await recoverSession({
       workspace: box.root, canonicalState: state(), session: { ...continued.session, state: 'interrupted' },
       action: 'close_interrupted', now: '2026-07-14T16:01:00+03:00',
-      noteBody: '# Interrupted Session Note\n\nKnown material only.', primerBody: '# Next Primer\n'
+      noteBody: '# Interrupted Session Note\n\nKnown material only.',
+      primerBody: primer(continued.session.id, '2026-07-14T16:01:00+03:00')
     });
     assert.equal(partial.canonicalPatch.sessionLifecycle.completion, 'interrupted_partial');
     const note = await fsp.readFile(path.join(box.root, partial.session.paths.sessionNote), 'utf8');
@@ -364,6 +460,129 @@ test('interrupted checkpoint discovery exposes metadata only and recovery requir
     await box.cleanup();
   }
 });
+
+test('orphan checkpoints round-trip paused and stopped transcript evidence without lossy defaults', async () => {
+  const box = await workspace('checkpoint-transcript-roundtrip');
+  try {
+    const begun = await start(box.root, IDS.recovery);
+    const pausedAt = '2026-07-14T14:40:00+03:00';
+    const pausedSession = {
+      ...begun.session,
+      transcript: transcriptSnapshot({
+        state: 'paused', sessionId: begun.session.id,
+        captureGrade: 'best_effort_context', captureMethod: 'best_effort_context',
+        pausedIntervals: [{ startedAt: pausedAt, endedAt: null }]
+      })
+    };
+    const pausedCheckpoint = await checkpointTurn({
+      workspace: box.root, canonicalState: state(), session: pausedSession,
+      turnNumber: 1, now: '2026-07-14T14:45:00+03:00', liveThread: 'Paused evidence.'
+    });
+    let found = await findInterruptedSessions({ workspace: box.root, canonicalState: state() });
+    assert.equal(found.candidates[0].session.transcript.state, 'paused');
+    assert.deepEqual(found.candidates[0].session.transcript.pausedIntervals, [{ startedAt: pausedAt, endedAt: null }]);
+
+    const continued = await recoverSession({
+      workspace: box.root, canonicalState: state(), session: found.candidates[0].session,
+      action: 'continue', canResumeContext: true, now: '2026-07-14T16:00:00+03:00'
+    });
+    assert.equal(continued.session.transcript.state, 'stopped');
+    assert.equal(continued.session.transcript.finalizedAt, '2026-07-14T16:00:00+03:00');
+    assert.ok(continued.session.transcript.knownGaps.some((gap) => gap.reason === 'paused_no_backfill'));
+    assert.ok(continued.session.transcript.knownGaps.some((gap) => gap.reason === 'interrupted'));
+    const rewritten = await fsp.readFile(path.join(box.root, pausedCheckpoint.session.paths.checkpoint), 'utf8');
+    assert.match(rewritten, /^transcript_state: stopped$/m);
+    assert.match(rewritten, /^paused_intervals: \[{/m);
+    assert.match(rewritten, /^finalized_at: 2026-07-14T16:00:00\+03:00$/m);
+    assert.match(rewritten, /"reason":"interrupted"/);
+
+    await fsp.rm(path.join(box.root, pausedCheckpoint.session.paths.checkpoint));
+    const second = await start(box.root, IDS.transcript);
+    const stoppedAt = '2026-07-14T14:44:00+03:00';
+    const stoppedSession = {
+      ...second.session,
+      transcript: transcriptSnapshot({
+        state: 'stopped', sessionId: second.session.id,
+        captureGrade: 'best_effort_context', captureMethod: 'best_effort_context',
+        finalizedAt: stoppedAt
+      })
+    };
+    await checkpointTurn({
+      workspace: box.root, canonicalState: state(), session: stoppedSession,
+      turnNumber: 1, now: '2026-07-14T14:45:00+03:00', liveThread: 'Stopped evidence.'
+    });
+    found = await findInterruptedSessions({ workspace: box.root, canonicalState: state() });
+    assert.equal(found.candidates[0].session.transcript.state, 'stopped');
+    assert.equal(found.candidates[0].session.transcript.finalizedAt, stoppedAt);
+    const abandoned = await recoverSession({
+      workspace: box.root, canonicalState: state(), session: found.candidates[0].session,
+      action: 'abandon', now: '2026-07-14T16:00:00+03:00'
+    });
+    assert.equal(abandoned.canonicalPatch.sessionLifecycle.state, 'abandoned');
+    assert.equal(abandoned.canonicalPatch.sessionLifecycle.transcript.finalizedAt, stoppedAt);
+  } finally {
+    await box.cleanup();
+  }
+});
+
+test('close_interrupted records checkpoint-to-close no-capture evidence', async () => {
+  const box = await workspace('close-interrupted-gap');
+  try {
+    const begun = await start(box.root, IDS.recovery);
+    const recording = {
+      ...begun.session,
+      transcript: transcriptSnapshot({
+        state: 'recording', sessionId: begun.session.id,
+        captureGrade: 'best_effort_context', captureMethod: 'best_effort_context'
+      })
+    };
+    const checkpointed = await checkpointTurn({
+      workspace: box.root, canonicalState: state(), session: recording,
+      turnNumber: 1, now: '2026-07-14T14:45:00+03:00', liveThread: 'Interrupted capture.'
+    });
+    const closed = await recoverSession({
+      workspace: box.root, canonicalState: state(), session: { ...checkpointed.session, state: 'interrupted' },
+      action: 'close_interrupted', now: '2026-07-14T16:00:00+03:00',
+      noteBody: '# Interrupted Session Note\n\nKnown material only.'
+    });
+    const gap = closed.canonicalPatch.sessionLifecycle.transcript.knownGaps.find((item) => item.reason === 'interrupted');
+    assert.deepEqual(gap, {
+      from: '2026-07-14T14:45:00+03:00', to: '2026-07-14T16:00:00+03:00', reason: 'interrupted'
+    });
+    assert.equal(closed.canonicalPatch.sessionLifecycle.transcript.state, 'stopped');
+    assert.equal(closed.canonicalPatch.sessionLifecycle.transcript.finalizedAt, '2026-07-14T16:00:00+03:00');
+  } finally {
+    await box.cleanup();
+  }
+});
+
+for (const fixtureName of ['consentOff', 'writePause', 'sealedPause']) {
+  test(`abandon clears canonical session without checkpoint writes under ${fixtureName}`, async () => {
+    const box = await workspace(`abandon-no-write-${fixtureName}`);
+    try {
+      const begun = await start(box.root, IDS.recovery);
+      const checkpointed = await checkpointTurn({
+        workspace: box.root, canonicalState: state(), session: begun.session,
+        turnNumber: 1, now: '2026-07-14T14:45:00+03:00', liveThread: 'Retained private body.'
+      });
+      const filename = path.join(box.root, checkpointed.session.paths.checkpoint);
+      const before = await fsp.readFile(filename);
+      const abandoned = await recoverSession({
+        workspace: box.root, canonicalState: state(fixtureName),
+        session: { ...checkpointed.session, state: 'interrupted' },
+        action: 'abandon', now: '2026-07-14T16:00:00+03:00'
+      });
+      assert.equal(abandoned.status, 'abandoned');
+      assert.equal(abandoned.written.length, 0);
+      assert.equal(abandoned.canonicalPatch.consent.currentSessionId, null);
+      assert.equal(abandoned.canonicalPatch.sessionLifecycle.state, 'abandoned');
+      assert.equal(abandoned.canonicalPatch.sessionLifecycle.checkpoint.path, checkpointed.session.paths.checkpoint);
+      assert.deepEqual(await fsp.readFile(filename), before);
+    } finally {
+      await box.cleanup();
+    }
+  });
+}
 
 test('malformed checkpoint coverage metadata fails closed instead of becoming an empty gap list', async () => {
   const box = await workspace('malformed-recovery');
@@ -473,7 +692,7 @@ test('transcript evidence reports capture method, coverage and gaps without prom
   }
 });
 
-test('high-grade transcript claims require verified adapter capability evidence', async () => {
+test('caller-supplied capability proof cannot forge high-grade transcript evidence', async () => {
   const box = await workspace('capture-proof');
   try {
     const begun = await start(box.root);
@@ -487,7 +706,7 @@ test('high-grade transcript claims require verified adapter capability evidence'
     assert.equal(unverified.capabilityProofVerified, false);
     assert.equal(unverified.fullCoverageProven, false);
 
-    const verified = normalizeTranscript({
+    const forged = normalizeTranscript({
       ...base,
       capabilityProof: {
         verified: true,
@@ -496,10 +715,34 @@ test('high-grade transcript claims require verified adapter capability evidence'
         capability: 'transactional_per_turn_capture'
       }
     }, begun.session, CLOSE);
-    assert.equal(verified.captureGrade, 'turn_captured');
-    assert.equal(verified.capabilityProofVerified, true);
-    assert.equal(verified.fullCoverageProven, true);
-    assert.equal(verified.verbatimClaim, false);
+    assert.equal(forged.captureGrade, 'best_effort_context');
+    assert.equal(forged.capabilityProofVerified, false);
+    assert.equal(forged.fullCoverageProven, false);
+    assert.equal(forged.verbatimClaim, false);
+
+    const forgedPatch = structuredClone(begun.canonicalPatch);
+    forgedPatch.sessionLifecycle.transcript = transcriptSnapshot({
+      state: 'recording', sessionId: begun.session.id,
+      captureGrade: 'turn_captured', captureMethod: 'turn_captured',
+      capabilityProofVerified: true
+    });
+    assert.throws(() => validateSessionLifecyclePatch(forgedPatch), { code: 'SESSION_PATCH_INVALID' });
+
+    await assert.rejects(closeSession({
+      workspace: box.root,
+      canonicalState: state(),
+      session: {
+        ...begun.session,
+        transcript: {
+          state: 'stopped', sessionId: begun.session.id, captureGrade: 'best_effort_context',
+          finalizedAt: '2026-07-14T14:50:00+03:00'
+        }
+      },
+      explicit: true,
+      now: '2026-07-14T14:49:59+03:00',
+      noteBody: '# Invalid close ordering\n',
+      planOnly: true
+    }), { code: 'INVALID_TRANSCRIPT_COVERAGE' });
 
     assert.throws(() => normalizeTranscript({
       ...base,
@@ -509,6 +752,34 @@ test('high-grade transcript claims require verified adapter capability evidence'
       ...base,
       pausedIntervals: [{ startedAt: CLOSE, endedAt: START }]
     }, begun.session, CLOSE), { code: 'INVALID_TRANSCRIPT_COVERAGE' });
+    assert.throws(() => normalizeTranscript({
+      ...base,
+      turns: [{ number: 1, speaker: 'user', capturedAt: '2026-07-14T14:41:00+03:00', content: 'Must not survive a pause.' }],
+      pausedIntervals: [{ startedAt: '2026-07-14T14:40:00+03:00', endedAt: '2026-07-14T14:42:00+03:00' }]
+    }, begun.session, CLOSE), { code: 'INVALID_TRANSCRIPT_COVERAGE' });
+    assert.throws(() => normalizeTranscript({
+      ...base,
+      turns: [{ number: 1, speaker: 'user', capturedAt: '2026-07-14T14:31:59+03:00', content: 'Outside the session.' }]
+    }, begun.session, CLOSE), { code: 'INVALID_TRANSCRIPT_COVERAGE' });
+    for (const knownGaps of [
+      [{ from: '2026-07-14T14:31:59+03:00', to: START, reason: 'client_gap' }],
+      [{ from: START, to: '2026-07-14T15:03:10+03:00', reason: 'client_gap' }]
+    ]) {
+      assert.throws(() => normalizeTranscript({ ...base, knownGaps }, begun.session, CLOSE), { code: 'INVALID_TRANSCRIPT_COVERAGE' });
+    }
+    const closedPauses = normalizeTranscript({
+      ...base,
+      turns: [],
+      expectedLastTurn: 0,
+      pausedIntervals: [
+        { startedAt: '2026-07-14T14:40:00+03:00', endedAt: '2026-07-14T14:42:00+03:00' },
+        { startedAt: '2026-07-14T14:50:00+03:00', endedAt: null }
+      ],
+      knownGaps: [{ from: '2026-07-14T14:40:00+03:00', to: '2026-07-14T14:42:00+03:00', reason: 'paused_no_backfill' }]
+    }, begun.session, CLOSE);
+    assert.equal(closedPauses.pausedIntervals[1].endedAt, CLOSE);
+    assert.equal(closedPauses.knownGaps.filter((gap) => gap.reason === 'paused_no_backfill').length, 2);
+    assert.ok(closedPauses.knownGaps.some((gap) => gap.from === '2026-07-14T14:50:00+03:00' && gap.to === CLOSE));
   } finally {
     await box.cleanup();
   }

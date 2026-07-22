@@ -115,7 +115,7 @@ If the client provides per-turn capture, append each user-visible turn transacti
 - finalized at
 - body integrity hash when available (exact transcript-body UTF-8 bytes after frontmatter, not the self-referential whole file)
 
-Capture grade describes how text was obtained; it is not a verbatim guarantee. `client_captured` requires a verified authoritative client-event-stream capability; `turn_captured` requires verified transactional per-turn capture for this session. Without matching adapter capability evidence, downgrade a high-grade claim to `best_effort_context`, or `partial` when any gap is known. `full_coverage_proven` remains false without that evidence. Lifecycle adapters always set `verbatim_claim: false`, preserve the claimed capture method separately when gaps or missing proof degrade the effective grade, and never infer missing turns from a contiguous-looking context.
+Capture grade describes how text was obtained; it is not a verbatim guarantee. `client_captured` requires a verified authoritative client-event-stream capability; `turn_captured` requires verified transactional per-turn capture for this session. The current preview has no non-forgeable adapter-attestation channel, so caller-supplied JSON can never satisfy that requirement: high-grade claims are downgraded to `best_effort_context`, or `partial` when any gap is known, and `full_coverage_proven` remains false. Lifecycle adapters always set `verbatim_claim: false`, preserve the claimed capture method separately when gaps or missing proof degrade the effective grade, and never infer missing turns from a contiguous-looking context.
 
 Turn, gap, and pause arrays are strictly typed and bounded, gap reasons use a closed vocabulary, all interval timestamps are validated, and total artifact bytes remain within the configured source-independent lifecycle limit. Malformed checkpoint JSON fails closed; it is never silently converted to an empty coverage list.
 
@@ -130,7 +130,7 @@ The lifecycle adapter writes only consent-permitted artifacts and returns a dete
 - transcript state, capture method/grade, covered turns, pause intervals, known gaps, finalization time, and `verbatimClaim: false`
 - `consent.currentSessionId`, set to the active ID or `null` after durable close
 
-The adapter does not create a second state store. The CLI/client integration must atomically apply the returned patch to canonical state only after artifact verification succeeds. If checkpoint or close fails, do not apply the patch and retain the prior checkpoint. Consent-off, `write_pause`, and `sealed_pause` return a no-write result and no canonical patch; paused content is never queued for later backfill.
+The adapter does not create a second state store. The CLI/client integration must atomically apply the returned patch to canonical state only after artifact verification succeeds. If checkpoint or close fails, do not apply the patch and retain the prior checkpoint. Consent-off, `write_pause`, and `sealed_pause` always return a no-artifact-write result, and paused content is never queued for later backfill. If the session was already the canonical active/interrupted session before persistence was disabled, close still returns a terminal canonical patch so `currentSessionId` is cleared while any pre-existing checkpoint and transcript evidence remain referenced. A session that was ephemeral from its start returns no canonical patch.
 
 ## Between-Session Work
 

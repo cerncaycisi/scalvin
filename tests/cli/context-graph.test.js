@@ -17,8 +17,10 @@ const {
   planAdd,
   planCorrect,
   planStatusChange,
+  planRemoveSourceReferences,
   planRemoveMemoryReferences,
   planForget,
+  planForgetMany,
   planMerge,
   planBackfill
 } = require('../../cli/context-graph');
@@ -312,6 +314,81 @@ test('forget remains available during sealed pause, emits no content, cleans gra
   const repeated = await planForget(box.workspace, sealed, { id: person.id, now: LATEST });
   assert.equal(repeated.alreadyAbsent, true);
   assert.equal(repeated.writes.size, 0);
+});
+
+test('retention forget-many deletes an exact entity set and rewrites each retained entity only once', async (t) => {
+  const box = await prepare(t, 'retention-forget-many');
+  const state = canonicalState();
+  const first = candidate('person', 520, { sourceRefs: [{ sourceId: SOURCE_ID, revision: 1 }] });
+  const second = candidate('person', 521, { sessionRefs: [SESSION_ID] });
+  const event = candidate('event', 522, { participantIds: [first.id, second.id] });
+  await add(box.workspace, state, first);
+  await add(box.workspace, state, second);
+  await add(box.workspace, state, event);
+
+  const planned = await planForgetMany(box.workspace, state, {
+    ids: [second.id, first.id],
+    now: LATEST,
+    scope: 'retention:context_graph',
+    idFactory: () => uuid(523)
+  });
+  assert.deepEqual(planned.entityIds, [first.id, second.id]);
+  assert.equal(planned.referenceRewrites, 1);
+  assert.deepEqual(planned.deletes, [entityRelative(first.id), entityRelative(second.id)]);
+  const receipt = planned.writes.get('.therapy/state/DELETION-LEDGER.md');
+  assert.match(receipt, new RegExp(first.id));
+  assert.match(receipt, new RegExp(second.id));
+  await applyPlan(box.workspace, planned);
+
+  const retained = JSON.parse(await fsp.readFile(path.join(box.workspace, entityRelative(event.id)), 'utf8'));
+  assert.deepEqual(retained.participantIds, []);
+  assert.equal(retained.revision, 2);
+  await assert.rejects(fsp.access(path.join(box.workspace, entityRelative(first.id))), { code: 'ENOENT' });
+  await assert.rejects(fsp.access(path.join(box.workspace, entityRelative(second.id))), { code: 'ENOENT' });
+  await assert.rejects(planForgetMany(box.workspace, state, { ids: [event.id, event.id], now: FUTURE }), { code: 'CONTEXT_DUPLICATE' });
+});
+
+test('source cleanup mechanically removes exact or source-wide context provenance while sealed', async (t) => {
+  const box = await prepare(t, 'source-reference-cleanup');
+  const state = canonicalState();
+  const otherSourceId = 'src-60000000-0000-4000-8000-000000000006';
+  const person = candidate('person', 525, {
+    sourceRefs: [
+      { sourceId: SOURCE_ID, revision: 1 },
+      { sourceId: SOURCE_ID, revision: 2 },
+      { sourceId: otherSourceId, revision: 1 }
+    ]
+  });
+  await add(box.workspace, state, person);
+  const sealed = canonicalState({ consent: { memoryPause: { state: 'sealed_pause', startedAt: LATER } } });
+
+  const exact = await planRemoveSourceReferences(box.workspace, sealed, {
+    selectors: [{ sourceId: SOURCE_ID, revision: 1 }],
+    now: LATER
+  });
+  assert.equal(exact.referenceRewrites, 1);
+  await applyPlan(box.workspace, exact);
+  let rewritten = JSON.parse(await fsp.readFile(path.join(box.workspace, entityRelative(person.id)), 'utf8'));
+  assert.deepEqual(rewritten.sourceRefs, [
+    { sourceId: SOURCE_ID, revision: 2 },
+    { sourceId: otherSourceId, revision: 1 }
+  ]);
+  assert.equal(rewritten.revision, 2);
+
+  const sourceWide = await planRemoveSourceReferences(box.workspace, sealed, {
+    selectors: [{ sourceId: SOURCE_ID, revision: null }],
+    now: LATEST
+  });
+  assert.equal(sourceWide.referenceRewrites, 1);
+  await applyPlan(box.workspace, sourceWide);
+  rewritten = JSON.parse(await fsp.readFile(path.join(box.workspace, entityRelative(person.id)), 'utf8'));
+  assert.deepEqual(rewritten.sourceRefs, [{ sourceId: otherSourceId, revision: 1 }]);
+  assert.equal(rewritten.revision, 3);
+  assert.match(await fsp.readFile(path.join(box.workspace, 'context', 'index.md'), 'utf8'), new RegExp(`\\| ${person.id} \\| person \\| person-525 \\| 3 \\|`));
+  await assert.rejects(planRemoveSourceReferences(box.workspace, sealed, {
+    selectors: [{ sourceId: SOURCE_ID, revision: null }, { sourceId: SOURCE_ID, revision: null }],
+    now: FUTURE
+  }), { code: 'CONTEXT_DUPLICATE' });
 });
 
 test('memory deletion can mechanically remove JSON graph references during sealed pause without touching historical bodies', async (t) => {

@@ -268,12 +268,32 @@
         },
         "targets": {
           "type": "array",
-          "minItems": 1,
           "items": {
             "$ref": "#/$defs/target"
           }
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "role": { "const": "distribution-code" }
+            },
+            "required": ["role"]
+          },
+          "then": {
+            "properties": {
+              "protection": { "const": "framework" },
+              "targets": { "maxItems": 0 }
+            }
+          },
+          "else": {
+            "properties": {
+              "targets": { "minItems": 1 }
+            }
+          }
+        }
+      ]
     }
   }
 }

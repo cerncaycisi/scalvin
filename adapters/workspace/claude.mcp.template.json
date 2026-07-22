@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "scalvin": {
+      "type": "stdio",
+      "command": {{NODE_EXECUTABLE_JSON}},
+      "args": [
+        {{SCALVIN_MCP_ENTRY_JSON}},
+        "--workspace",
+        "${CLAUDE_PROJECT_DIR:-.}"
+      ],
+      "env": {}
+    }
+  }
+}

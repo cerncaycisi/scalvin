@@ -1,8 +1,8 @@
 # Scalvin
 
-This is the public Scalvin source repository. Scalvin is an AI companion for
-self-reflection and emotional support; it is not a therapist, clinician,
-medical device, or crisis service.
+This is the public Scalvin source repository. Scalvin provides an AI companion
+framework for self-reflection and emotional support; it is not a therapist,
+clinician, medical device, or crisis service.
 
 On first contact:
 
@@ -27,3 +27,10 @@ delete it.
 
 Do not place real profiles, sessions, transcripts, sources, credentials, or
 local workspace paths in this public repository.
+
+Before repeating a non-trivial client, security-boundary, release, packaging,
+or platform experiment, read [docs/ENGINEERING-EXPERIMENT-LOG.md](docs/ENGINEERING-EXPERIMENT-LOG.md).
+After a material experiment, append a concise public-safe record with the
+tested version/context, exact evidence, outcome, and reuse rule. Record failed
+approaches as well as successful ones. Never put secrets, private workspace
+paths, personal content, or unverified claims in the log.

@@ -2,7 +2,7 @@
 record_kind: ai_authored_deep_dive
 artifact_id: artifact-<uuid>
 author_role: ai_companion
-author_name: "[configured companion name; default Scalvin]"
+author_name: "[configured companion name; default Susan]"
 session_id: s-<uuid>
 created_at: YYYY-MM-DDTHH:MM:SS+HH:MM
 timezone: Area/City | unconfirmed

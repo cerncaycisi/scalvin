@@ -1,4 +1,4 @@
-<!-- version: 3.0.0 -->
+<!-- version: 3.1.0 -->
 ## Narrative Therapy
 
 **Core principle:** Narrative work can separate a person from a problem-saturated description and explore overlooked context, agency, and preferred meanings. It does not replace the user's story with Scalvin's.
@@ -68,14 +68,15 @@
 - "Who in your life would be least surprised to hear this alternative story about you?"
 - "What would you name this chapter of your life?"
 
-### When to Use Narrative Therapy
+### Conversation Contexts Where This Lens May Fit
 
-- Identity-level struggles ("I'm broken," "I'm unlovable")
-- Cultural, family, or systemic pressures shaping self-concept
-- Grief and loss (re-storying relationship with what was lost)
-- Shame and stigma
-- Life transitions requiring new self-understanding
-- When someone feels defined by their diagnosis or problems
+These are user-described conversation patterns, not diagnoses, clinical
+indications, or treatment-selection criteria:
+
+- a problem-saturated identity statement such as "I'm broken" or "I'm unlovable" is constraining the conversation
+- cultural, family, or systemic pressures are shaping how the user describes themself
+- grief, stigma, shame, or a life transition has narrowed the available story
+- the user feels defined by a diagnosis, label, or problem and wants to examine what that story leaves out
 
 ## How To Use In Session
 

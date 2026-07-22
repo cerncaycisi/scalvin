@@ -19,9 +19,13 @@ const {
 } = require('./fs-safe');
 
 const ARCHIVE_MAGIC = Buffer.from('SCALVIN-ARCHIVE-V2\n', 'ascii');
-const ENVELOPE_VERSION = 2;
+const ENVELOPE_VERSION = 3;
 const PAYLOAD_FORMAT = 'scalvin-archive-v2';
-const SCRYPT = Object.freeze({ N: 16384, r: 8, p: 1, keyLength: 32, maxmem: 64 * 1024 * 1024 });
+const SCRYPT_PROFILES = Object.freeze({
+  2: Object.freeze({ N: 16384, r: 8, p: 1, keyLength: 32, maxmem: 64 * 1024 * 1024 }),
+  3: Object.freeze({ N: 131072, r: 8, p: 1, keyLength: 32, maxmem: 256 * 1024 * 1024 })
+});
+const SCRYPT = SCRYPT_PROFILES[ENVELOPE_VERSION];
 const LIMITS = Object.freeze({
   passphraseMinBytes: 12,
   passphraseMaxBytes: 4096,
@@ -190,13 +194,13 @@ async function readPassphrase(options = {}) {
   }
 }
 
-function deriveKey(passphrase, salt) {
+function deriveKey(passphrase, salt, profile) {
   return new Promise((resolve, reject) => {
-    crypto.scrypt(passphrase, salt, SCRYPT.keyLength, {
-      N: SCRYPT.N,
-      r: SCRYPT.r,
-      p: SCRYPT.p,
-      maxmem: SCRYPT.maxmem
+    crypto.scrypt(passphrase, salt, profile.keyLength, {
+      N: profile.N,
+      r: profile.r,
+      p: profile.p,
+      maxmem: profile.maxmem
     }, (error, key) => {
       if (error) reject(new ScalvinError('Backup key derivation failed.', 'BACKUP_KEY_DERIVATION_FAILED'));
       else resolve(key);
@@ -249,22 +253,23 @@ function validatePayloadManifest(manifest) {
 
 function validateEncryptedIntegrity(integrity, options = {}) {
   exactKeys(integrity, ['format', 'formatVersion', 'backupId', 'createdAt', 'encryption']);
-  invariant(integrity.format === 'scalvin-backup' && integrity.formatVersion === 2, 'Encrypted backup format is unsupported.', 'BACKUP_FORMAT_UNSUPPORTED');
+  invariant(integrity.format === 'scalvin-backup' && [2, 3].includes(integrity.formatVersion), 'Encrypted backup format is unsupported.', 'BACKUP_FORMAT_UNSUPPORTED');
   invariant(BACKUP_ID_PATTERN.test(integrity.backupId || ''), 'Backup ID is invalid.', 'BACKUP_MANIFEST_INVALID');
   invariant(validTimestamp(integrity.createdAt), 'Backup timestamp is invalid.', 'BACKUP_MANIFEST_INVALID');
   const envelope = integrity.encryption;
   exactKeys(envelope, ['envelopeVersion', 'payloadFormat', 'algorithm', 'kdf', 'N', 'r', 'p', 'salt', 'nonce', 'tag']);
-  invariant(envelope.envelopeVersion === ENVELOPE_VERSION && envelope.payloadFormat === PAYLOAD_FORMAT &&
+  const profile = SCRYPT_PROFILES[integrity.formatVersion];
+  invariant(envelope.envelopeVersion === integrity.formatVersion && envelope.payloadFormat === PAYLOAD_FORMAT &&
     envelope.algorithm === 'aes-256-gcm' && envelope.kdf === 'scrypt',
   'Encrypted backup envelope is unsupported.', 'BACKUP_FORMAT_UNSUPPORTED');
-  invariant(envelope.N === SCRYPT.N && envelope.r === SCRYPT.r && envelope.p === SCRYPT.p,
+  invariant(envelope.N === profile.N && envelope.r === profile.r && envelope.p === profile.p,
     'Encrypted backup KDF parameters are unsupported.', 'BACKUP_FORMAT_UNSUPPORTED');
   const salt = decodeCanonicalBase64(envelope.salt, 16);
   const nonce = decodeCanonicalBase64(envelope.nonce, 12);
   let tag = null;
   if (options.allowNullTag && envelope.tag === null) tag = null;
   else tag = decodeCanonicalBase64(envelope.tag, 16);
-  return { envelope, salt, nonce, tag };
+  return { envelope, profile, salt, nonce, tag };
 }
 
 function aadForIntegrity(integrity) {
@@ -342,38 +347,48 @@ async function* archiveChunks(payloadRoot, manifest) {
 
 async function encryptPayload(payloadRoot, destination, integrity, options = {}) {
   const privateManifest = privateManifestFromIntegrity(integrity);
+  const envelopeVersion = options.envelopeVersion || ENVELOPE_VERSION;
+  const profile = SCRYPT_PROFILES[envelopeVersion];
+  invariant(profile, 'Encrypted backup format is unsupported.', 'BACKUP_FORMAT_UNSUPPORTED');
   const passphrase = await readPassphrase(options);
   const salt = crypto.randomBytes(16);
   const nonce = crypto.randomBytes(12);
   const outerIntegrity = {
     format: 'scalvin-backup',
-    formatVersion: 2,
+    formatVersion: envelopeVersion,
     backupId: privateManifest.backupId,
     createdAt: privateManifest.createdAt,
     encryption: {
-      envelopeVersion: ENVELOPE_VERSION,
+      envelopeVersion,
       payloadFormat: PAYLOAD_FORMAT,
       algorithm: 'aes-256-gcm',
       kdf: 'scrypt',
-      N: SCRYPT.N,
-      r: SCRYPT.r,
-      p: SCRYPT.p,
+      N: profile.N,
+      r: profile.r,
+      p: profile.p,
       salt: salt.toString('base64'),
       nonce: nonce.toString('base64'),
       tag: null
     }
   };
   let key;
+  let destinationHandle = null;
+  let destinationCreated = false;
   try {
-    key = await deriveKey(passphrase, salt);
+    key = await deriveKey(passphrase, salt, profile);
     const cipher = crypto.createCipheriv('aes-256-gcm', key, nonce, { authTagLength: 16 });
     cipher.setAAD(aadForIntegrity(outerIntegrity));
     await rejectSymlinkPath(destination, { allowMissing: true });
+    destinationHandle = await fsp.open(destination, 'wx', PRIVATE_FILE_MODE);
+    destinationCreated = true;
     await pipeline(
       Readable.from(archiveChunks(payloadRoot, privateManifest)),
       cipher,
-      fs.createWriteStream(destination, { flags: 'wx', mode: PRIVATE_FILE_MODE })
+      fs.createWriteStream(destination, { fd: destinationHandle.fd, autoClose: false })
     );
+    await destinationHandle.sync();
+    await destinationHandle.close();
+    destinationHandle = null;
     outerIntegrity.encryption.tag = cipher.getAuthTag().toString('base64');
     validateEncryptedIntegrity(outerIntegrity);
     for (const keyName of Object.keys(integrity)) delete integrity[keyName];
@@ -383,7 +398,13 @@ async function encryptPayload(payloadRoot, destination, integrity, options = {})
       maxBytes: LIMITS.maxArchiveBytes,
       code: 'BACKUP_LIMIT_EXCEEDED'
     });
+  } catch (error) {
+    await destinationHandle?.close().catch(() => {});
+    destinationHandle = null;
+    if (destinationCreated) await fsp.rm(destination, { force: true }).catch(() => {});
+    throw error;
   } finally {
+    await destinationHandle?.close().catch(() => {});
     passphrase.fill(0);
     key?.fill(0);
     salt.fill(0);
@@ -403,7 +424,7 @@ async function decryptArchive(encryptedFile, archiveFile, integrity, options = {
   let key;
   try {
     passphrase = await readPassphrase(options);
-    key = await deriveKey(passphrase, validated.salt);
+    key = await deriveKey(passphrase, validated.salt, validated.profile);
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, validated.nonce, { authTagLength: 16 });
     decipher.setAAD(aadForIntegrity(integrity));
     decipher.setAuthTag(validated.tag);
@@ -547,6 +568,7 @@ module.exports = {
   ENVELOPE_VERSION,
   PAYLOAD_FORMAT,
   SCRYPT,
+  SCRYPT_PROFILES,
   LIMITS,
   BACKUP_ID_PATTERN,
   canonicalJson,

@@ -6,7 +6,7 @@
 - `must-silent`: firing is a release blocker because it would derail clearly non-self or ordinary contexts.
 - `known-overfire`: intentionally fires under a recall-first policy, but remains visible and counted as product debt.
 
-The corpus uses the currently bundled `en` and `tr` detector packs to cover direct statements, passive ideation, self-harm, overdose and medical emergencies, harm to others, abuse, psychosis, grief, quotes, third-party reports, media, professional usage, ordinary venting, and idioms. Those finite fixtures are mechanical detector coverage, not privileged product languages or a complete language-support claim. Passing this corpus does not establish clinical safety. The prose protocol and contextual judgment remain authoritative.
+The corpus uses the currently bundled `en` and `tr` detector packs to cover direct statements, passive ideation, self-harm, overdose and medical emergencies, harm to others, abuse, psychosis, grief, quotes, third-party reports, media, professional usage, ordinary venting, and idioms. Paired adversarial cases additionally cover code-switching, transliteration, missing punctuation or vowels, slang, irony, a safety signal after substantial ordinary context, and generated/quoted text versus a current self-disclosure. Every adversarial class has one `must-fire` and one `must-silent` case in each bundled locale. Those finite fixtures are mechanical detector coverage, not privileged product languages or a complete language-support claim. Passing this corpus does not establish clinical safety. The prose protocol and contextual judgment remain authoritative.
 
 `persona-boundaries.json` is a provider-neutral prompt/policy fixture for
 dependency, identity deception, fabricated lived experience, confidentiality,

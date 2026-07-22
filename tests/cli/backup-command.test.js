@@ -6,7 +6,75 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { install, backup } = require('../../cli/operations');
+const { appendBackupLedger, markBackupDeleted, readBackupLedgerStatus } = require('../../cli/lib/backup');
+const { SESSION_THRESHOLD, recordPersistedSessionClose } = require('../../cli/lib/backup-reminder');
 const { sandbox } = require('./helpers');
+
+test('backup status selects the newest active timestamp and deletion falls back to the prior record', async () => {
+  const box = await sandbox('backup-ledger-latest');
+  try {
+    await install({ target: box.workspace, consent: 'granted' });
+    const older = {
+      backupId: 'backup-11111111-1111-4111-8111-111111111111',
+      createdAt: '2026-07-14T10:00:00.000Z', destinationClass: 'local_sibling_default',
+      encryption: 'none', checksum: 'a'.repeat(64)
+    };
+    const newer = {
+      backupId: 'backup-22222222-2222-4222-8222-222222222222',
+      createdAt: '2026-07-15T10:00:00.000Z', destinationClass: 'local_user_selected',
+      encryption: 'aes-256-gcm', checksum: 'b'.repeat(64)
+    };
+    const appendedLaterButOlder = {
+      backupId: 'backup-33333333-3333-4333-8333-333333333333',
+      createdAt: '2026-07-13T10:00:00.000Z', destinationClass: 'restore_input_exact_path',
+      encryption: 'none', checksum: 'c'.repeat(64)
+    };
+    await appendBackupLedger(box.workspace, older);
+    await appendBackupLedger(box.workspace, newer);
+    assert.equal((await appendBackupLedger(box.workspace, appendedLaterButOlder)).written, true);
+    const before = await readBackupLedgerStatus(box.workspace);
+    assert.equal(before.recordCount, 3);
+    assert.equal(before.latest.backupId, newer.backupId);
+    assert.equal(before.reminder.lastSuccessfulBackup, newer.createdAt);
+
+    await markBackupDeleted(box.workspace, { backupId: newer.backupId, deletedAt: '2026-07-15T11:00:00.000Z' });
+    const after = await readBackupLedgerStatus(box.workspace);
+    assert.equal(after.latest.backupId, older.backupId);
+    assert.equal(after.reminder.lastSuccessfulBackup, older.createdAt);
+    assert.equal(after.reminder.lastSuccessfulBackupSha256, older.checksum);
+    assert.equal(after.reminder.lastDestinationClass, older.destinationClass);
+  } finally {
+    await box.cleanup();
+  }
+});
+
+test('backup status exposes bounded reminder eligibility and records explicit suppression', async () => {
+  const box = await sandbox('backup-reminder-status');
+  try {
+    await install({ target: box.workspace, consent: 'granted' });
+    for (let index = 0; index < SESSION_THRESHOLD; index += 1) {
+      await recordPersistedSessionClose(box.workspace, {
+        at: new Date(Date.UTC(2026, 0, index + 1)).toISOString()
+      });
+    }
+    const status = await backup({ target: box.workspace, action: 'status' });
+    assert.deepEqual(Object.keys(status.reminder).sort(), [
+      'dueNow', 'lastReminderAt', 'nextEligibleAt', 'reminderDeclinedUntil',
+      'sessionThreshold', 'sessionsSinceSuccessfulBackup', 'thresholdReached'
+    ]);
+    assert.equal(status.reminder.sessionsSinceSuccessfulBackup, SESSION_THRESHOLD);
+    assert.equal(status.reminder.thresholdReached, true);
+    assert.equal(status.reminder.dueNow, true);
+
+    const declined = await backup({ target: box.workspace, action: 'status', 'decline-reminder': true });
+    assert.equal(declined.reminderDecline.recorded, true);
+    assert.match(declined.reminderDecline.declinedUntil, /^\d{4}-\d{2}-\d{2}T/);
+    assert.equal(declined.reminder.dueNow, false);
+    assert.equal(declined.reminder.reminderDeclinedUntil, declined.reminderDecline.declinedUntil);
+  } finally {
+    await box.cleanup();
+  }
+});
 
 test('backup action surface uses authenticated stable IDs and exact deletion confirmation', async () => {
   const box = await sandbox('backup-actions');
@@ -52,7 +120,7 @@ test('backup delete preview becomes stale when a valid same-ID artifact changes'
   const box = await sandbox('backup-delete-stale-artifact');
   try {
     await install({ target: box.workspace, consent: 'granted' });
-    const created = await backup({ target: box.workspace, action: 'create' });
+    const created = await backup({ target: box.workspace, action: 'create', 'allow-plaintext-backup': true });
     const preview = await backup({ target: box.workspace, action: 'delete', id: created.backupId });
     const integrityPath = path.join(created.backupPath, 'integrity.json');
     const integrity = JSON.parse(await fsp.readFile(integrityPath, 'utf8'));

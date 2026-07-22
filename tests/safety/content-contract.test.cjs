@@ -7,6 +7,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const read = (relative) => fs.readFileSync(path.join(ROOT, relative), 'utf8');
+const emergencyRegistry = JSON.parse(read('hooks/emergency-resources.json'));
 const markdownFiles = (directory) => fs.readdirSync(path.join(ROOT, directory))
   .filter((name) => name.endsWith('.md'))
   .sort();
@@ -24,10 +25,20 @@ test('safety authority separates crisis branches and tells capability truth', ()
   assert.match(safety, /cannot call emergency services/i);
   assert.match(safety, /cannot locate the user/i);
   assert.match(safety, /cannot .* monitor/i);
-  assert.match(safety, /United States[^\n]*2026-07-14[^\n]*988 Lifeline/);
-  assert.match(safety, /Canada[^\n]*2026-07-14[^\n]*Public Health Agency of Canada/);
-  assert.match(safety, /Türkiye[\s\S]*2026-07-14[\s\S]*112 Acil Çağrı Merkezi/);
-  assert.match(safety, /not an exhaustive or language-based support list/i);
+  assert.match(safety, /hooks\/emergency-resources\.json/);
+  assert.match(safety, /`expiresAt` is exclusive/i);
+  assert.match(safety, /missing, malformed, not-yet-valid, or stale registry/i);
+  for (const jurisdiction of emergencyRegistry.jurisdictions) {
+    assert.ok(safety.includes(jurisdiction.countryName), jurisdiction.countryCode);
+    assert.ok(safety.includes(`verifiedAt: ${jurisdiction.verifiedAt}`), `${jurisdiction.countryCode}:verifiedAt`);
+    assert.ok(safety.includes(`expiresAt: ${jurisdiction.expiresAt}`), `${jurisdiction.countryCode}:expiresAt`);
+    for (const resource of jurisdiction.resources) {
+      assert.ok(safety.includes(`**${resource.contact}**`), `${jurisdiction.countryCode}:${resource.contact}`);
+      assert.ok(safety.includes(resource.officialSource.label), `${jurisdiction.countryCode}:${resource.officialSource.label}`);
+      assert.ok(safety.includes(resource.officialSource.url), `${jurisdiction.countryCode}:${resource.officialSource.url}`);
+    }
+  }
+  assert.match(safety, /not an exhaustive or\s+language-based support list/i);
   assert.match(safety, /Never assume the user is in the United States from language alone/i);
   assert.match(safety, /memory is not paused/i);
   assert.match(safety, /body\/sensory prompts are `off`/i);
@@ -48,16 +59,17 @@ test('START keeps safety first and loads active runtime contracts before first-s
     'SELF-MODIFICATION.md',
     '.therapy/session-structure.md',
     '.therapy/modalities/',
-    'scalvin doctor --workspace <workspace> --json',
-    'scalvin review-due --workspace .',
-    '.therapy/state/SOURCE-LEDGER.md',
+    'exact retained-checkout `node bin/scalvin.js ...` command',
+    'Weekly review, archive retrieval, context-graph reads, and user-overlay reads',
+    'Source discovery remains typed and ledger-based',
     '(source_id, revision, sha256)',
-    'YYYY-MM-DD-HHMMSS--<uuid>--session.md'
+    'begin the canonical session through `session_manage`'
   ]) assert.ok(start.includes(token), `START missing ${token}`);
-  assert.match(start, /read only `context\/index\.md`/i);
+  assert.match(start, /never directly read or write[\s\S]*sessions, context, archive, sources, transcripts/i);
+  assert.match(start, /Weekly review[\s\S]*remain unavailable or\s+terminal-only; never open their private files directly/i);
   assert.match(start, /shipped base is immutable/i);
-  assert.match(start, /If `continuity_memory` is not yet consented[\s\S]*do not inspect `profile\.md`/i);
-  assert.match(start, /Transcript authority is `\.therapy\/state\/DATA-CONTROLS\.md`/i);
+  assert.match(start, /Before the fast re-entry pass[\s\S]*continuity is consented[\s\S]*continue\s+ephemerally/i);
+  assert.match(start, /Transcript authority is the canonical control state exposed through the local\s+broker\/CLI/i);
   assert.match(start, /`off`, `recording`, `paused`, and `stopped`/i);
   assert.match(start, /`best_effort_context` is allowed only when the user knowingly chose/i);
   assert.match(start, /IFS only when installed, explicitly opted into/i);
@@ -67,9 +79,38 @@ test('START keeps safety first and loads active runtime contracts before first-s
   assert.doesNotMatch(start, /SETUP-NOTES\.md` contains a `## Transcripts`/i);
 });
 
+test('client adapters attest available, degraded, or unsupported mechanical safety health visibly and without personal fields', () => {
+  const runtime = read('runtime/START-SESSION.md');
+  for (const state of ['available', 'degraded', 'unsupported']) {
+    assert.match(runtime, new RegExp('- `' + state + '`:'));
+  }
+  assert.match(runtime, /disclose that limitation once in\s+one\s+short user-facing sentence/i);
+  assert.match(runtime, /do not place prompt text, personal content, paths, or source text/i);
+  assert.match(runtime, /emergency-resource\s+registry and its UTC-date TTL/i);
+  assert.match(runtime, /Never present a stale bundled contact as currently\s+verified/i);
+
+  const claude = read('adapters/workspace/START-CLAUDE-SESSION.template.md');
+  assert.match(claude, /configured_unverified/);
+  assert.match(claude, /mcp__scalvin__capability_status/);
+  assert.match(claude, /per-prompt safety notice may attest `available`/i);
+  assert.match(claude, /degraded health notice attests `degraded` and takes precedence/i);
+  assert.match(claude, /never proof that mechanical screening ran/i);
+
+  for (const relative of [
+    'adapters/workspace/START-CODEX-SESSION.template.md',
+    'adapters/workspace/STARTER.template.md'
+  ]) {
+    const adapter = read(relative);
+    assert.match(adapter, /mechanicalSafetyBackstop\.state = unsupported/);
+    assert.match(adapter, /tell the user once in one short\s+sentence/i);
+    assert.match(adapter, /never imply that a prompt was\s+mechanically screened/i);
+  }
+});
+
 test('all personas declare AI identity/localization and contain no vendor stereotypes or fabricated biography markers', () => {
   const files = markdownFiles('personas');
-  assert.ok(files.includes('scalvin.md'));
+  assert.ok(files.includes('susan.md'));
+  assert.equal(files.includes('scalvin.md'), false);
   for (const file of files) {
     const body = read(path.join('personas', file));
     assert.match(body, /AI companion/i, `${file} missing AI identity`);

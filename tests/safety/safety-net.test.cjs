@@ -8,8 +8,18 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const HOOK = path.join(ROOT, 'hooks', 'safety-net.cjs');
+const RESOURCE_LIBRARY = path.join(ROOT, 'hooks', 'emergency-resources.cjs');
+const RESOURCE_REGISTRY = path.join(ROOT, 'hooks', 'emergency-resources.json');
 const CORPUS_PATH = path.join(ROOT, 'evals', 'safety-corpus.json');
-const { MAX_STDIN_CHARS, classify, normalize, buildNotice, loadLocalePacks } = require(HOOK);
+const {
+  MAX_STDIN_CHARS,
+  classify,
+  normalize,
+  buildNotice,
+  buildHealthNotice,
+  loadLocalePacks,
+  runSelfTest
+} = require(HOOK);
 const corpusDocument = JSON.parse(fs.readFileSync(CORPUS_PATH, 'utf8'));
 const corpus = corpusDocument.cases;
 
@@ -96,6 +106,7 @@ test('notice states limitations, capacity truth, and protocol authority', () => 
   const result = classify('I want to die.');
   const notice = buildNotice(result).hookSpecificOutput;
   assert.equal(notice.hookEventName, 'UserPromptSubmit');
+  assert.match(notice.additionalContext, /capability state: available/i);
   assert.match(notice.additionalContext, /not a risk assessment/i);
   assert.match(notice.additionalContext, /can both miss crises and over-fire/i);
   assert.match(notice.additionalContext, /\.therapy\/safety-protocol\.md/);
@@ -105,20 +116,66 @@ test('notice states limitations, capacity truth, and protocol authority', () => 
   assert.match(notice.additionalContext, /user's current language/i);
 });
 
+test('degraded notice is fixed, content-free, and keeps the prose protocol authoritative', () => {
+  const privatePrompt = 'PRIVATE_PROMPT_4d2b9f /private/path/person-name';
+  const notice = buildHealthNotice(privatePrompt).hookSpecificOutput;
+  const serialized = JSON.stringify(notice);
+  assert.equal(notice.hookEventName, 'UserPromptSubmit');
+  assert.match(notice.additionalContext, /capability state: degraded/i);
+  assert.match(notice.additionalContext, /prompt was not blocked/i);
+  assert.match(notice.additionalContext, /HOOK_PROCESSING_FAILED/);
+  assert.match(notice.additionalContext, /safety-protocol\.md/i);
+  assert.equal(serialized.includes(privatePrompt), false);
+  assert.equal(serialized.includes('/private/path'), false);
+});
+
 function runHook(input, env = {}) {
   return spawnSync(process.execPath, [HOOK], {
     input,
     encoding: 'utf8',
-    timeout: 3000,
-    env: { ...process.env, SCALVIN_HOOK_TIMEOUT_MS: '250', ...env }
+    timeout: 10000,
+    env: { ...process.env, SCALVIN_HOOK_TIMEOUT_MS: '1500', ...env }
   });
 }
 
-function makeHookFixture(parent, pack) {
+function runHookSelfTest(hook = HOOK, env = {}) {
+  return spawnSync(process.execPath, [hook, '--self-test', '--json'], {
+    encoding: 'utf8',
+    timeout: 10000,
+    cwd: ROOT,
+    env: { ...process.env, SCALVIN_HOOK_TIMEOUT_MS: '500', ...env }
+  });
+}
+
+test('self-test reports one content-free available attestation', async () => {
+  const direct = await runSelfTest(500);
+  assert.deepEqual(direct, {
+    schemaVersion: 1,
+    capability: 'mechanical_safety_backstop',
+    state: 'available',
+    reasonCode: null
+  });
+
+  const privateValue = 'PRIVATE_SELF_TEST_VALUE_d8d557';
+  const result = runHookSelfTest(HOOK, { SCALVIN_PRIVATE_SELF_TEST_VALUE: privateValue });
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, '');
+  assert.equal(result.stdout.trim().split('\n').length, 1);
+  const parsed = JSON.parse(result.stdout);
+  assert.deepEqual(parsed, direct);
+  assert.equal(result.stdout.includes(privateValue), false);
+  assert.equal(result.stdout.includes(ROOT), false);
+});
+
+function makeHookFixture(parent, pack, registry = JSON.parse(fs.readFileSync(RESOURCE_REGISTRY, 'utf8'))) {
   const root = fs.mkdtempSync(path.join(parent, 'safety-hook-'));
   const localeRoot = path.join(root, 'safety-locales');
   fs.mkdirSync(localeRoot);
   fs.copyFileSync(HOOK, path.join(root, 'safety-net.cjs'));
+  fs.copyFileSync(RESOURCE_LIBRARY, path.join(root, 'emergency-resources.cjs'));
+  if (registry !== null) {
+    fs.writeFileSync(path.join(root, 'emergency-resources.json'), `${JSON.stringify(registry)}\n`);
+  }
   fs.writeFileSync(path.join(localeRoot, 'en.json'), `${JSON.stringify(pack)}\n`);
   return path.join(root, 'safety-net.cjs');
 }
@@ -136,15 +193,24 @@ test('CLI emits valid UserPromptSubmit JSON only when fired', () => {
   assert.equal(silent.stdout, '');
 });
 
-test('CLI fails open for malformed, missing, and oversized input', () => {
+test('CLI preserves fail-open availability and exposes content-free degraded health for malformed, missing, and oversized input', () => {
   for (const input of ['', '{broken', JSON.stringify({ noPrompt: true })]) {
     const result = runHook(input);
     assert.equal(result.status, 0);
-    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, '');
+    const notice = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+    assert.match(notice, /capability state: degraded/i);
+    assert.match(notice, /prompt was not blocked/i);
+    if (input) assert.equal(notice.includes(input), false);
   }
-  const oversized = runHook(JSON.stringify({ prompt: `I want to die ${'x'.repeat(MAX_STDIN_CHARS)}` }));
+  const privateValue = 'PRIVATE_OVERSIZED_VALUE_90421e';
+  const oversized = runHook(JSON.stringify({ prompt: `${privateValue} ${'x'.repeat(MAX_STDIN_CHARS)}` }));
   assert.equal(oversized.status, 0);
-  assert.equal(oversized.stdout, '');
+  assert.equal(oversized.stderr, '');
+  const notice = JSON.parse(oversized.stdout).hookSpecificOutput.additionalContext;
+  assert.match(notice, /capability state: degraded/i);
+  assert.equal(notice.includes(privateValue), false);
+  assert.equal(notice.includes(ROOT), false);
 });
 
 test('classifier bounds direct calls as well as stdin', () => {
@@ -205,11 +271,65 @@ test('standalone hook fails open when an installed locale pack is malformed', (t
   const result = spawnSync(process.execPath, [fixture], {
     input: JSON.stringify({ prompt: 'synthetic safety text' }),
     encoding: 'utf8',
-    timeout: 2000,
+    timeout: 10000,
     env: { ...process.env, SCALVIN_HOOK_TIMEOUT_MS: '200' }
   });
   assert.equal(result.status, 0);
-  assert.equal(result.stdout, '');
+  assert.equal(result.stderr, '');
+  const notice = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+  assert.match(notice, /capability state: degraded/i);
+  assert.match(notice, /LOCALE_PACK_LOAD_FAILED/);
+
+  const selfTest = runHookSelfTest(fixture);
+  assert.equal(selfTest.status, 0);
+  assert.deepEqual(JSON.parse(selfTest.stdout), {
+    schemaVersion: 1,
+    capability: 'mechanical_safety_backstop',
+    state: 'degraded',
+    reasonCode: 'LOCALE_PACK_LOAD_FAILED'
+  });
+});
+
+test('standalone hook visibly degrades when emergency resources are stale or missing', async (t) => {
+  const parent = path.join(ROOT, '.test-tmp');
+  fs.mkdirSync(parent, { recursive: true });
+  const pack = JSON.parse(fs.readFileSync(path.join(ROOT, 'hooks', 'safety-locales', 'en.json'), 'utf8'));
+  const staleRegistry = JSON.parse(fs.readFileSync(RESOURCE_REGISTRY, 'utf8'));
+  for (const jurisdiction of staleRegistry.jurisdictions) {
+    jurisdiction.verifiedAt = '2000-01-01';
+    jurisdiction.expiresAt = '2000-01-31';
+  }
+  const scenarios = [
+    ['stale', staleRegistry, 'EMERGENCY_RESOURCE_REGISTRY_STALE'],
+    ['missing', null, 'EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED']
+  ];
+  for (const [label, registry, reasonCode] of scenarios) {
+    await t.test(label, () => {
+      const fixture = makeHookFixture(parent, pack, registry);
+      t.after(() => fs.rmSync(path.dirname(fixture), { recursive: true, force: true }));
+      const selfTest = runHookSelfTest(fixture);
+      assert.equal(selfTest.status, 0);
+      assert.deepEqual(JSON.parse(selfTest.stdout), {
+        schemaVersion: 1,
+        capability: 'mechanical_safety_backstop',
+        state: 'degraded',
+        reasonCode
+      });
+      const privatePrompt = 'PRIVATE_RESOURCE_PROMPT_42';
+      const result = spawnSync(process.execPath, [fixture], {
+        input: JSON.stringify({ prompt: privatePrompt }),
+        encoding: 'utf8',
+        timeout: 10000,
+        env: { ...process.env, SCALVIN_HOOK_TIMEOUT_MS: '200' }
+      });
+      assert.equal(result.status, 0);
+      const notice = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+      assert.match(notice, new RegExp(reasonCode));
+      assert.match(notice, /Do not present bundled contacts as current/i);
+      assert.equal(notice.includes(privatePrompt), false);
+      assert.equal(notice.includes(ROOT), false);
+    });
+  }
 });
 
 test('standalone hook terminates catastrophic locale regex work within its deadline', (t) => {
@@ -223,10 +343,13 @@ test('standalone hook terminates catastrophic locale regex work within its deadl
   const result = spawnSync(process.execPath, [fixture], {
     input: JSON.stringify({ prompt: `${'a'.repeat(100_000)}!` }),
     encoding: 'utf8',
-    timeout: 2000,
+    timeout: 10000,
     env: { ...process.env, SCALVIN_HOOK_TIMEOUT_MS: '150' }
   });
   assert.equal(result.status, 0);
-  assert.equal(result.stdout, '');
-  assert.ok(Date.now() - started < 1500, 'hook exceeded the bounded fail-open deadline');
+  assert.equal(result.stderr, '');
+  const notice = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+  assert.match(notice, /capability state: degraded/i);
+  assert.match(notice, /CLASSIFIER_UNAVAILABLE|HOOK_TIMEOUT/);
+  assert.ok(Date.now() - started < 5000, 'hook exceeded the bounded fail-open deadline plus process-start allowance');
 });

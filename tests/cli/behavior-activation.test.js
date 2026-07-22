@@ -38,6 +38,45 @@ function optionsFor(manifest, group, name) {
   };
 }
 
+test('removed Scalvin selector is fail-closed unless the updater supplies exact legacy compatibility', async () => {
+  const loaded = await loadManifest(DISTRIBUTION_MANIFEST);
+  const legacyDefaults = {
+    ...loaded.manifest.defaults,
+    companionName: 'Scalvin',
+    companionSlug: 'scalvin',
+    persona: 'scalvin'
+  };
+  assert.throws(
+    () => normalizePreferences(loaded.manifest, {}, legacyDefaults),
+    { code: 'UNKNOWN_SELECTION' }
+  );
+
+  const migratedDefault = normalizePreferences(loaded.manifest, {}, legacyDefaults, {
+    allowLegacyScalvin: true
+  });
+  assert.equal(migratedDefault.persona, 'susan');
+  assert.equal(migratedDefault.companionName, 'Susan');
+  assert.equal(migratedDefault.companionSlug, 'susan');
+
+  const migratedCustom = normalizePreferences(loaded.manifest, {}, {
+    ...legacyDefaults,
+    companionName: 'Alex',
+    companionSlug: 'alex'
+  }, {
+    allowLegacyScalvin: true
+  });
+  assert.equal(migratedCustom.persona, 'susan');
+  assert.equal(migratedCustom.companionName, 'Alex');
+  assert.equal(migratedCustom.companionSlug, 'alex');
+
+  assert.throws(
+    () => normalizePreferences(loaded.manifest, { persona: 'scalvin' }, legacyDefaults, {
+      allowLegacyScalvin: true
+    }),
+    { code: 'UNKNOWN_SELECTION' }
+  );
+});
+
 test('manifest-driven behavior fixture maps every selector byte-for-byte into the START-loaded active context', async (t) => {
   await fsp.mkdir(TEST_ROOT, { recursive: true });
   const fixtureRoot = await fsp.mkdtemp(path.join(TEST_ROOT, 'behavior-activation-'));

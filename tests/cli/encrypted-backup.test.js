@@ -60,7 +60,8 @@ async function makeEncrypted(box, options = {}) {
   return createBackup(box.workspace, {
     output: box.output,
     encrypt: true,
-    passphraseFile: options.passphraseFile || box.passphraseFile
+    passphraseFile: options.passphraseFile || box.passphraseFile,
+    ...(options.envelopeVersion ? { envelopeVersion: options.envelopeVersion } : {})
   });
 }
 
@@ -87,7 +88,7 @@ async function tempDecryptArtifacts(box) {
   return entries.filter((name) => name.startsWith('.backup-decrypt-'));
 }
 
-test('encrypted v2 roundtrip hides filenames, workspace metadata, and content', async () => {
+test('encrypted v3 roundtrip hides filenames, workspace metadata, and content', async () => {
   const box = await fixture('roundtrip');
   try {
     const made = await makeEncrypted(box);
@@ -98,7 +99,11 @@ test('encrypted v2 roundtrip hides filenames, workspace metadata, and content', 
     const outerRaw = await fsp.readFile(path.join(made.backupPath, 'integrity.json'), 'utf8');
     const outer = JSON.parse(outerRaw);
     assert.deepEqual(Object.keys(outer).sort(), ['backupId', 'createdAt', 'encryption', 'format', 'formatVersion']);
-    assert.equal(outer.formatVersion, 2);
+    assert.equal(outer.formatVersion, 3);
+    assert.deepEqual(
+      { N: outer.encryption.N, r: outer.encryption.r, p: outer.encryption.p },
+      { N: 2 ** 17, r: 8, p: 1 }
+    );
     assert.equal(outer.backupId, made.backupId);
     assert.equal(Object.hasOwn(outer, 'entries'), false);
     assert.equal(Object.hasOwn(outer, 'workspaceId'), false);
@@ -119,6 +124,25 @@ test('encrypted v2 roundtrip hides filenames, workspace metadata, and content', 
     await assert.rejects(fsp.access(plaintextRoot));
     await verified.cleanup();
     assert.deepEqual(await tempDecryptArtifacts(box), []);
+  } finally {
+    await box.cleanup();
+  }
+});
+
+test('encrypted v2 artifacts remain readable after v3 becomes the creation default', async () => {
+  const box = await fixture('v2-compatibility');
+  try {
+    const made = await makeEncrypted(box, { envelopeVersion: 2 });
+    const outer = JSON.parse(await fsp.readFile(path.join(made.backupPath, 'integrity.json'), 'utf8'));
+    assert.equal(outer.formatVersion, 2);
+    assert.deepEqual(
+      { N: outer.encryption.N, r: outer.encryption.r, p: outer.encryption.p },
+      { N: 2 ** 14, r: 8, p: 1 }
+    );
+    const verified = await verifyBackup(made.backupPath, { passphraseFile: box.passphraseFile, materialize: true });
+    assert.equal(verified.integrity.workspaceId, box.workspaceId);
+    assert.equal(await fsp.readFile(path.join(verified.payloadPath, PRIVATE_FILENAME), 'utf8'), PRIVATE_CONTENT);
+    await verified.cleanup();
   } finally {
     await box.cleanup();
   }

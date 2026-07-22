@@ -16,13 +16,19 @@ A weekly review is due at session start when all are true:
 
 It runs on the first returning session that meets those conditions, whether Monday, Tuesday, or any later weekday. If the user does not return, no review runs. There is no Tuesday-only catch-up window.
 
-The canonical deterministic authority is the cross-platform Node command:
+The canonical deterministic authority is the cross-platform Node command. It
+is terminal-only in the development preview and runs from the retained public
+checkout against the private workspace:
 
 ```bash
-scalvin review-due --workspace . --timezone <confirmed-IANA-timezone>
+node bin/scalvin.js review-due --workspace "<workspace>" --timezone <confirmed-IANA-timezone>
 ```
 
-`review_due_check.py` is a compatibility/reference fallback and must maintain tested parity with the Node command. `REVIEW-INDEX.md` is navigation only. The user may defer or skip a due review. Record a content-free deferral so it is not repeatedly pushed during the same session.
+`review_due_check.py` is a developer compatibility/reference implementation
+and must maintain tested parity with the Node command; it is not a normal
+user-facing fallback. `REVIEW-INDEX.md` is navigation only. The user may defer
+or skip a due review. Record a content-free deferral so it is not repeatedly
+pushed during the same session.
 
 An unconfirmed device timezone may be shown as a candidate but cannot produce `DUE`. The explicit `--date YYYY-MM-DD` override may produce `DUE` only for deterministic tests; it is not a substitute for confirming the user's timezone during a real session.
 

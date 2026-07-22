@@ -25,6 +25,7 @@ const {
   validateExternalCareRecord,
   lintExternalCareRecord
 } = require('../../cli/lib/source-provenance');
+const { canonicalEntityJson } = require('../../cli/context-graph');
 const { MAX_SOURCE_BYTES } = require('../../cli/source-inspect');
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -561,6 +562,47 @@ test('confirmed source deletion atomically removes bytes, provenance, references
     const profileBefore = `# Profile\n\n## ${MEMORY_ID} — Imported belief\n\n- Statement: Derived from source\n- Status: provisional\n- Source IDs: ${imported.sourceId}\n\n## Other\n\nKeep this.\n`;
     await fsp.writeFile(path.join(box.root, 'profile.md'), profileBefore);
     await fsp.writeFile(path.join(box.root, 'NEXT-PRIMER.md'), `# Primer\n\nReopen ${imported.sourceId} if needed.\n`);
+    const deletionLedgerPath = path.join(box.root, '.therapy', 'state', 'DELETION-LEDGER.md');
+    await fsp.copyFile(
+      path.join(ROOT, 'templates', 'state', 'DELETION-LEDGER.template.md'),
+      deletionLedgerPath
+    );
+    const deletionLedgerBefore = `${await fsp.readFile(deletionLedgerPath, 'utf8')}\n<!-- retained operational source identity: ${imported.sourceId} -->\n`;
+    await fsp.writeFile(deletionLedgerPath, deletionLedgerBefore);
+    const contextId = `person-${IDS.second}`;
+    const otherSourceId = `src-${IDS.external}`;
+    const contextRelative = `context/people/${contextId}.json`;
+    const contextBefore = canonicalEntityJson({
+      schemaVersion: 1,
+      type: 'person',
+      id: contextId,
+      status: 'Provisional',
+      label: 'Synthetic context',
+      aliases: [],
+      summary: 'Exact source-reference cleanup fixture.',
+      eventTime: null,
+      participantIds: [],
+      placeIds: [],
+      relatedEntityIds: [],
+      memoryIds: [],
+      consentEventId: `consent-${IDS.external}`,
+      provenance: {
+        origin: 'imported',
+        firstObservedAt: null,
+        importedAt: '2026-07-14T10:00:00.000Z',
+        lastLiveConfirmedAt: null,
+        lastRelevantAt: null
+      },
+      sourceRefs: [
+        { sourceId: imported.sourceId, revision: 1 },
+        { sourceId: otherSourceId, revision: 7 }
+      ],
+      sessionRefs: [],
+      revision: 1,
+      revisionHistory: [{ revision: 1, at: '2026-07-14T10:00:00.000Z', action: 'backfill', sessionId: null }]
+    });
+    await fsp.mkdir(path.join(box.root, 'context', 'people'), { recursive: true });
+    await fsp.writeFile(path.join(box.root, contextRelative), contextBefore);
     await fsp.writeFile(path.join(box.root, '.therapy', 'state', 'BACKUP-LEDGER.md'), '| backup-99999999-9999-4999-8999-999999999999 | 2026-07-14T10:00:00Z | all | local_user_selected | aes-256-gcm | a | passed | passed | complete | null |\n');
     const paths = imported.canonicalPatch.sourceLifecycle.record;
 
@@ -573,6 +615,9 @@ test('confirmed source deletion atomically removes bytes, provenance, references
     assert.ok(plan.affectedPaths.includes(paths.contentObject));
     assert.ok(plan.affectedPaths.includes(paths.recordObject));
     assert.ok(plan.affectedPaths.includes('profile.md'));
+    assert.ok(plan.affectedPaths.includes(contextRelative));
+    assert.ok(plan.affectedPaths.includes('context/index.md'));
+    assert.equal(plan.contextReferenceRewrites, 1);
     assert.equal(safeSerialized(plan).includes(payload), false);
     assert.equal(safeSerialized(plan).includes(box.root), false);
     await assert.rejects(applySourceRemoval({ workspace: box.root, plan, confirm: true, confirmationToken: 'wrong' }), { code: 'SOURCE_CONFIRMATION_REQUIRED' });
@@ -586,6 +631,8 @@ test('confirmed source deletion atomically removes bytes, provenance, references
     assert.equal(failed.error.code, 'TEST_FAILPOINT');
     assert.equal(await fsp.readFile(path.join(box.root, paths.contentObject), 'utf8'), payload);
     assert.equal(await fsp.readFile(path.join(box.root, 'profile.md'), 'utf8'), profileBefore);
+    assert.equal(await fsp.readFile(path.join(box.root, contextRelative), 'utf8'), contextBefore);
+    assert.equal(await exists(path.join(box.root, 'context', 'index.md')), false);
     assert.equal((await ledgerRecords(box.root))[0].status, 'integrated');
 
     const removed = await applySourceRemoval({
@@ -597,12 +644,144 @@ test('confirmed source deletion atomically removes bytes, provenance, references
     assert.equal((await fsp.readFile(path.join(box.root, 'profile.md'), 'utf8')).includes(MEMORY_ID), false);
     assert.equal((await fsp.readFile(path.join(box.root, 'profile.md'), 'utf8')).includes('Keep this.'), true);
     assert.equal((await fsp.readFile(path.join(box.root, 'NEXT-PRIMER.md'), 'utf8')).includes(imported.sourceId), false);
+    assert.equal(await fsp.readFile(deletionLedgerPath, 'utf8'), deletionLedgerBefore);
+    const contextAfter = JSON.parse(await fsp.readFile(path.join(box.root, contextRelative), 'utf8'));
+    assert.deepEqual(contextAfter.sourceRefs, [{ sourceId: otherSourceId, revision: 7 }]);
+    assert.equal(contextAfter.revision, 2);
+    assert.deepEqual(contextAfter.revisionHistory.at(-1), {
+      revision: 2,
+      at: contextAfter.revisionHistory.at(-1).at,
+      action: 'reference_rewrite',
+      sessionId: null
+    });
+    assert.match(await fsp.readFile(path.join(box.root, 'context', 'index.md'), 'utf8'), new RegExp(`\\| ${contextId} \\| person \\| Synthetic context \\| 2 \\|`));
     assert.equal((await ledgerRecords(box.root))[0].status, 'deleted');
+    assert.equal(removed.contextReferenceRewrites, 1);
     assert.equal(removed.knownBackupRecords, 1);
     assert.equal(removed.backupActionRequired, true);
     assert.equal((await allRelativePaths(box.root)).some((item) => item.endsWith('.incomplete') || item.endsWith('.tmp')), false);
   } finally {
     delete process.env.SCALVIN_TEST_SOURCE_FAILPOINT;
+    await box.cleanup();
+  }
+});
+
+test('source deletion fails closed on a mixed prose reference without touching source or prose', async () => {
+  const box = await workspace('delete-mixed-reference');
+  try {
+    const source = path.join(box.root, 'source.txt');
+    await fsp.writeFile(source, 'mixed-reference source bytes');
+    const imported = await importSource({
+      workspace: box.root, canonicalState: state(), sourcePath: source,
+      now: NOW, idFactory: oneId(IDS.first)
+    });
+    const primerPath = path.join(box.root, 'NEXT-PRIMER.md');
+    const mixed = `Keep this unrelated detail beside ${imported.sourceId}.\n`;
+    await fsp.writeFile(primerPath, mixed);
+
+    await assert.rejects(planSourceRemoval({
+      workspace: box.root, canonicalState: state(), sourceId: imported.sourceId, action: 'delete'
+    }), { code: 'SOURCE_REFERENCE_AMBIGUOUS' });
+    assert.equal(await fsp.readFile(primerPath, 'utf8'), mixed);
+    await fsp.access(path.join(box.root, imported.canonicalPatch.sourceLifecycle.record.contentObject));
+    assert.equal((await ledgerRecords(box.root))[0].status, 'ready');
+  } finally {
+    await box.cleanup();
+  }
+});
+
+test('source deletion rejects a structured reference whose array values are not exact typed IDs', async () => {
+  const box = await workspace('delete-malformed-reference-array');
+  try {
+    const source = path.join(box.root, 'source.txt');
+    await fsp.writeFile(source, 'malformed-reference source bytes');
+    const imported = await importSource({
+      workspace: box.root, canonicalState: state(), sourcePath: source,
+      now: NOW, idFactory: oneId(IDS.first)
+    });
+    const primerPath = path.join(box.root, 'NEXT-PRIMER.md');
+    const malformed = `source_ids: [${JSON.stringify(`note ${imported.sourceId}`)}]\n`;
+    await fsp.writeFile(primerPath, malformed);
+
+    await assert.rejects(planSourceRemoval({
+      workspace: box.root, canonicalState: state(), sourceId: imported.sourceId, action: 'delete'
+    }), { code: 'SOURCE_REFERENCE_AMBIGUOUS' });
+    assert.equal(await fsp.readFile(primerPath, 'utf8'), malformed);
+    await fsp.access(path.join(box.root, imported.canonicalPatch.sourceLifecycle.record.contentObject));
+    assert.equal((await ledgerRecords(box.root))[0].status, 'ready');
+  } finally {
+    await box.cleanup();
+  }
+});
+
+test('rejecting one revision preserves source-wide references and removes only its exact context tuple', async () => {
+  const box = await workspace('reject-one-revision');
+  try {
+    const source = path.join(box.root, 'source.txt');
+    await fsp.writeFile(source, 'revision one');
+    const first = await importSource({
+      workspace: box.root, canonicalState: state(), sourcePath: source,
+      now: NOW, idFactory: oneId(IDS.first)
+    });
+    await fsp.writeFile(source, 'revision two');
+    await importSource({
+      workspace: box.root, canonicalState: state(), sourcePath: source,
+      sourceId: first.sourceId, revision: 2, now: LATER
+    });
+    const primerPath = path.join(box.root, 'NEXT-PRIMER.md');
+    const primerBefore = `source_ids: [${JSON.stringify(first.sourceId)}]\n`;
+    await fsp.writeFile(primerPath, primerBefore);
+    const contextId = `person-${IDS.fake}`;
+    const contextRelative = `context/people/${contextId}.json`;
+    const contextBefore = canonicalEntityJson({
+      schemaVersion: 1,
+      type: 'person',
+      id: contextId,
+      status: 'Provisional',
+      label: 'Revision-scoped fixture',
+      aliases: [],
+      summary: '',
+      eventTime: null,
+      participantIds: [],
+      placeIds: [],
+      relatedEntityIds: [],
+      memoryIds: [],
+      consentEventId: `consent-${IDS.external}`,
+      provenance: {
+        origin: 'imported',
+        firstObservedAt: null,
+        importedAt: '2026-07-14T10:00:00.000Z',
+        lastLiveConfirmedAt: null,
+        lastRelevantAt: null
+      },
+      sourceRefs: [
+        { sourceId: first.sourceId, revision: 1 },
+        { sourceId: first.sourceId, revision: 2 }
+      ],
+      sessionRefs: [],
+      revision: 1,
+      revisionHistory: [{ revision: 1, at: '2026-07-14T10:00:00.000Z', action: 'backfill', sessionId: null }]
+    });
+    await fsp.mkdir(path.dirname(path.join(box.root, contextRelative)), { recursive: true });
+    await fsp.writeFile(path.join(box.root, contextRelative), contextBefore);
+
+    const plan = await planSourceRemoval({
+      workspace: box.root, canonicalState: state(), sourceId: first.sourceId,
+      revision: 1, action: 'reject'
+    });
+    assert.equal(plan.contextReferenceRewrites, 1);
+    assert.equal(plan.affectedPaths.includes('NEXT-PRIMER.md'), false);
+    const rejected = await applySourceRemoval({
+      workspace: box.root, plan, confirm: true, confirmationToken: plan.confirmationToken
+    });
+    assert.equal(rejected.status, 'rejected');
+    assert.equal(await fsp.readFile(primerPath, 'utf8'), primerBefore);
+    const contextAfter = JSON.parse(await fsp.readFile(path.join(box.root, contextRelative), 'utf8'));
+    assert.deepEqual(contextAfter.sourceRefs, [{ sourceId: first.sourceId, revision: 2 }]);
+    const records = await ledgerRecords(box.root);
+    assert.equal(records.find((item) => item.revision === 1).status, 'rejected');
+    assert.equal(records.find((item) => item.revision === 2).status, 'ready');
+  } finally {
     await box.cleanup();
   }
 });

@@ -6,7 +6,8 @@
   "private": true,
   "type": "commonjs",
   "bin": {
-    "scalvin": "bin/scalvin.js"
+    "scalvin": "bin/scalvin.js",
+    "scalvin-mcp": "bin/scalvin-mcp.js"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -14,9 +15,11 @@
   "files": [
     "bin/",
     "cli/change-control.js",
+    "cli/client-launcher.js",
     "cli/context-graph.js",
     "cli/doctor.js",
     "cli/index.js",
+    "cli/mcp-server.js",
     "cli/lib/args.js",
     "cli/lib/backup-crypto.js",
     "cli/lib/backup-reminder.js",
@@ -32,8 +35,10 @@
     "cli/operations.js",
     "cli/review-due.js",
     "cli/session-lifecycle.js",
+    "cli/session-supervisor.js",
     "cli/source-inspect.js",
     "cli/source-lifecycle.js",
+    "cli/source-worker.js",
     "manifest.json",
     "package-inventory.json",
     "AGENTS.md",
@@ -69,10 +74,11 @@
     "test:evals": "node cli/run-tests.js evals",
     "lint": "node cli/check-syntax.js",
     "check:syntax": "node cli/check-syntax.js",
+    "check:emergency-resources": "node scripts/check-emergency-resources.mjs",
     "check:manifest": "node cli/refresh-manifest.js --check",
     "check:links": "node scripts/check-links.mjs",
     "check:public": "node scripts/check-public-repo.mjs",
-    "check": "npm run check:syntax && npm run check:manifest && npm run check:package-inventory && npm run check:links && npm run check:public",
+    "check": "npm run check:syntax && npm run check:emergency-resources && npm run check:manifest && npm run check:package-inventory && npm run check:links && npm run check:public",
     "manifest:refresh": "node cli/refresh-manifest.js",
     "manifest:verify": "node cli/refresh-manifest.js --check",
     "inventory:refresh": "node cli/refresh-package-inventory.js --write",

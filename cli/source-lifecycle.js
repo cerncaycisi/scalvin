@@ -21,6 +21,7 @@ const {
 } = require('./lib/fs-safe');
 const { inspectSource, MAX_SOURCE_BYTES, SOURCE_POLICY } = require('./source-inspect');
 const { memoryBlocks, knownBackupCount, confirmationToken } = require('./memory-data');
+const { planRemoveSourceReferences } = require('./context-graph');
 const {
   SOURCE_ID_PATTERN,
   CONSENT_ID_PATTERN,
@@ -756,6 +757,28 @@ async function loadSourceArtifacts(workspace, ledgerRecord) {
   return loaded;
 }
 
+async function loadSourcePayloadForWorker(options = {}) {
+  const sourceId = normalizedSourceId(options.sourceId);
+  const ledger = await loadLedger(options.workspace);
+  const candidates = ledger.records.filter((item) => item.sourceId === sourceId);
+  invariant(candidates.length > 0, 'Source was not found.', 'SOURCE_NOT_FOUND');
+  const revision = options.revision === undefined
+    ? Math.max(...candidates.map((item) => item.revision))
+    : Number(options.revision);
+  invariant(Number.isSafeInteger(revision) && revision > 0, 'Source revision is invalid.', 'INVALID_SOURCE_REVISION');
+  const record = candidates.find((item) => item.revision === revision);
+  invariant(record, 'Source revision was not found.', 'SOURCE_REVISION_NOT_FOUND');
+  invariant(record.status === 'ready', 'Only a ready source revision can enter the isolated worker.', 'SOURCE_STATE_TRANSITION_INVALID');
+  const loaded = await loadSourceArtifacts(options.workspace, record);
+  const content = await readManagedOptional(options.workspace, loaded.paths.contentObject, MAX_SOURCE_BYTES);
+  invariant(content !== null && content.length === record.byteLength && sha256Buffer(content) === record.sha256,
+    'Source content object failed its exact integrity check.', 'SOURCE_CONTENT_OBJECT_INTEGRITY_FAILED');
+  return {
+    record: publicSourceRecord(record),
+    content: Buffer.from(content)
+  };
+}
+
 async function integrateSource(options = {}) {
   const sourceId = normalizedSourceId(options.sourceId);
   const ledger = await loadLedger(options.workspace);
@@ -820,17 +843,60 @@ function removeMemoryBlocks(markdown, ids) {
   return output.replace(/\n{3,}/g, '\n\n');
 }
 
-function stripReferenceLines(markdown, needles) {
-  return markdown.split(/(?<=\n)/).filter((line) => !needles.some((needle) => line.toLowerCase().includes(needle))).join('');
+function rewriteReferenceLines(markdown, sourceIds, derivedIds) {
+  const sourceSet = new Set(sourceIds.map((item) => item.toLowerCase()));
+  const memorySet = new Set(derivedIds.map((item) => item.toLowerCase()));
+  const needles = [...sourceSet, ...memorySet];
+  const rewritten = markdown.split(/(?<=\n)/).map((line) => {
+    const lower = line.toLowerCase();
+    if (!needles.some((needle) => lower.includes(needle))) return line;
+    const newline = line.endsWith('\n') ? '\n' : '';
+    const withoutNewline = newline ? line.slice(0, -1) : line;
+    const carriage = withoutNewline.endsWith('\r') ? '\r' : '';
+    const body = carriage ? withoutNewline.slice(0, -1) : withoutNewline;
+
+    const jsonField = body.match(/^(\s*(source_ids|source_memory_ids|derived_memory_ids)\s*:\s*)(\[[^\r\n]*\])(\s*)$/i);
+    if (jsonField) {
+      let values;
+      try { values = JSON.parse(jsonField[3]); } catch { values = null; }
+      const field = jsonField[2].toLowerCase();
+      const pattern = field === 'source_ids' ? SOURCE_ID_PATTERN : MEMORY_ID_PATTERN;
+      const selected = field === 'source_ids' ? sourceSet : memorySet;
+      invariant(
+        Array.isArray(values) && values.every((value) => typeof value === 'string' && pattern.test(value) && value === value.toLowerCase()),
+        'A source-reference array is malformed.',
+        'SOURCE_REFERENCE_AMBIGUOUS'
+      );
+      const retained = values.filter((value) => !selected.has(value));
+      return `${jsonField[1]}${JSON.stringify(retained)}${jsonField[4]}${carriage}${newline}`;
+    }
+
+    const sourceList = body.match(/^(\s*-\s*Source IDs\s*:\s*)(.*?)(\s*)$/i);
+    if (sourceList) {
+      const raw = sourceList[2].trim();
+      const values = raw === '[]' || raw === 'none' || raw === '' ? [] : raw.split(',').map((value) => value.trim()).filter(Boolean);
+      invariant(values.every((value) => SOURCE_ID_PATTERN.test(value)), 'A source-ID list is malformed.', 'SOURCE_REFERENCE_AMBIGUOUS');
+      const retained = values.filter((value) => !sourceSet.has(value.toLowerCase()));
+      return `${sourceList[1]}${retained.length ? retained.join(',') : '[]'}${sourceList[3]}${carriage}${newline}`;
+    }
+
+    const exactInstruction = body.match(/^\s*(?:-\s*)?(?:reopen|use)\s+(src-[0-9a-f-]{36})(?:\s+if\s+needed)?[.]?\s*$/i);
+    if (exactInstruction && sourceSet.has(exactInstruction[1].toLowerCase())) return '';
+    const exactMemoryReference = body.match(/^\s*-\s*(?:Memory(?:\s+(?:ID|reference))?\s*:\s*)?((?:mem|theme|focus)-[0-9a-f-]{36})[.]?\s*$/i);
+    if (exactMemoryReference && memorySet.has(exactMemoryReference[1].toLowerCase())) return '';
+    throw sourceError('A source reference appears in mixed prose; refusing collateral line deletion.', 'SOURCE_REFERENCE_AMBIGUOUS');
+  }).join('');
+  const lowered = rewritten.toLowerCase();
+  invariant(!needles.some((needle) => lowered.includes(needle)), 'A deleted source reference remains after cleanup.', 'SOURCE_REFERENCE_AMBIGUOUS');
+  return rewritten;
 }
 
 async function sourceReferenceWrites(workspace, sourceIds, derivedIds, excluded = new Set()) {
   const writes = new Map();
-  const needles = [...sourceIds, ...derivedIds].map((item) => item.toLowerCase());
   const root = path.resolve(workspace);
   for (const entry of await walkTree(root)) {
     if (entry.type !== 'file' || !entry.path.toLowerCase().endsWith('.md') || excluded.has(entry.path)) continue;
-    if (entry.path === LEDGER_RELATIVE || entry.path.startsWith('sources/records/') || entry.path.startsWith('.therapy/runtime/') || entry.path.startsWith('.therapy/library/')) continue;
+    if (entry.path === LEDGER_RELATIVE || entry.path.startsWith('sources/records/') || entry.path.startsWith('.therapy/state/') || entry.path.startsWith('.therapy/runtime/') || entry.path.startsWith('.therapy/library/')) continue;
     if (entry.size > MAX_REFERENCE_BYTES) throw sourceError('A source-derived reference file exceeds the cleanup limit.', 'SOURCE_REFERENCE_TOO_LARGE');
     const raw = await readManagedOptional(workspace, entry.path, MAX_REFERENCE_BYTES);
     invariant(raw !== null, 'A source-derived reference changed during cleanup planning.', 'SOURCE_REFERENCE_CHANGED');
@@ -838,7 +904,7 @@ async function sourceReferenceWrites(workspace, sourceIds, derivedIds, excluded 
     let updated = ['profile.md', 'ACTIVE-THEMES.md', 'CURRENT-FOCUS.md', 'sources/client-told-memories.md'].includes(entry.path)
       ? removeMemoryBlocks(original, derivedIds)
       : original;
-    updated = stripReferenceLines(updated, needles);
+    updated = rewriteReferenceLines(updated, sourceIds, derivedIds);
     if (updated !== original) writes.set(entry.path, Buffer.from(updated));
   }
   return writes;
@@ -870,7 +936,26 @@ async function planSourceRemoval(options = {}) {
     excluded.add(paths.recordObject);
     nextRecords = upsertRecord(nextRecords, { ...item, status, error: null });
   }
-  const writes = await sourceReferenceWrites(options.workspace, [sourceId], derivedIds, excluded);
+  const retainedSourceRevision = nextRecords.some((item) => (
+    item.sourceId === sourceId && !['deleted', 'rejected', 'failed'].includes(item.status)
+  ));
+  const sourceIdsToRemove = options.action === 'delete' || !retainedSourceRevision ? [sourceId] : [];
+  const writes = await sourceReferenceWrites(options.workspace, sourceIdsToRemove, derivedIds, excluded);
+  const contextCleanup = await planRemoveSourceReferences(options.workspace, options.canonicalState, {
+    selectors: options.action === 'delete'
+      ? [{ sourceId, revision: null }]
+      : selected.map((item) => ({ sourceId: item.sourceId, revision: item.revision })),
+    now: options.now || new Date().toISOString()
+  });
+  for (const [relative, content] of contextCleanup.writes) {
+    const existing = writes.get(relative);
+    invariant(
+      existing === undefined || Buffer.from(existing).equals(Buffer.from(content)),
+      'Source cleanup planners produced conflicting writes.',
+      'SOURCE_REFERENCE_PLAN_CONFLICT'
+    );
+    writes.set(relative, content);
+  }
   writes.set(LEDGER_RELATIVE, Buffer.from(renderLedger(ledger.markdown, nextRecords)));
   const expected = new Map();
   for (const relative of new Set([...writes.keys(), ...deletes])) expected.set(relative, await snapshotPath(options.workspace, relative));
@@ -880,7 +965,8 @@ async function planSourceRemoval(options = {}) {
   const plan = {
     status: 'confirmation_required', action: options.action, sourceId,
     revisions: selected.map((item) => item.revision), affectedPaths: [...new Set([...writes.keys(), ...deletes])].sort(),
-    derivedMemoryIds: derivedIds, knownBackupRecords: backups, backupActionRequired: backups > 0,
+    derivedMemoryIds: derivedIds, contextReferenceRewrites: contextCleanup.referenceRewrites,
+    knownBackupRecords: backups, backupActionRequired: backups > 0,
     confirmationToken: token, contentIncluded: false, absolutePathIncluded: false
   };
   Object.defineProperty(plan, 'plannedWriteHashes', {
@@ -907,7 +993,8 @@ async function applySourceRemoval(options = {}) {
     });
     return {
       status: internal.status, action: plan.action, sourceId: plan.sourceId, revisions: plan.revisions,
-      derivedMemoryIdsRemoved: plan.derivedMemoryIds, knownBackupRecords: plan.knownBackupRecords,
+      derivedMemoryIdsRemoved: plan.derivedMemoryIds, contextReferenceRewrites: plan.contextReferenceRewrites,
+      knownBackupRecords: plan.knownBackupRecords,
       backupActionRequired: plan.backupActionRequired, contentIncluded: false, absolutePathIncluded: false,
       canonicalPatch: { sourceLifecycle: { operation: internal.status === 'deleted' ? 'delete_many' : 'upsert_many', records: patches } },
       written: transaction.written, deleted: transaction.deleted
@@ -930,6 +1017,7 @@ module.exports = {
   canonicalSourcePatch,
   statusSource,
   importSource,
+  loadSourcePayloadForWorker,
   integrateSource,
   planSourceRemoval,
   applySourceRemoval

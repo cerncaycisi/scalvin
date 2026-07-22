@@ -13,7 +13,14 @@ Create `sources/client-told-memories.md` only when:
 - the user has been told that concrete scenes may be kept for continuity
 - at least one qualifying scene exists
 
-Use `templates/sources/CLIENT-TOLD-MEMORIES.template.md`. Do not infer consent from the emotional importance of a scene.
+Use the typed `memory_add` capability and the canonical structure documented in
+`templates/sources/CLIENT-TOLD-MEMORIES.template.md`. The capability derives
+the stable ID, current active session, server time, continuity-consent event,
+canonical destination, and `client_scene_memories` retention class from the
+validated workspace. It accepts no raw path or source authority and requires a
+fresh exact-request confirmation. If the typed capability is unavailable, do
+not create or directly edit this private file. Do not infer consent from the
+emotional importance of a scene.
 
 ## What Qualifies
 
@@ -33,6 +40,9 @@ Each scene has:
 - current revision number
 - consent event ID
 - separated user-told content and companion interpretation
+
+Initial typed creation leaves companion interpretation empty. A model-generated
+hypothesis is never required to preserve the user's scene.
 
 Never move a scene under a new date and delete its first-told history. When new detail arrives, retain the same ID, increment the revision, and append a brief revision event. Do not duplicate the full prior sensitive wording in revision history.
 

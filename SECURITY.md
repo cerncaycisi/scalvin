@@ -77,12 +77,25 @@ Backups and exports are sensitive copies.
 
 - use unique timestamp-plus-UUID names
 - write to staging, hash, test, then rename atomically
-- use restrictive permissions and encryption when appropriate
+- keep backup encryption enabled; plaintext backup requires the explicit
+  `--allow-plaintext-backup` compatibility override
+- keep recovery keys separate from backup artifacts and test a restore before
+  relying on either copy
 - never place a backup in cloud sync without an explicit choice
 - record only content-free backup status in the ledger
 - inspect restores in an isolated staging directory and reject path traversal, absolute paths, symlinks, and special files
 
 Deleting live data does not delete a prior backup. Rotate or destroy known backups separately.
+
+Automatic safety backups created before replacement, update, or forced restore
+are encrypted. If no private backup passphrase file is supplied, Scalvin creates
+a random recovery-key file in a separate private directory and returns only its
+path. Losing that file makes the backup unrecoverable; storing it beside the
+artifact removes the intended separation.
+
+Memory exports remain plaintext and require the explicit
+`--allow-plaintext-export` acknowledgement. Their integrity manifest detects
+changes but does not provide confidentiality.
 
 ## Logs, Diagnostics, And Errors
 

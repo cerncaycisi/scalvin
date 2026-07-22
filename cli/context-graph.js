@@ -851,6 +851,69 @@ function removeMemoryReferences(entity, ids, now, sessionId) {
   return validateEntity(appendRevision({ ...entity, memoryIds }, 'reference_rewrite', now, sessionId));
 }
 
+function normalizeSourceRemovalSelectors(values) {
+  invariant(Array.isArray(values) && values.length >= 1 && values.length <= MAX_ENTITIES, 'Source-reference cleanup requires a bounded selector array.', 'CONTEXT_REFERENCE_INVALID');
+  const normalized = values.map((selector) => {
+    exactKeys(selector, ['sourceId', 'revision'], 'Source-reference cleanup selector');
+    invariant(SOURCE_ID_PATTERN.test(selector.sourceId || ''), 'Source-reference cleanup IDs must use src-<UUID-v4>.', 'CONTEXT_REFERENCE_INVALID');
+    invariant(selector.revision === null || (Number.isSafeInteger(selector.revision) && selector.revision >= 1 && selector.revision <= 999_999), 'Source-reference cleanup revision is invalid.', 'CONTEXT_REFERENCE_INVALID');
+    return { sourceId: selector.sourceId, revision: selector.revision };
+  }).sort((left, right) => compareCodePoint(
+    `${left.sourceId}\0${left.revision === null ? '000000000' : String(left.revision).padStart(9, '0')}`,
+    `${right.sourceId}\0${right.revision === null ? '000000000' : String(right.revision).padStart(9, '0')}`
+  ));
+  const keys = normalized.map((selector) => `${selector.sourceId}\0${selector.revision === null ? '*' : selector.revision}`);
+  invariant(new Set(keys).size === keys.length, 'Source-reference cleanup selectors contain duplicates.', 'CONTEXT_DUPLICATE');
+  const sourceWide = new Set(normalized.filter((selector) => selector.revision === null).map((selector) => selector.sourceId));
+  invariant(!normalized.some((selector) => selector.revision !== null && sourceWide.has(selector.sourceId)), 'Source-reference cleanup selectors overlap source-wide and exact scope.', 'CONTEXT_REFERENCE_INVALID');
+  return normalized;
+}
+
+function removeSourceReferences(entity, sourceIds, exactReferences, now, sessionId) {
+  const sourceRefs = entity.sourceRefs.filter((reference) => (
+    !sourceIds.has(reference.sourceId) && !exactReferences.has(sourceRefKey(reference))
+  ));
+  if (sourceRefs.length === entity.sourceRefs.length) return entity;
+  return validateEntity(appendRevision({ ...entity, sourceRefs }, 'reference_rewrite', now, sessionId));
+}
+
+async function planRemoveSourceReferences(root, state, options = {}) {
+  const selectors = normalizeSourceRemovalSelectors(options.selectors);
+  const removeAllSourceIds = new Set(selectors.filter((selector) => selector.revision === null).map((selector) => selector.sourceId));
+  const exactReferences = new Set(selectors.filter((selector) => selector.revision !== null).map(sourceRefKey));
+  let nowEpoch = Date.parse(canonicalTimestamp(options.now || new Date().toISOString()));
+  const sessionId = currentSessionId(state, options.sessionId);
+  const entities = await loadAllEntities(root);
+  for (const entity of entities) nowEpoch = Math.max(nowEpoch, Date.parse(entity.revisionHistory.at(-1).at));
+  const now = new Date(nowEpoch).toISOString();
+  const writes = new Map();
+  const nextEntities = [];
+  let referenceRewrites = 0;
+  for (const entity of entities) {
+    const cleaned = removeSourceReferences(entity, removeAllSourceIds, exactReferences, now, sessionId);
+    if (cleaned !== entity) {
+      referenceRewrites += 1;
+      writes.set(entityRelative(cleaned.id), canonicalJson(cleaned));
+    }
+    nextEntities.push(cleaned);
+  }
+  invariant(nextEntities.every((entity) => entity.sourceRefs.every((reference) => (
+    !removeAllSourceIds.has(reference.sourceId) && !exactReferences.has(sourceRefKey(reference))
+  ))), 'A deleted source reference remains in the context graph.', 'CONTEXT_REFERENCE_REWRITE_FAILED');
+  if (referenceRewrites > 0) {
+    await ensureIndexWritable(root);
+    const consentEventId = state?.consent?.decisions?.context_graph?.eventId;
+    withIndexWrite(writes, nextEntities, CONSENT_ID_PATTERN.test(consentEventId || '') ? { consentEventId } : null, now);
+  }
+  return {
+    operation: 'remove-source-references',
+    referenceRewrites,
+    effectiveAt: now,
+    writes,
+    deletes: []
+  };
+}
+
 async function planRemoveMemoryReferences(root, state, options = {}) {
   invariant(Array.isArray(options.ids) && options.ids.length >= 1 && options.ids.length <= MAX_MEMORY_REFERENCES, 'Memory-reference cleanup requires a bounded ID array.', 'CONTEXT_REFERENCE_INVALID');
   const ids = options.ids.map((id) => {
@@ -952,6 +1015,69 @@ async function planForget(root, state, options = {}) {
     knownBackupRecords: backup.count, backupLedgerAvailable: backup.ledgerAvailable,
     receiptPlanned: receipt.write !== null, receiptEventId: receipt.eventId, receiptReason: receipt.reason,
     writes, deletes: [entityRelative(id)]
+  };
+}
+
+async function planForgetMany(root, state, options = {}) {
+  invariant(Array.isArray(options.ids) && options.ids.length >= 1 && options.ids.length <= MAX_ENTITIES, 'Context retention deletion requires a bounded entity-ID array.', 'CONTEXT_REFERENCE_INVALID');
+  const ids = options.ids.map((id) => assertEntityId(id)).sort(compareCodePoint);
+  invariant(new Set(ids).size === ids.length, 'Context retention deletion IDs contain duplicates.', 'CONTEXT_DUPLICATE');
+  const removed = new Set(ids);
+  const requestedNow = canonicalTimestamp(options.now || new Date().toISOString());
+  const sessionId = currentSessionId(state, options.sessionId);
+  const backup = await knownBackupRecords(root);
+  const entities = await loadAllEntities(root);
+  const latestRevisionEpoch = entities.reduce((latest, entity) => Math.max(latest, Date.parse(entity.revisionHistory.at(-1).at)), Date.parse(requestedNow));
+  const now = new Date(latestRevisionEpoch).toISOString();
+  const byId = mapEntities(entities);
+  invariant(ids.every((id) => byId.has(id)), 'A context retention target was not found.', 'CONTEXT_NOT_FOUND');
+
+  const targets = ids.map((id) => byId.get(id));
+  const remaining = [];
+  const writes = new Map();
+  let referenceRewrites = 0;
+  for (const entity of entities) {
+    if (removed.has(entity.id)) continue;
+    const participantIds = entity.participantIds.filter((id) => !removed.has(id));
+    const placeIds = entity.placeIds.filter((id) => !removed.has(id));
+    const relatedEntityIds = entity.relatedEntityIds.filter((id) => !removed.has(id));
+    const changed = participantIds.length !== entity.participantIds.length
+      || placeIds.length !== entity.placeIds.length
+      || relatedEntityIds.length !== entity.relatedEntityIds.length;
+    const retained = changed
+      ? validateEntity(appendRevision({ ...entity, participantIds, placeIds, relatedEntityIds }, 'reference_rewrite', now, sessionId))
+      : entity;
+    if (changed) {
+      referenceRewrites += 1;
+      writes.set(entityRelative(retained.id), canonicalJson(retained));
+    }
+    remaining.push(retained);
+  }
+  assertReferencesResolved(remaining);
+  await ensureIndexWritable(root);
+  const retainedConsentEventId = state?.consent?.decisions?.context_graph?.eventId;
+  withIndexWrite(writes, remaining, CONSENT_ID_PATTERN.test(retainedConsentEventId || '') ? { consentEventId: retainedConsentEventId } : null, now);
+  const receipt = await planSuppressionReceipt(root, state, {
+    now,
+    sessionId,
+    scope: options.scope || 'retention',
+    tokens: [...new Set(targets.flatMap(suppressionTokens))].sort(compareCodePoint),
+    derivedCount: targets.length + referenceRewrites,
+    knownBackupCount: backup.count || 0,
+    idFactory: options.idFactory
+  });
+  if (receipt.write) writes.set(receipt.write.relative, receipt.write.content);
+  return {
+    operation: 'forget-many',
+    entityIds: ids,
+    referenceRewrites,
+    knownBackupRecords: backup.count,
+    backupLedgerAvailable: backup.ledgerAvailable,
+    receiptPlanned: receipt.write !== null,
+    receiptEventId: receipt.eventId,
+    receiptReason: receipt.reason,
+    writes,
+    deletes: ids.map(entityRelative)
   };
 }
 
@@ -1203,8 +1329,10 @@ module.exports = {
   planAdd,
   planCorrect,
   planStatusChange,
+  planRemoveSourceReferences,
   planRemoveMemoryReferences,
   planForget,
+  planForgetMany,
   planMerge,
   planBackfill
 };
