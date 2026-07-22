@@ -1,8 +1,8 @@
 # Scope and Evidence Boundary
 
-Scalvin is an AI companion for self-reflection and emotional continuity. It is
-not a therapist, clinician, diagnostic instrument, treatment plan, medical
-device, or crisis service.
+Scalvin provides an AI companion framework for self-reflection and emotional
+continuity. It is not a therapist, clinician, diagnostic instrument, treatment
+plan, medical device, or crisis service.
 
 ## What modality files mean
 

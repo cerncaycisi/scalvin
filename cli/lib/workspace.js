@@ -34,6 +34,10 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 const MAX_CLIENT_SETTINGS_BYTES = 1024 * 1024;
 const MAX_CONSENT_PROJECTION_BYTES = 1024 * 1024;
 const MAX_GITIGNORE_BYTES = 256 * 1024;
+const CLAUDE_PERMISSION_TEMPLATE = '.therapy/library/adapters/workspace/CLAUDE-PERMISSIONS.template.json';
+const CLAUDE_MCP_TEMPLATE = '.therapy/library/adapters/workspace/claude.mcp.template.json';
+const CODEX_CONFIG_TEMPLATE = '.therapy/library/adapters/workspace/codex.config.template.toml';
+const CODEX_CONFIG_TARGET = '.codex/config.toml';
 
 function slugify(value, fallback = 'companion') {
   const slug = String(value || '')
@@ -73,15 +77,26 @@ const LEGACY_PERSONA_ALIASES = new Map([
   ['warm-4o', 'casual-warm']
 ]);
 
-function normalizePreferences(manifest, options = {}, existing = undefined) {
+function normalizePreferences(manifest, options = {}, existing = undefined, compatibility = {}) {
   const defaults = manifest.defaults;
   const modalities = options.modality?.length
     ? options.modality.map((item) => slugify(item))
     : existing?.modalities || defaults.modalities;
-  const requestedPersona = slugify(options.persona || existing?.persona || defaults.persona);
+  const legacyScalvinSelection = compatibility.allowLegacyScalvin === true &&
+    options.persona === undefined && slugify(existing?.persona) === 'scalvin';
+  const requestedPersona = legacyScalvinSelection
+    ? 'susan'
+    : slugify(options.persona || existing?.persona || defaults.persona);
+  const legacyDefaultNameShape = legacyScalvinSelection &&
+    existing?.companionName === 'Scalvin' && existing?.companionSlug === 'scalvin';
+  const companionName = options['companion-name'] !== undefined
+    ? String(options['companion-name'])
+    : legacyDefaultNameShape
+      ? defaults.companionName
+      : String(existing?.companionName || defaults.companionName);
   const preferences = {
-    companionName: String(options['companion-name'] || existing?.companionName || defaults.companionName),
-    companionSlug: slugify(options['companion-name'] || existing?.companionName || defaults.companionName),
+    companionName,
+    companionSlug: slugify(companionName),
     language: normalizeLanguagePreference(options.language || existing?.language || defaults.language),
     persona: LEGACY_PERSONA_ALIASES.get(requestedPersona) || requestedPersona,
     structure: slugify(options.structure || existing?.structure || defaults.structure),
@@ -105,17 +120,28 @@ function normalizePreferences(manifest, options = {}, existing = undefined) {
   return preferences;
 }
 
-function renderString(value, preferences) {
+function runtimeTemplateReplacements() {
+  const distributionRoot = path.resolve(__dirname, '..', '..');
+  return {
+    '{{NODE_EXECUTABLE_JSON}}': JSON.stringify(process.execPath),
+    '{{SCALVIN_MCP_ENTRY_JSON}}': JSON.stringify(path.join(distributionRoot, 'bin', 'scalvin-mcp.js'))
+  };
+}
+
+function renderString(value, preferences = {}) {
   const replacements = {
     '{{COMPANION_NAME}}': preferences.companionName,
     '{{COMPANION_SLUG}}': preferences.companionSlug,
     '{{DEFAULT_LANGUAGE}}': preferences.language,
     '{{DEFAULT_PERSONA}}': preferences.persona,
     '{{DEFAULT_STRUCTURE}}': preferences.structure,
-    '{{DEFAULT_MODALITIES}}': preferences.modalities.join(', ')
+    '{{DEFAULT_MODALITIES}}': Array.isArray(preferences.modalities) ? preferences.modalities.join(', ') : undefined,
+    ...runtimeTemplateReplacements()
   };
   let rendered = String(value);
-  for (const [token, replacement] of Object.entries(replacements)) rendered = rendered.split(token).join(replacement);
+  for (const [token, replacement] of Object.entries(replacements)) {
+    if (replacement !== undefined) rendered = rendered.split(token).join(String(replacement));
+  }
   invariant(!/\{\{[A-Z0-9_]+\}\}/.test(rendered), 'Unresolved workspace placeholder.', 'UNRESOLVED_PLACEHOLDER', { value });
   return rendered;
 }
@@ -211,11 +237,299 @@ async function readClientSettings(root, integration) {
   }
 }
 
-async function clientIntegrationsNeedChange(root, manifest) {
+async function readClientJson(root, relative, label, options = {}) {
+  const normalized = validateRelativePath(relative);
+  const filename = path.resolve(root, normalized);
+  assertInside(root, filename);
+  await rejectSymlinkPath(filename, { allowMissing: options.allowMissing === true });
+  try {
+    const raw = (await readBoundedRegularFile(filename, MAX_CLIENT_SETTINGS_BYTES, {
+      typeCode: 'CLIENT_SETTINGS_INVALID', sizeCode: 'CLIENT_SETTINGS_TOO_LARGE', changedCode: 'CLIENT_SETTINGS_CHANGED'
+    })).toString('utf8');
+    const rendered = options.renderRuntime === true ? renderString(raw) : raw;
+    const parsed = JSON.parse(rendered);
+    invariant(parsed && typeof parsed === 'object' && !Array.isArray(parsed), `${label} must be a JSON object.`, 'CLIENT_SETTINGS_INVALID', { path: normalized });
+    return { filename, value: parsed };
+  } catch (error) {
+    if (error.code === 'ENOENT' && options.allowMissing === true) return { filename, value: null };
+    if (error instanceof SyntaxError) throw new ScalvinError(`${label} is invalid JSON; refusing to overwrite it.`, 'CLIENT_SETTINGS_INVALID', { path: normalized, cause: error.message });
+    throw error;
+  }
+}
+
+async function readClientText(root, relative, label, options = {}) {
+  const normalized = validateRelativePath(relative);
+  const filename = path.resolve(root, normalized);
+  assertInside(root, filename);
+  await rejectSymlinkPath(filename, { allowMissing: options.allowMissing === true });
+  try {
+    const raw = (await readBoundedRegularFile(filename, MAX_CLIENT_SETTINGS_BYTES, {
+      typeCode: 'CLIENT_SETTINGS_INVALID', sizeCode: 'CLIENT_SETTINGS_TOO_LARGE', changedCode: 'CLIENT_SETTINGS_CHANGED'
+    })).toString('utf8');
+    return { filename, value: options.renderRuntime === true ? renderString(raw) : raw };
+  } catch (error) {
+    if (error.code === 'ENOENT' && options.allowMissing === true) return { filename, value: null };
+    throw new ScalvinError(`${label} cannot be read safely.`, error.code || 'CLIENT_SETTINGS_INVALID', { path: normalized });
+  }
+}
+
+function isObjectRecord(value) {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function mergeRequiredPolicy(current, required, label = 'client policy') {
+  if (Array.isArray(required)) {
+    invariant(current === undefined || Array.isArray(current), `${label} has an incompatible array value.`, 'CLIENT_SETTINGS_INVALID');
+    const output = [...(current || [])];
+    for (const item of required) if (!output.some((candidate) => JSON.stringify(candidate) === JSON.stringify(item))) output.push(structuredClone(item));
+    return output;
+  }
+  if (required && typeof required === 'object') {
+    invariant(current === undefined || (current && typeof current === 'object' && !Array.isArray(current)), `${label} has an incompatible object value.`, 'CLIENT_SETTINGS_INVALID');
+    const output = current ? structuredClone(current) : {};
+    for (const [key, value] of Object.entries(required)) output[key] = mergeRequiredPolicy(output[key], value, `${label}.${key}`);
+    return output;
+  }
+  return required;
+}
+
+function containsRequiredPolicy(current, required) {
+  if (Array.isArray(required)) {
+    return Array.isArray(current) && required.every((item) => current.some((candidate) => JSON.stringify(candidate) === JSON.stringify(item)));
+  }
+  if (required && typeof required === 'object') {
+    return Boolean(current && typeof current === 'object' && !Array.isArray(current)) &&
+      Object.entries(required).every(([key, value]) => containsRequiredPolicy(current[key], value));
+  }
+  return current === required;
+}
+
+function extraPolicyItems(current, required) {
+  if (!Array.isArray(current)) return [];
+  const requiredItems = new Set((required || []).map((item) => JSON.stringify(item)));
+  return current.filter((item) => !requiredItems.has(JSON.stringify(item)));
+}
+
+function shadowedRequiredDirectRules(currentPermissions, requiredPermissions) {
+  if (!Array.isArray(currentPermissions?.deny) || !Array.isArray(requiredPermissions?.allow)) return [];
+  const requiredDirectRules = new Set(requiredPermissions.allow.filter((rule) => /^(?:Read|Edit|Write)\(/.test(rule)));
+  return currentPermissions.deny.filter((rule) => requiredDirectRules.has(rule));
+}
+
+function removeShadowedRequiredDirectRules(settings, requiredPolicy) {
+  const output = structuredClone(settings);
+  const currentPermissions = isObjectRecord(output.permissions) ? output.permissions : null;
+  const requiredPermissions = isObjectRecord(requiredPolicy?.permissions) ? requiredPolicy.permissions : null;
+  if (!currentPermissions || !requiredPermissions || !Array.isArray(currentPermissions.deny)) return output;
+  const shadowed = new Set(shadowedRequiredDirectRules(currentPermissions, requiredPermissions));
+  if (shadowed.size) currentPermissions.deny = currentPermissions.deny.filter((rule) => !shadowed.has(rule));
+  return output;
+}
+
+const LEGACY_COMPATIBILITY_PRIVATE_RULES = Object.freeze([
+  'SETUP-NOTES.md', 'profile.md', 'ACTIVE-THEMES.md', 'CURRENT-FOCUS.md',
+  'NEXT-PRIMER.md', 'sessions/**', 'context/**', 'archive/**',
+  '.therapy/user-overrides/**'
+].flatMap((target) => ['Read', 'Edit', 'Write'].map((tool) => `${tool}(/${target})`)));
+const LEGACY_COMPATIBILITY_SANDBOX_READS = Object.freeze([
+  './SETUP-NOTES.md', './profile.md', './ACTIVE-THEMES.md', './CURRENT-FOCUS.md',
+  './NEXT-PRIMER.md', './sessions', './context', './archive', './.therapy/user-overrides'
+]);
+
+function removeLegacyCompatibilityPrivateAccess(settings) {
+  const output = structuredClone(settings);
+  const permissions = isObjectRecord(output.permissions) ? output.permissions : null;
+  if (permissions && Array.isArray(permissions.allow)) {
+    const legacy = new Set(LEGACY_COMPATIBILITY_PRIVATE_RULES);
+    permissions.allow = permissions.allow.filter((rule) => !legacy.has(rule));
+  }
+  const filesystem = output.sandbox?.filesystem;
+  if (isObjectRecord(filesystem) && Array.isArray(filesystem.allowRead)) {
+    const legacy = new Set(LEGACY_COMPATIBILITY_SANDBOX_READS);
+    filesystem.allowRead = filesystem.allowRead.filter((entry) => !legacy.has(entry));
+  }
+  return output;
+}
+
+function collectHookCommands(value, output = []) {
+  if (Array.isArray(value)) {
+    for (const item of value) collectHookCommands(item, output);
+  } else if (isObjectRecord(value)) {
+    if (typeof value.command === 'string') output.push(value.command);
+    for (const item of Object.values(value)) collectHookCommands(item, output);
+  }
+  return output;
+}
+
+function isRebindableScalvinMcpServer(server) {
+  if (!isObjectRecord(server)) return false;
+  const allowedKeys = new Set(['type', 'command', 'args', 'env']);
+  if (Object.keys(server).some((key) => !allowedKeys.has(key))) return false;
+  if (server.type !== undefined && server.type !== 'stdio') return false;
+  if (typeof server.command !== 'string' || !Array.isArray(server.args) || server.args.length !== 3) return false;
+  if (!/[\\/]bin[\\/]scalvin-mcp\.js$/.test(String(server.args[0]))) return false;
+  if (server.args[1] !== '--workspace' || !['.', '${CLAUDE_PROJECT_DIR:-.}'].includes(server.args[2])) return false;
+  return server.env === undefined || (isObjectRecord(server.env) && Object.keys(server.env).length === 0);
+}
+
+function mergeRequiredMcpPolicy(current, required) {
+  invariant(current === undefined || isObjectRecord(current), 'Claude project MCP settings must be an object.', 'CLIENT_SETTINGS_INVALID');
+  invariant(isObjectRecord(required) && isObjectRecord(required.mcpServers) && isObjectRecord(required.mcpServers.scalvin), 'Installed Claude MCP policy is invalid.', 'CLIENT_SETTINGS_INVALID');
+  const output = current ? structuredClone(current) : {};
+  invariant(output.mcpServers === undefined || isObjectRecord(output.mcpServers), 'Claude project MCP server registry must be an object.', 'CLIENT_SETTINGS_INVALID');
+  output.mcpServers = output.mcpServers || {};
+  const currentScalvin = output.mcpServers.scalvin;
+  invariant(
+    currentScalvin === undefined || isRebindableScalvinMcpServer(currentScalvin),
+    'The existing Scalvin MCP server entry is not a safely rebindable local broker definition.',
+    'CLIENT_MCP_SERVER_CONFLICT'
+  );
+  output.mcpServers.scalvin = structuredClone(required.mcpServers.scalvin);
+  return output;
+}
+
+async function unexpectedClientConfigCount(root, relativeDirectory, expectedNames) {
+  const normalized = validateRelativePath(relativeDirectory);
+  const directory = path.resolve(root, normalized);
+  assertInside(root, directory);
+  await rejectSymlinkPath(directory, { allowMissing: true });
+  try {
+    const entries = await fsp.readdir(directory, { withFileTypes: true });
+    return entries.filter((entry) => !expectedNames.has(entry.name)).length;
+  } catch (error) {
+    if (error.code === 'ENOENT') return 0;
+    throw error;
+  }
+}
+
+async function installedClientPolicy(root) {
+  const permission = await readClientJson(root, CLAUDE_PERMISSION_TEMPLATE, 'Installed Claude permission template', {
+    allowMissing: true, renderRuntime: true
+  });
+  const mcp = await readClientJson(root, CLAUDE_MCP_TEMPLATE, 'Installed Claude MCP template', {
+    allowMissing: true, renderRuntime: true
+  });
+  const codex = await readClientText(root, CODEX_CONFIG_TEMPLATE, 'Installed Codex configuration template', {
+    allowMissing: true, renderRuntime: true
+  });
+  return { permission: permission.value, mcp: mcp.value, codex: codex.value };
+}
+
+async function inspectClientBoundary(root, manifest) {
+  const required = await installedClientPolicy(root);
+  const codexReasons = [];
+  const claudeReasons = [];
+  let codexNeedsChange = false;
+  let claudeNeedsChange = false;
+  const addCodexReason = (code) => { if (!codexReasons.includes(code)) codexReasons.push(code); };
+  const addClaudeReason = (code) => { if (!claudeReasons.includes(code)) claudeReasons.push(code); };
+
+  if (!required.codex) {
+    addCodexReason('CODEX_POLICY_TEMPLATE_MISSING');
+    codexNeedsChange = true;
+  } else {
+    const installedCodex = await readClientText(root, CODEX_CONFIG_TARGET, 'Installed Codex project configuration', { allowMissing: true });
+    if (installedCodex.value === null) {
+      addCodexReason('CODEX_PROFILE_MISSING');
+      codexNeedsChange = true;
+    } else if (installedCodex.value !== required.codex) {
+      addCodexReason('CODEX_PROFILE_OR_BROKER_BINDING_MISMATCH');
+      codexNeedsChange = true;
+    }
+  }
+  if (await unexpectedClientConfigCount(root, '.codex', new Set(['config.toml']))) {
+    addCodexReason('CODEX_ADDITIONAL_CONFIG_UNATTESTED');
+  }
+
   const integration = manifest.clientIntegrations?.claude;
-  if (!integration?.hooks?.length) return false;
-  const { settings } = await readClientSettings(root, integration);
-  return integration.hooks.some((hook) => !containsCommand(settings, integrationCommand(hook.target)));
+  if (!integration?.hooks?.length) {
+    addClaudeReason('CLAUDE_INTEGRATION_UNDECLARED');
+  } else {
+    const { settings } = await readClientSettings(root, integration);
+    const requiredCommands = integration.hooks.map((hook) => integrationCommand(hook.target));
+    if (requiredCommands.some((command) => !containsCommand(settings, command))) {
+      addClaudeReason('CLAUDE_REQUIRED_HOOK_MISSING');
+      claudeNeedsChange = true;
+    }
+    if (!required.permission) {
+      addClaudeReason('CLAUDE_POLICY_TEMPLATE_MISSING');
+    } else {
+      if (!containsRequiredPolicy(settings, required.permission)) {
+        addClaudeReason('CLAUDE_REQUIRED_POLICY_MISSING');
+        claudeNeedsChange = true;
+      }
+      const currentPermissions = isObjectRecord(settings.permissions) ? settings.permissions : {};
+      const requiredPermissions = isObjectRecord(required.permission.permissions) ? required.permission.permissions : {};
+      if (shadowedRequiredDirectRules(currentPermissions, requiredPermissions).length) {
+        addClaudeReason('CLAUDE_REQUIRED_ALLOW_SHADOWED');
+        claudeNeedsChange = true;
+      }
+      if (extraPolicyItems(currentPermissions.allow, requiredPermissions.allow).length) addClaudeReason('CLAUDE_PERMISSION_ALLOW_BROADENING');
+      if (extraPolicyItems(currentPermissions.ask, requiredPermissions.ask).length) addClaudeReason('CLAUDE_PERMISSION_ASK_BROADENING');
+      if (Array.isArray(currentPermissions.additionalDirectories) && currentPermissions.additionalDirectories.length) addClaudeReason('CLAUDE_ADDITIONAL_DIRECTORIES_UNATTESTED');
+      const currentFilesystem = settings.sandbox?.filesystem || {};
+      const requiredFilesystem = required.permission.sandbox?.filesystem || {};
+      if (extraPolicyItems(currentFilesystem.allowRead, requiredFilesystem.allowRead).length) addClaudeReason('CLAUDE_SANDBOX_READ_BROADENING');
+      if (Array.isArray(currentFilesystem.allowWrite) && currentFilesystem.allowWrite.length) addClaudeReason('CLAUDE_SANDBOX_WRITE_BROADENING');
+      if (Array.isArray(settings.sandbox?.excludedCommands) && settings.sandbox.excludedCommands.length) addClaudeReason('CLAUDE_UNSANDBOXED_COMMANDS_UNATTESTED');
+      const extraHookCommands = collectHookCommands(settings.hooks).filter((command) => !requiredCommands.includes(command));
+      if (extraHookCommands.length) addClaudeReason('CLAUDE_EXTRA_HOOKS_UNATTESTED');
+      if (settings.enableAllProjectMcpServers === true) addClaudeReason('CLAUDE_ALL_PROJECT_MCP_ENABLED');
+      if (extraPolicyItems(settings.enabledMcpjsonServers, required.permission.enabledMcpjsonServers).length) addClaudeReason('CLAUDE_EXTRA_MCP_APPROVALS');
+      if (Array.isArray(settings.disabledMcpjsonServers) && settings.disabledMcpjsonServers.includes('scalvin')) addClaudeReason('CLAUDE_REQUIRED_MCP_DISABLED');
+    }
+
+    const projectMcp = await readClientJson(root, '.mcp.json', 'Claude project MCP settings', { allowMissing: true });
+    const currentServers = isObjectRecord(projectMcp.value?.mcpServers) ? projectMcp.value.mcpServers : {};
+    const expectedScalvin = required.mcp?.mcpServers?.scalvin;
+    if (!expectedScalvin) {
+      addClaudeReason('CLAUDE_MCP_TEMPLATE_MISSING');
+    } else if (!currentServers.scalvin) {
+      addClaudeReason('CLAUDE_REQUIRED_MCP_MISSING');
+      claudeNeedsChange = true;
+    } else if (!containsRequiredPolicy(currentServers.scalvin, expectedScalvin) || !containsRequiredPolicy(expectedScalvin, currentServers.scalvin)) {
+      addClaudeReason(isRebindableScalvinMcpServer(currentServers.scalvin)
+        ? 'CLAUDE_BROKER_BINDING_MISMATCH'
+        : 'CLAUDE_SCALVIN_MCP_CONFLICT');
+      claudeNeedsChange = true;
+    }
+    if (Object.keys(currentServers).some((name) => name !== 'scalvin')) addClaudeReason('CLAUDE_EXTRA_MCP_SERVERS_UNATTESTED');
+  }
+  if (await unexpectedClientConfigCount(root, '.claude', new Set(['settings.json']))) {
+    addClaudeReason('CLAUDE_ADDITIONAL_CONFIG_UNATTESTED');
+  }
+
+  codexReasons.sort();
+  claudeReasons.sort();
+  const degraded = codexReasons.length > 0 || claudeReasons.length > 0;
+  return {
+    schemaVersion: 1,
+    state: degraded ? 'degraded' : 'broker_only_unattested',
+    hardBoundaryAttested: false,
+    clientProfile: 'broker_only',
+    directPrivateFilesystem: 'denied_by_project_policy',
+    limitations: [
+      'EFFECTIVE_HIGHER_PRIORITY_CONFIG_NOT_INSPECTED',
+      'RUNTIME_PROFILE_ENFORCEMENT_NOT_ATTESTED',
+      'SEALED_PAUSE_CLIENT_TERMINATION_NOT_ATTESTED',
+      'STABLE_RELEASE_BLOCKED_UNATTESTED_BOUNDARY'
+    ],
+    codex: {
+      state: codexReasons.length ? 'degraded' : 'broker_only_unattested',
+      needsChange: codexNeedsChange,
+      reasonCodes: codexReasons
+    },
+    claude: {
+      state: claudeReasons.length ? 'degraded' : 'broker_only_unattested',
+      needsChange: claudeNeedsChange,
+      reasonCodes: claudeReasons
+    }
+  };
+}
+
+async function clientIntegrationsNeedChange(root, manifest) {
+  const inspection = await inspectClientBoundary(root, manifest);
+  return inspection.claude.needsChange;
 }
 
 async function applyClientIntegrations(root, manifest) {
@@ -235,7 +549,24 @@ async function applyClientIntegrations(root, manifest) {
     added.push(hook.target);
   }
   settings.hooks[integration.event] = existing;
-  await atomicWriteFile(filename, `${JSON.stringify(settings, null, 2)}\n`);
+  const required = await installedClientPolicy(root);
+  const preparedSettings = required.permission
+    ? removeLegacyCompatibilityPrivateAccess(removeShadowedRequiredDirectRules(settings, required.permission))
+    : settings;
+  const mergedSettings = required.permission
+    ? mergeRequiredPolicy(preparedSettings, required.permission, 'Claude project settings')
+    : settings;
+  let projectMcp = null;
+  let mergedMcp = null;
+  if (required.mcp) {
+    projectMcp = await readClientJson(root, '.mcp.json', 'Claude project MCP settings', { allowMissing: true });
+    mergedMcp = mergeRequiredMcpPolicy(projectMcp.value || {}, required.mcp);
+  }
+  await atomicWriteFile(filename, `${JSON.stringify(mergedSettings, null, 2)}\n`);
+  if (projectMcp && mergedMcp) {
+    await atomicWriteFile(projectMcp.filename, `${JSON.stringify(mergedMcp, null, 2)}\n`);
+    added.push('.mcp.json');
+  }
   return added;
 }
 
@@ -909,6 +1240,46 @@ function validateWorkspaceState(state) {
   } catch (error) {
     throw new ScalvinError('Workspace session lifecycle state is invalid.', 'WORKSPACE_STATE_INVALID', { causeCode: error.code || 'SESSION_PATCH_INVALID' });
   }
+  const operationalTranscript = consent.transcriptState;
+  const lifecycleTranscript = state.sessionLifecycle.transcript;
+  const expectedOperationalState = lifecycleTranscript.state === 'finalized' ? 'stopped' : lifecycleTranscript.state;
+  invariant(operationalTranscript.state === expectedOperationalState,
+    'Operational transcript state diverges from canonical session lifecycle.', 'WORKSPACE_STATE_INVALID');
+  if (operationalTranscript.state === 'off') {
+    invariant(operationalTranscript.sessionId === null && operationalTranscript.captureGrade === null
+      && operationalTranscript.startedAt === null && operationalTranscript.stoppedAt === null
+      && operationalTranscript.pausedIntervals.length === 0 && operationalTranscript.knownGaps.length === 0,
+    'Off operational transcript state must not retain capture evidence.', 'WORKSPACE_STATE_INVALID');
+  } else {
+    invariant(operationalTranscript.sessionId === state.sessionLifecycle.sessionId
+      && operationalTranscript.captureGrade === lifecycleTranscript.captureGrade,
+    'Operational transcript identity diverges from canonical session lifecycle.', 'WORKSPACE_STATE_INVALID');
+    invariant(typeof operationalTranscript.startedAt === 'string' && !Number.isNaN(Date.parse(operationalTranscript.startedAt))
+      && Date.parse(operationalTranscript.startedAt) >= Date.parse(state.sessionLifecycle.startedAt),
+    'Operational transcript start is outside the canonical session.', 'WORKSPACE_STATE_INVALID');
+    if (state.sessionLifecycle.closedAt !== null) {
+      invariant(Date.parse(operationalTranscript.startedAt) <= Date.parse(state.sessionLifecycle.closedAt),
+        'Operational transcript start is outside the canonical session.', 'WORKSPACE_STATE_INVALID');
+    }
+    invariant(JSON.stringify(operationalTranscript.pausedIntervals) === JSON.stringify(lifecycleTranscript.pausedIntervals)
+      && JSON.stringify(operationalTranscript.knownGaps) === JSON.stringify(lifecycleTranscript.knownGaps),
+    'Operational transcript coverage diverges from canonical session lifecycle.', 'WORKSPACE_STATE_INVALID');
+    const openPauses = operationalTranscript.pausedIntervals.filter((interval) => interval.endedAt === null);
+    invariant(operationalTranscript.state === 'paused'
+      ? openPauses.length === 1 && operationalTranscript.pausedIntervals.at(-1)?.endedAt === null
+      : openPauses.length === 0,
+    'Operational transcript pause state is inconsistent.', 'WORKSPACE_STATE_INVALID');
+    if (operationalTranscript.state === 'stopped') {
+      invariant(typeof operationalTranscript.stoppedAt === 'string'
+        && operationalTranscript.stoppedAt === lifecycleTranscript.finalizedAt,
+      'Operational transcript stop diverges from canonical session lifecycle.', 'WORKSPACE_STATE_INVALID');
+    } else {
+      invariant(operationalTranscript.stoppedAt === null
+        && ['active', 'interrupted'].includes(state.sessionLifecycle.state)
+        && operationalTranscript.sessionId === consent.currentSessionId,
+      'Active operational transcript does not belong to the current canonical session.', 'WORKSPACE_STATE_INVALID');
+    }
+  }
   validateSourceLifecycleState(state.sourceLifecycle);
   invariant(consent.decisions && typeof consent.decisions === 'object', 'Consent decision metadata is missing.', 'WORKSPACE_STATE_INVALID');
   for (const category of Object.keys(CONSENT_CATEGORY_FIELDS)) {
@@ -1110,6 +1481,7 @@ module.exports = {
   buildTargetPlan,
   writePlan,
   ensureWorkspaceDirectories,
+  inspectClientBoundary,
   clientIntegrationsNeedChange,
   applyClientIntegrations,
   createState,

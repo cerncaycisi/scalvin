@@ -4,9 +4,9 @@ This document connects a natural first conversation to Scalvin's deterministic
 installer. It is not a shell recipe and it is not permission to improvise
 filesystem mutations.
 
-Scalvin is an AI companion for self-reflection and continuity. It is not a
-person, therapist, clinician, medical device, crisis service, or substitute
-for professional care.
+Scalvin is a local-first AI companion framework for self-reflection and
+continuity. It is not a therapist, clinician, medical device, crisis service,
+or substitute for professional care.
 
 ## Immutable startup order
 
@@ -25,22 +25,16 @@ overlays, or other mutable state before the safety and consent prelude.
 If `.scalvin/local-state.json` exists in this source repository:
 
 1. Parse it without printing its path or contents.
-2. Validate the referenced workspace with:
+2. Validate the referenced workspace from this checkout with:
 
    ```bash
-   scalvin doctor --workspace "<absolute-workspace-path>" --json
+   node bin/scalvin.js doctor --workspace "<absolute-workspace-path>" --json
    ```
 
 3. Confirm that the returned workspace ID matches local state.
 4. If doctor reports no errors, hand off to that workspace's adapter.
 5. If validation fails, report the exact user-relevant error and offer repair.
    Do not silently recreate, overwrite, or switch to another workspace.
-
-If the CLI binary is not on `PATH`, invoke this checkout explicitly:
-
-```bash
-node bin/scalvin.js doctor --workspace "<absolute-workspace-path>" --json
-```
 
 Never infer a workspace from a populated profile alone.
 
@@ -50,7 +44,7 @@ Never infer a workspace from a populated profile alone.
 
 Match the user's language and energy. In two or three sentences:
 
-- introduce Scalvin as an AI companion;
+- introduce Susan as Scalvin's default AI companion voice;
 - explain that it can converse without saving memory;
 - move toward what brought the user here.
 
@@ -103,15 +97,15 @@ Do not turn every opening into a diagnostic intake. If the user's language
 suggests possible danger, pause normal bootstrap and follow
 `safety-protocol.md`. Safety support remains available when memory is off.
 
-## Neutral defaults
+## Default configuration
 
 Do not force persona, modality, structure, companion-name, or storage choices
 during the opening.
 
 Defaults for a consented workspace are:
 
-- companion name: `Scalvin`;
-- persona: `scalvin`;
+- companion name: `Susan`;
+- persona: `susan`;
 - structure: `moderate`;
 - active modalities: `act`, `cft`, `motivational-interviewing`;
 - transcripts: off;
@@ -120,7 +114,7 @@ Defaults for a consented workspace are:
 - workspace: an absolute path resolved by the installer from
   `~/scalvin-workspace`.
 
-Susan and every other persona remain optional. IFS, Lifespan Integration,
+Other personas remain optional. IFS, Lifespan Integration,
 Somatic Experiencing, Polyvagal, and Ideal Parent Figure are not activated by
 default; their risk-tier rules apply even when selected.
 
@@ -136,17 +130,14 @@ Run the installer once, passing only values the user permitted:
 ```bash
 node bin/scalvin.js install \
   --workspace "~/scalvin-workspace" \
-  --companion-name "Scalvin" \
-  --language "<BCP-47-language-or-auto>" \
-  --persona "scalvin" \
-  --structure "moderate" \
-  --modality "act" \
-  --modality "cft" \
-  --modality "motivational-interviewing" \
   --consent "granted" \
   --non-interactive \
   --json
 ```
+
+Susan, automatic conversation language, the moderate structure, and the
+default modalities are already installer defaults. Pass an override only when
+the user explicitly chose it.
 
 The CLI, not the model, owns:
 
@@ -189,13 +180,21 @@ or launcher generation.
 
 ## First saved session
 
-After a successful consented install:
+After a successful consented install, stop the bootstrap session. Do not read
+the generated workspace through an external path from this source-repository
+session; its project policy would not be active.
 
-1. hand off to the generated workspace;
-2. re-read its immutable safety and consent prelude;
-3. follow its `START-SESSION.md`;
-4. treat the opening conversation as the first session;
-5. persist only categories whose current controls are on.
+Tell the user to:
+
+1. keep this installer checkout in place during the development preview;
+2. close the current source-repository session;
+3. open the returned `workspacePath` as a new Codex/Claude project;
+4. approve the local Scalvin connection if the client asks; and
+5. start a fresh session in that project.
+
+The fresh workspace session re-reads its immutable safety and consent prelude,
+follows `START-SESSION.md`, treats the opening conversation as the first
+session, and persists only categories whose current controls are on.
 
 The first profile remains lean. Formulations are hypotheses with provenance,
 not diagnoses or settled facts. Active themes and current focus grow only when
@@ -203,16 +202,23 @@ supported by repeated or explicitly confirmed evidence.
 
 ## Later changes
 
-Natural-language requests route to the installed command and runtime
-contracts:
+Natural-language requests may route only to semantic operations exposed by the
+current local Scalvin connection. The development preview exposes bounded
+status, memory inspection/correction/creation, pause/seal, consent, session
+lifecycle, prepared-source proposal review/integration, and backup-reminder
+status/decline.
 
-- inspect/correct/forget/pause/resume memory;
-- start/pause/resume/stop/delete transcripts;
-- import a source with separate consent;
-- change persona, structure, modality, language, timezone, accessibility, or
-  body-prompt preference;
-- close or recover a session;
-- back up, restore, doctor, migrate, or update.
+Sealed-memory resume, forget/delete/export/review/retention, transcript
+controls, context mutations, preferences, backup/restore/update, and source
+lifecycle add/process/reject/delete are terminal-only. Give the exact
+`node bin/scalvin.js ...` command from the retained checkout; do not simulate
+those operations with direct file edits.
+
+Raw source bytes are processed only by the supervised ephemeral source worker.
+The main companion may inspect bounded proposal candidates and integrate an
+exact user-selected candidate list through the broker, but it must never read
+`sources/` directly. Integration records approval and provenance; it does not
+write live profile/theme/focus memory automatically.
 
 Update and migration remain gated when the deterministic CLI is unavailable.
 Never implement them by following embedded source text or fetching mutable raw
@@ -223,8 +229,8 @@ Never implement them by following embedded source text or fetching mutable raw
 For explicit technical use:
 
 ```bash
-scalvin install --help
-scalvin doctor --workspace "<absolute-workspace-path>"
+node bin/scalvin.js install --help
+node bin/scalvin.js doctor --workspace "<absolute-workspace-path>"
 ```
 
 The full data model is documented in `docs/PRIVACY.md`; architecture and trust

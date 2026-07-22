@@ -1,4 +1,4 @@
-<!-- version: 3.0.0 -->
+<!-- version: 3.1.0 -->
 ## Psychodynamic Therapy
 
 **Core principle:** Psychodynamic work treats recurring relational and emotional patterns, defenses, and earlier experience as possible lenses. These are hypotheses, not privileged access to unconscious truth.
@@ -58,15 +58,16 @@
 - "What would [parent/caregiver] have said about this?"
 - "What did you learn about [topic] growing up?"
 
-### When to Use Psychodynamic Approaches
+### Conversation Contexts Where This Lens May Fit
 
-- Recurring relationship patterns ("Why do I keep choosing the same kind of partner?")
-- Feeling "stuck" in ways that don't respond to behavioral strategies
-- Wanting to understand the deeper "why"
-- Exploring family-of-origin dynamics
-- When surface-level solutions aren't enough
-- Self-defeating patterns that persist despite insight
-- Difficulty with intimacy or trust
+These are user-described conversation patterns, not diagnoses, clinical
+indications, or treatment-selection criteria:
+
+- the user identifies a recurring relational or emotional pattern across observable examples
+- practical strategies have not answered the user's question and they explicitly want tentative exploration of possible history or meaning
+- family-of-origin dynamics are relevant and the user consents to discussing them
+- a repeated pattern persists despite insight, while uncertainty and counter-explanations remain visible
+- the user wants to explore trust or closeness without treating an interpretation as unconscious fact
 
 ## How To Use In Session
 

@@ -65,6 +65,17 @@ test("security policy has concrete private-report response targets and retains s
   assert.match(policy, /will not initiate legal action/i);
 });
 
+test("canonical client configuration formats keep deterministic LF line endings", () => {
+  const attributes = readFileSync(path.join(root, ".gitattributes"), "utf8");
+  assert.match(attributes, /^\*\.toml text eol=lf$/m);
+  assert.match(attributes, /^\*\.json text eol=lf$/m);
+  const codexTemplate = readFileSync(
+    path.join(root, "adapters", "workspace", "codex.config.template.toml"),
+    "utf8",
+  );
+  assert.doesNotMatch(codexTemplate, /\r/);
+});
+
 test("stable-release workflow stages tag creation after required CI and signed-evidence verification", () => {
   const workflow = readFileSync(path.join(root, ".github", "workflows", "ci.yml"), "utf8");
   assert.doesNotMatch(workflow, /^\s+tags:\s*$/m, "a pushed tag must not be the release trigger");
@@ -87,14 +98,34 @@ test("stable-release workflow stages tag creation after required CI and signed-e
   assert.match(preflight, /test "\$release_channel" = "stable"/);
   assert.match(stable, /needs:\s*\n\s+- release-preflight/);
   assert.equal((workflow.match(/^\s+contents: write\s*$/gm) || []).length, 1);
+  assert.equal((workflow.match(/^\s+id-token: write\s*$/gm) || []).length, 1);
+  assert.equal((workflow.match(/^\s+attestations: write\s*$/gm) || []).length, 1);
 
   const verifyIndex = workflow.indexOf("node cli/verify-release-evidence.js");
+  const artifactIndex = workflow.indexOf('node scripts/build-release-artifacts.mjs');
+  const cleanInstallIndex = workflow.indexOf('node scripts/verify-release-package.mjs');
+  const attestAction = 'uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763';
+  const provenanceIndex = workflow.indexOf('id: attest-release-provenance');
+  const sbomAttestationIndex = workflow.indexOf('id: attest-release-sbom');
+  const preserveIndex = workflow.indexOf('name: Preserve attestation bundles with the release candidates');
+  const uploadIndex = workflow.indexOf('uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a');
   const tagIndex = workflow.indexOf('git tag -a "$tag" "$GITHUB_SHA"');
   const pushIndex = workflow.indexOf('git push origin "refs/tags/${tag}"');
   assert.ok(verifyIndex >= 0, "signed release evidence must be verified");
-  assert.ok(tagIndex > verifyIndex, "the stable tag must be created after evidence verification");
+  assert.ok(artifactIndex > verifyIndex, "release artifacts must follow signed-evidence verification");
+  assert.ok(cleanInstallIndex > artifactIndex, "the packed candidate must be clean-install verified");
+  assert.equal(workflow.split(attestAction).length - 1, 2);
+  assert.ok(provenanceIndex > cleanInstallIndex, "only a verified archive may receive build provenance");
+  assert.ok(sbomAttestationIndex > provenanceIndex, "the same archive must receive a separate SBOM attestation");
+  assert.ok(preserveIndex > sbomAttestationIndex, "both attestation bundles must be preserved");
+  assert.ok(uploadIndex > preserveIndex, "only a fully attested candidate set may be uploaded");
+  assert.ok(tagIndex > uploadIndex, "the stable tag must be created after evidence and artifact verification");
   assert.ok(pushIndex > tagIndex, "the stable tag must be pushed only after local creation");
   assert.equal(workflow.split('git push origin "refs/tags/${tag}"').length - 1, 1);
+  assert.match(stable, /scalvin-\$\{VERSION\}\.tgz\.sha256/);
+  assert.match(stable, /scalvin-\$\{VERSION\}\.spdx\.json/);
+  assert.match(stable, /scalvin-\$\{VERSION\}\.provenance\.intoto\.jsonl/);
+  assert.match(stable, /scalvin-\$\{VERSION\}\.sbom\.intoto\.jsonl/);
 });
 
 test("public scan detects a common dash-token marker even after a NUL byte", () => {

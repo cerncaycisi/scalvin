@@ -55,6 +55,8 @@ const {
 } = require('./lib/workspace');
 const {
   createBackup,
+  createRecoveryKeyFile,
+  recoveryKeyPathFor,
   verifyBackup,
   getBackupSummary,
   backupArtifactIdentity,
@@ -62,26 +64,43 @@ const {
   findDefaultBackupById,
   readBackupLedgerStatus,
   markBackupDeleted,
+  appendBackupLedger,
   appendBackupOperationReceipt
 } = require('./lib/backup');
 const { BACKUP_ID_PATTERN } = require('./lib/backup-crypto');
-const { recordPersistedSessionClose, declineBackupReminder } = require('./lib/backup-reminder');
+const {
+  SESSION_THRESHOLD,
+  REMINDER_INTERVAL_MS,
+  recordPersistedSessionClose,
+  declineBackupReminder
+} = require('./lib/backup-reminder');
 const { runDoctor } = require('./doctor');
 const { appendOperationFailure, rollbackStatusFor } = require('./lib/operation-journal');
 const {
   listMemoryItems,
+  readPrimerSingleton,
   confirmationToken,
+  planMemoryCreate,
+  planClientSceneCreate,
   planForget,
   planCorrection,
   planDeleteAll,
   planTranscriptDelete,
   applyPlan,
   appendDeletionReceipt,
-  createMemoryExport
+  createMemoryExport,
+  RETENTION_CONTROL_PATH,
+  RETENTION_DATA_CLASSES,
+  planRetentionPolicyChange,
+  inspectRetention,
+  publicRetentionInspection,
+  planRetentionApply
 } = require('./memory-data');
 const {
   SESSION_ID_PATTERN,
+  assertTimestamp: assertLifecycleTimestamp,
   artifactPaths,
+  transcriptSnapshot,
   validateSessionLifecyclePatch,
   beginSession,
   checkpointTurn,
@@ -99,6 +118,11 @@ const {
   listHistory,
   validateSnapshot
 } = require('./change-control');
+
+const CALLER_HOLDS_MUTATION_LOCK = Symbol('scalvin-caller-holds-mutation-lock');
+const CONFIRMED_MEMORY_CREATE = Symbol('scalvin-confirmed-memory-create');
+const CONFIRMED_CLIENT_SCENE_WRITE = Symbol('scalvin-confirmed-client-scene-write');
+const CONFIRMED_SOURCE_INTEGRATION = Symbol('scalvin-confirmed-source-integration');
 const {
   LEDGER_SEPARATOR,
   statusSource,
@@ -107,6 +131,12 @@ const {
   planSourceRemoval,
   applySourceRemoval
 } = require('./source-lifecycle');
+const {
+  ensureSourceWorkerKey,
+  proposalPathFor,
+  readSourceProposal
+} = require('./source-worker');
+const { runIsolatedSourceWorker } = require('./client-launcher');
 const { evaluateStaleMemory, planReviewDecision } = require('./memory-review');
 const {
   STATUSES: CONTEXT_STATUSES,
@@ -152,6 +182,37 @@ function assertSafeBackupOutput(output) {
   return absolute;
 }
 
+function automaticSafetyBackupOptions(options = {}, dryRun = false) {
+  const passphraseFile = options['backup-passphrase-file'];
+  return {
+    output: assertSafeBackupOutput(options['backup-output']),
+    dryRun,
+    encrypt: true,
+    passphraseFile,
+    autoGenerateRecoveryKey: !passphraseFile,
+    recoveryKeyOutput: assertSafeBackupOutput(options['recovery-key-output'])
+  };
+}
+
+function automaticSafetyBackupProtection(options = {}) {
+  return {
+    encrypted: true,
+    keySource: options['backup-passphrase-file'] ? 'external_private_file' : 'generated_separate_recovery_file',
+    recoveryKeyOutput: options['recovery-key-output'] ? assertSafeBackupOutput(options['recovery-key-output']) : 'default_private_sibling_store'
+  };
+}
+
+function attachSurvivingSafetyBackup(error, created) {
+  if (!created) return error;
+  error.details = {
+    ...(error.details || {}),
+    safetyBackupCreated: true,
+    safetyBackupPath: created.backupPath,
+    safetyBackupRecoveryKeyPath: created.recoveryKeyPath || null
+  };
+  return error;
+}
+
 function stableOperationErrorCode(error) {
   return /^[A-Z][A-Z0-9_]{2,63}$/.test(error?.code || '') ? error.code : 'UNEXPECTED_ERROR';
 }
@@ -187,6 +248,22 @@ async function loadVerifiedSources(loaded) {
 function distributionMatchesState(loaded, state) {
   return state.product?.manifestSha256 === loaded.sha256 &&
     state.product?.version === loaded.manifest.product.version;
+}
+
+// This is the exact manifest published by commit a98dfba. It is a provenance
+// matcher for the removed default selector, not an overwrite trust root. The
+// old distribution is intentionally not bundled, so its changed managed files
+// must still be reviewed as unverified conflicts.
+const LEGACY_SCALVIN_DEFAULT_MANIFEST_SHA256 = '2e6d3b99399e7d36c96aeb419f3da8d44c6d721cfd20a954f4d1c0c7e7e4182f';
+
+function isLegacyScalvinDefaultState(stateResult) {
+  if (stateResult.kind !== 'current') return false;
+  const state = stateResult.state;
+  return state.product?.version === '1.0.0' &&
+    state.product?.manifestSha256 === LEGACY_SCALVIN_DEFAULT_MANIFEST_SHA256 &&
+    state.source?.pinType === 'manifest-sha256' &&
+    state.source?.pin === LEGACY_SCALVIN_DEFAULT_MANIFEST_SHA256 &&
+    state.preferences?.persona === 'scalvin';
 }
 
 async function resolveTrustedInstalledPlan(stateResult, incomingLoaded, incomingSourceBuffers) {
@@ -479,7 +556,7 @@ async function install(options = {}) {
   const preferences = normalizePreferences(manifest, preferenceOptions);
   const plan = buildTargetPlan(manifest, sourceBuffers, preferences);
   const plannedBackup = nonEmpty
-    ? await createBackup(target, { output: assertSafeBackupOutput(options['backup-output']), dryRun: true })
+    ? await createBackup(target, automaticSafetyBackupOptions(options, true))
     : null;
   if (options['dry-run'] && !nonEmpty) {
     return {
@@ -488,6 +565,7 @@ async function install(options = {}) {
       workspaceId: null,
       files: plan.length,
       backupPath: plannedBackup?.backupPath || null,
+      backupRecoveryKeyPath: plannedBackup?.recoveryKeyPath || null,
       nextAction: nextActionForConsent(consent),
       warnings: ignoredPreferences.length ? [{ code: 'SENSITIVE_PREFERENCES_IGNORED', fields: ignoredPreferences }] : []
     };
@@ -504,6 +582,7 @@ async function install(options = {}) {
     preferences,
     consent,
     backupOutput: options['backup-output'] || null,
+    backupProtection: automaticSafetyBackupProtection(options),
     planTimestamp: planNow
   };
   if (nonEmpty) {
@@ -523,6 +602,7 @@ async function install(options = {}) {
       workspaceId: prepared.state.workspaceId,
       files: plan.length,
       backupPath: plannedBackup?.backupPath || null,
+      backupRecoveryKeyPath: plannedBackup?.recoveryKeyPath || null,
       confirmationRequired: expectedConfirmation,
       nextAction: `rerun-with---force-and---confirm-${expectedConfirmation}`,
       warnings: ignoredPreferences.length ? [{ code: 'SENSITIVE_PREFERENCES_IGNORED', fields: ignoredPreferences }] : []
@@ -543,7 +623,7 @@ async function install(options = {}) {
   }
 
   let backup = null;
-  if (nonEmpty) backup = await createBackup(target, { output: assertSafeBackupOutput(options['backup-output']) });
+  if (nonEmpty) backup = await createBackup(target, automaticSafetyBackupOptions(options));
   if (nonEmpty) {
     const postBackupTargetSnapshot = await snapshotWorkspaceTree(target);
     prepared = await prepareInstallStage({
@@ -585,19 +665,22 @@ async function install(options = {}) {
       version: manifest.product.version,
       files: plan.length,
       backupPath: backup?.backupPath || null,
+      backupRecoveryKeyPath: backup?.recoveryKeyPath || null,
       localStatePath,
-      nextAction: activationInfo.nextAction || nextActionForConsent(consent),
+      nextAction: activationInfo.nextAction || 'open-workspace-in-fresh-client-session',
+      afterOpenAction: nextActionForConsent(consent),
       warnings,
       ...(activationInfo.workspaceApplied ? { workspaceApplied: true, localPointerWritten: false } : {}),
       ...(activationInfo.retainedSeparateCopies ? { retainedSeparateCopies: activationInfo.retainedSeparateCopies } : {})
     };
   } catch (caught) {
-    let error = caught;
+    let error = attachSurvivingSafetyBackup(caught, backup);
     try {
       await discardPreparedInstallStage(prepared, error);
     } catch (cleanupOrOriginal) {
       error = cleanupOrOriginal;
     }
+    error = attachSurvivingSafetyBackup(error, backup);
     throw error;
   }
 }
@@ -934,7 +1017,10 @@ async function updateInternal(options = {}) {
     }
   }
   const safeExistingPreferences = consentStatus === 'granted' ? existingPreferences : loaded.manifest.defaults;
-  const preferences = normalizePreferences(loaded.manifest, preferenceOptions, safeExistingPreferences);
+  const legacyScalvinDefaultState = consentStatus === 'granted' && isLegacyScalvinDefaultState(stateResult);
+  const preferences = normalizePreferences(loaded.manifest, preferenceOptions, safeExistingPreferences, {
+    allowLegacyScalvin: legacyScalvinDefaultState
+  });
   const incomingPlan = buildTargetPlan(loaded.manifest, sourceBuffers, preferences);
   const trustedInstalledPlan = await resolveTrustedInstalledPlan(stateResult, loaded, sourceBuffers);
   const inspection = await inspectUpdateActions(target, incomingPlan, stateResult, trustedInstalledPlan);
@@ -965,6 +1051,11 @@ async function updateInternal(options = {}) {
   ];
   const previewWarnings = [
     ...(ignoredPreferences.length ? [{ code: 'SENSITIVE_PREFERENCES_IGNORED', fields: ignoredPreferences }] : []),
+    ...(legacyScalvinDefaultState ? [{
+      code: 'LEGACY_SCALVIN_PERSONA_CANONICALIZED',
+      companionNameChanged: existingPreferences.companionName !== preferences.companionName,
+      priorDistributionTrusted: Boolean(trustedInstalledPlan)
+    }] : []),
     ...inspection.notices,
     ...legacyArtifacts.notices
   ];
@@ -994,7 +1085,8 @@ async function updateInternal(options = {}) {
       priorHash: conflict.priorHash,
       incomingHash: conflict.incomingHash
     })),
-    planTimestamp: planNow
+    planTimestamp: planNow,
+    backupProtection: automaticSafetyBackupProtection(options)
   };
   if (authorizationRequired) {
     prepared = await prepareUpdateStage({
@@ -1047,7 +1139,7 @@ async function updateInternal(options = {}) {
   let activation = null;
   let activatedWorkspaceId = null;
   try {
-    backup = await createBackup(target, { output: assertSafeBackupOutput(options['backup-output']) });
+    backup = await createBackup(target, automaticSafetyBackupOptions(options));
     prepared = await prepareUpdateStage({
       target, loaded, incomingPlan, trustedInstalledPlan, inspection, legacyArtifacts, stateResult, preferences, options, planNow
     });
@@ -1081,6 +1173,7 @@ async function updateInternal(options = {}) {
       stateMigrated: requiresStateMigration,
       legacySourceRecords: migratedSourceRecords,
       backupPath: backup.backupPath,
+      backupRecoveryKeyPath: backup.recoveryKeyPath || null,
       nextAction: activation.retainedRollbackPath ? 'remove-retained-private-rollback' : newState.consent?.status === 'not-decided' ? 'collect-consent' : 'run-doctor',
       warnings
     };
@@ -1093,6 +1186,7 @@ async function updateInternal(options = {}) {
           nextAction: 'inspect-active-workspace-and-run-doctor'
         })
       : caught;
+    error = attachSurvivingSafetyBackup(error, backup);
     if (prepared) {
       try {
         await discardPreparedUpdateStage(prepared, error);
@@ -1100,6 +1194,7 @@ async function updateInternal(options = {}) {
         error = cleanupOrOriginal;
       }
     }
+    error = attachSurvivingSafetyBackup(error, backup);
     try { Object.defineProperty(error, 'scalvinOperationAttempted', { value: true }); } catch {}
     throw error;
   }
@@ -1137,24 +1232,63 @@ async function update(options = {}) {
   }
 }
 
+function publicBackupReminderState(reminder, nowInput = new Date().toISOString()) {
+  if (!reminder) return null;
+  const nowEpoch = Date.parse(nowInput);
+  invariant(Number.isFinite(nowEpoch), 'Backup reminder clock is invalid.', 'BACKUP_LEDGER_INVALID');
+  const now = new Date(nowEpoch).toISOString();
+  const sessions = Number(reminder.sessionsSinceSuccessfulBackup);
+  invariant(Number.isSafeInteger(sessions) && sessions >= 0, 'Backup reminder state is invalid.', 'BACKUP_LEDGER_INVALID');
+  const lastReminderAt = reminder.lastReminderAt === 'null' ? null : reminder.lastReminderAt;
+  const reminderDeclinedUntil = reminder.reminderDeclinedUntil === 'null' ? null : reminder.reminderDeclinedUntil;
+  for (const timestamp of [lastReminderAt, reminderDeclinedUntil]) {
+    invariant(timestamp === null || Number.isFinite(Date.parse(timestamp)), 'Backup reminder timestamp is invalid.', 'BACKUP_LEDGER_INVALID');
+  }
+  const eligibilityGates = [];
+  if (lastReminderAt) eligibilityGates.push(new Date(Date.parse(lastReminderAt) + REMINDER_INTERVAL_MS).toISOString());
+  if (reminderDeclinedUntil) eligibilityGates.push(new Date(reminderDeclinedUntil).toISOString());
+  const nextEligibleAt = eligibilityGates.sort().at(-1) || null;
+  const thresholdReached = sessions >= SESSION_THRESHOLD;
+  const dueNow = thresholdReached && (nextEligibleAt === null || Date.parse(now) >= Date.parse(nextEligibleAt));
+  return {
+    sessionsSinceSuccessfulBackup: sessions,
+    sessionThreshold: SESSION_THRESHOLD,
+    thresholdReached,
+    dueNow,
+    lastReminderAt,
+    reminderDeclinedUntil,
+    nextEligibleAt
+  };
+}
+
 async function backup(options = {}) {
+  const action = options.action || 'create';
+  invariant(['create', 'status', 'verify', 'delete', 'key-create'].includes(action), 'backup --action must be create, status, verify, delete, or key-create.', 'INVALID_ARGUMENT');
+  if (action === 'key-create') {
+    invariant(!options.target && !options.workspace && options.output, 'Backup key-create requires --output and does not accept a workspace.', 'INVALID_ARGUMENT');
+    invariant(options.id === undefined && options.backup === undefined && options.confirm === undefined && options.encrypt === undefined && options['allow-plaintext-backup'] === undefined && options['passphrase-file'] === undefined && options['recovery-key-output'] === undefined && !options['decline-reminder'], 'Backup key-create accepts only --output and optional --dry-run.', 'INVALID_ARGUMENT');
+    return createRecoveryKeyFile(assertSafeBackupOutput(options.output), { dryRun: options['dry-run'] });
+  }
   const target = options.target || options.workspace;
   invariant(target, 'backup requires --workspace (or --target).', 'INVALID_ARGUMENT');
   const resolved = assertSafeWorkspaceTarget(resolvePortablePath(target));
   const loaded = await loadManifest(DISTRIBUTION_MANIFEST);
   const stateResult = await loadWorkspaceState(resolved, loaded.manifest);
   invariant(stateResult.kind === 'current' || stateResult.kind === 'legacy', 'Backup target is not a Scalvin workspace.', 'WORKSPACE_STATE_MISSING', { target: resolved });
-  const action = options.action || 'create';
-  invariant(['create', 'status', 'verify', 'delete'].includes(action), 'backup --action must be create, status, verify, or delete.', 'INVALID_ARGUMENT');
   if (action === 'create') {
     invariant(options.id === undefined && options.backup === undefined && options.confirm === undefined && !options['decline-reminder'], 'Backup create does not accept --id, --backup, --confirm, or --decline-reminder.', 'INVALID_ARGUMENT');
+    const allowPlaintext = options['allow-plaintext-backup'] === true;
+    invariant(!(allowPlaintext && (options.encrypt || options['passphrase-file'] || options['recovery-key-output'])), 'Plaintext backup override cannot be combined with encryption or recovery-key options.', 'INVALID_ARGUMENT');
+    const encrypted = !allowPlaintext;
     let created = null;
     try {
       created = await createBackup(resolved, {
         output: assertSafeBackupOutput(options.output),
         dryRun: options['dry-run'],
-        encrypt: options.encrypt,
-        passphraseFile: options['passphrase-file']
+        encrypt: encrypted,
+        passphraseFile: options['passphrase-file'],
+        autoGenerateRecoveryKey: encrypted && !options['passphrase-file'],
+        recoveryKeyOutput: assertSafeBackupOutput(options['recovery-key-output'])
       });
       if (options['dry-run']) return created;
       const receipt = await appendBackupOperationReceipt(resolved, {
@@ -1166,7 +1300,8 @@ async function backup(options = {}) {
         ...(error.details || {}),
         backupCreated: true,
         backupId: created.backupId,
-        backupPath: created.backupPath
+        backupPath: created.backupPath,
+        recoveryKeyPath: created.recoveryKeyPath || null
       };
       if (!options['dry-run']) await appendFailedBackupReceipt(resolved, {
         operation: 'create', backupId: created?.backupId || error.details?.backupId || null,
@@ -1178,7 +1313,7 @@ async function backup(options = {}) {
 
   invariant(stateResult.kind === 'current', `Backup ${action} requires a schema v2 workspace.`, 'WORKSPACE_STATE_MIGRATION_REQUIRED');
 
-  invariant(options.output === undefined && !options.encrypt, `Backup ${action} does not accept --output or --encrypt.`, 'INVALID_ARGUMENT');
+  invariant(options.output === undefined && !options.encrypt && options['allow-plaintext-backup'] === undefined && options['recovery-key-output'] === undefined, `Backup ${action} does not accept creation-only options.`, 'INVALID_ARGUMENT');
   if (options.id !== undefined) invariant(BACKUP_ID_PATTERN.test(options.id), 'Backup ID must be backup-<UUID-v4>.', 'BACKUP_ID_INVALID');
   if (action === 'status') {
     invariant(options.backup === undefined && options.confirm === undefined && options['passphrase-file'] === undefined, 'Backup status accepts only an optional --id.', 'INVALID_ARGUMENT');
@@ -1202,11 +1337,7 @@ async function backup(options = {}) {
       encrypted: record ? record.encryption !== 'none' : null,
       destinationClass: record?.destinationClass || null,
       deletedAt: record?.deletedAt || null,
-      reminder: ledger.reminder ? {
-        sessionsSinceSuccessfulBackup: Number(ledger.reminder.sessionsSinceSuccessfulBackup),
-        lastReminderAt: ledger.reminder.lastReminderAt === 'null' ? null : ledger.reminder.lastReminderAt,
-        reminderDeclinedUntil: ledger.reminder.reminderDeclinedUntil === 'null' ? null : ledger.reminder.reminderDeclinedUntil
-      } : null,
+      reminder: publicBackupReminderState(ledger.reminder),
       reminderDecline,
       contentIncluded: false,
       artifactPathIncluded: false,
@@ -1221,8 +1352,15 @@ async function backup(options = {}) {
   else artifact = await findDefaultBackupById(resolved, options.id);
   invariant(artifact, 'This backup is not in the default sibling store; provide its exact artifact path with --backup.', 'BACKUP_PATH_REQUIRED', { backupId: options.id });
   let summary;
+  let generatedRecoveryKeyPath = null;
+  let effectivePassphraseFile = options['passphrase-file'];
+  const defaultGeneratedKeyPath = recoveryKeyPathFor(resolved, options.id);
+  if (await pathExists(defaultGeneratedKeyPath)) {
+    if (!effectivePassphraseFile) effectivePassphraseFile = defaultGeneratedKeyPath;
+    if (resolvePortablePath(effectivePassphraseFile) === defaultGeneratedKeyPath) generatedRecoveryKeyPath = defaultGeneratedKeyPath;
+  }
   try {
-    summary = await getBackupSummary(artifact, { passphraseFile: options['passphrase-file'], verify: true });
+    summary = await getBackupSummary(artifact, { passphraseFile: effectivePassphraseFile, verify: true });
     invariant(summary.backupId === options.id, 'Backup ID does not match the authenticated artifact.', 'BACKUP_ID_MISMATCH');
   } catch (error) {
     await appendFailedBackupReceipt(resolved, {
@@ -1271,8 +1409,13 @@ async function backup(options = {}) {
       expectedBackupId: summary.backupId,
       expectedChecksum: summary.checksum,
       expectedArtifactIdentity: artifactIdentity,
-      passphraseFile: options['passphrase-file']
+      passphraseFile: effectivePassphraseFile
     });
+    let recoveryKeyDeleted = false;
+    if (generatedRecoveryKeyPath) {
+      await fsp.rm(generatedRecoveryKeyPath, { force: true });
+      recoveryKeyDeleted = true;
+    }
     const ledger = await markBackupDeleted(resolved, { backupId: deleted.backupId, deletedAt: deleted.deletedAt });
     deletionLedger = ledger;
     const receipt = await appendBackupOperationReceipt(resolved, {
@@ -1283,6 +1426,7 @@ async function backup(options = {}) {
       status: ledgerGap ? 'partial' : 'deleted', workspaceId: stateResult.state.workspaceId, backupId: deleted.backupId,
       deletedAt: deleted.deletedAt, ledgerWritten: ledger.written, operationReceiptWritten: receipt.written,
       artifactDeleted: true,
+      recoveryKeyDeleted,
       ...(ledger.reason ? { ledgerReason: ledger.reason } : {}),
       ...(ledgerGap ? { warnings: [{ code: 'BACKUP_DELETION_LEDGER_RECONCILIATION_REQUIRED', reason: ledger.reason }] } : {}),
       contentIncluded: false, artifactPathIncluded: false,
@@ -1334,13 +1478,14 @@ async function planRestoreReplacement(target, verified) {
   };
 }
 
-function restoreTokenOptions(plan, verified) {
+function restoreTokenOptions(plan, verified, options = {}) {
   return {
     backupId: verified.integrity.backupId,
     backupChecksum: verified.checksum,
     incomingWorkspaceId: verified.integrity.workspaceId,
     currentEntries: plan.currentEntries,
-    unboundOperationalPaths: [...RESTORE_UNBOUND_OPERATIONAL_PATHS].sort()
+    unboundOperationalPaths: [...RESTORE_UNBOUND_OPERATIONAL_PATHS].sort(),
+    displacedWorkspaceBackupProtection: automaticSafetyBackupProtection(options)
   };
 }
 
@@ -1348,6 +1493,12 @@ async function restore(options = {}) {
   invariant(options.backup, 'restore requires --backup.', 'INVALID_ARGUMENT');
   invariant(options.target || options.workspace, 'restore requires --workspace (or --target).', 'INVALID_ARGUMENT');
   const target = assertSafeWorkspaceTarget(resolvePortablePath(options.target || options.workspace));
+  const restoreArtifact = resolvePortablePath(options.backup);
+  invariant(
+    !isInside(target, restoreArtifact) && !isInside(restoreArtifact, target),
+    'Restore backup artifact and target workspace must not overlap.',
+    'RESTORE_PATH_OVERLAP'
+  );
   let verified = null;
   let stage = null;
   let nonEmpty = false;
@@ -1356,6 +1507,7 @@ async function restore(options = {}) {
   let receiptEligible = false;
   let targetWorkspaceId = null;
   let initialTargetSnapshot = null;
+  let targetBackup = null;
   try {
     await rejectSymlinkPath(target, { allowMissing: true });
     nonEmpty = await isNonEmptyDirectory(target);
@@ -1377,7 +1529,7 @@ async function restore(options = {}) {
       throw new ScalvinError('Restore target is not empty. Use --force to create a safety backup and replace it.', 'TARGET_NOT_EMPTY', { target });
     }
     receiptPhase = 'verify';
-    verified = await verifyBackup(options.backup, {
+    verified = await verifyBackup(restoreArtifact, {
       passphraseFile: options['passphrase-file'],
       materialize: !options['dry-run']
     });
@@ -1389,13 +1541,14 @@ async function restore(options = {}) {
         targetWorkspaceId,
         'restore-replace',
         replacementPlan,
-        restoreTokenOptions(replacementPlan, verified)
+        restoreTokenOptions(replacementPlan, verified, options)
       );
       if (!options.confirm) {
         return {
           status: 'preview', workspacePath: target, workspaceId: verified.integrity.workspaceId,
           backupPath: verified.backupPath, files: replacementPlan.incomingFileCount,
           targetBackupRequired: true, replacedFiles: replacementPlan.deletes.length,
+          displacedWorkspaceBackupProtection: automaticSafetyBackupProtection(options),
           confirmationRequired: expectedConfirmation,
           nextAction: `rerun-with---confirm-${expectedConfirmation}`
         };
@@ -1415,14 +1568,13 @@ async function restore(options = {}) {
       };
     }
     receiptPhase = 'payload';
-    let targetBackup = null;
     if (nonEmpty) {
       const beforeBackupPlan = await planRestoreReplacement(target, verified);
-      const beforeBackupToken = await destructivePlanToken(target, targetWorkspaceId, 'restore-replace', beforeBackupPlan, restoreTokenOptions(beforeBackupPlan, verified));
+      const beforeBackupToken = await destructivePlanToken(target, targetWorkspaceId, 'restore-replace', beforeBackupPlan, restoreTokenOptions(beforeBackupPlan, verified, options));
       assertFreshConfirmation(options.confirm, beforeBackupToken);
-      targetBackup = await createBackup(target, { output: assertSafeBackupOutput(options['backup-output']) });
+      targetBackup = await createBackup(target, automaticSafetyBackupOptions(options));
       const afterBackupPlan = await planRestoreReplacement(target, verified);
-      const afterBackupToken = await destructivePlanToken(target, targetWorkspaceId, 'restore-replace', afterBackupPlan, restoreTokenOptions(afterBackupPlan, verified));
+      const afterBackupToken = await destructivePlanToken(target, targetWorkspaceId, 'restore-replace', afterBackupPlan, restoreTokenOptions(afterBackupPlan, verified, options));
       assertFreshConfirmation(options.confirm, afterBackupToken);
     }
     receiptPhase = 'apply';
@@ -1433,7 +1585,7 @@ async function restore(options = {}) {
     await validateWorkspaceStage(stage);
     if (nonEmpty) {
       const finalPlan = await planRestoreReplacement(target, verified);
-      const finalToken = await destructivePlanToken(target, targetWorkspaceId, 'restore-replace', finalPlan, restoreTokenOptions(finalPlan, verified));
+      const finalToken = await destructivePlanToken(target, targetWorkspaceId, 'restore-replace', finalPlan, restoreTokenOptions(finalPlan, verified, options));
       assertFreshConfirmation(options.confirm, finalToken);
     }
     testFailpoint('restore-before-activate');
@@ -1441,6 +1593,32 @@ async function restore(options = {}) {
     stage = null;
     receiptEligible = true;
     receiptPhase = 'complete';
+    const backupLedgerReconciliation = {};
+    const backupLedgerErrors = [];
+    const reconcileBackupLedger = async (role, event) => {
+      try {
+        backupLedgerReconciliation[role] = await appendBackupLedger(target, event);
+      } catch (error) {
+        backupLedgerReconciliation[role] = { written: false, errorCode: stableOperationErrorCode(error) };
+        backupLedgerErrors.push({ role, error });
+      }
+    };
+    await reconcileBackupLedger('incoming', {
+      backupId: verified.integrity.backupId,
+      createdAt: verified.integrity.createdAt,
+      destinationClass: 'restore_input_exact_path',
+      encryption: verified.encrypted ? 'aes-256-gcm' : 'none',
+      checksum: verified.checksum
+    });
+    if (targetBackup) {
+      await reconcileBackupLedger('displaced', {
+        backupId: targetBackup.backupId,
+        createdAt: targetBackup.createdAt,
+        destinationClass: targetBackup.destinationClass,
+        encryption: targetBackup.encrypted ? 'aes-256-gcm' : 'none',
+        checksum: targetBackup.checksum
+      });
+    }
     let receipt = { written: false };
     let receiptError = null;
     try {
@@ -1457,20 +1635,35 @@ async function restore(options = {}) {
     const activationInfo = activationDisclosure(activation);
     const warnings = [
       ...(activationInfo.warnings || []),
+      ...backupLedgerErrors.map(({ role, error }) => ({
+        code: 'RESTORE_BACKUP_LEDGER_RECONCILIATION_REQUIRED', role, errorCode: stableOperationErrorCode(error)
+      })),
       ...(receiptError ? [{ code: 'RESTORE_RECEIPT_RECONCILIATION_REQUIRED', errorCode: stableOperationErrorCode(receiptError) }] : [])
     ];
-    const nextAction = receiptError && activation.retainedRollbackPath
+    const backupLedgerError = backupLedgerErrors.length > 0;
+    const nextAction = backupLedgerError && receiptError
+      ? 'reconcile-backup-ledger-and-restore-operation-receipt'
+      : backupLedgerError
+        ? 'reconcile-restored-backup-ledger'
+        : receiptError && activation.retainedRollbackPath
       ? 'reconcile-restore-receipt-and-remove-retained-private-rollback'
       : receiptError
         ? 'reconcile-restore-operation-receipt'
         : activationInfo.nextAction || 'run-doctor';
     return {
-      status: receiptError ? 'partial' : 'restored',
+      status: backupLedgerError || receiptError ? 'partial' : 'restored',
       restoreApplied: true,
       workspacePath: target,
       workspaceId: verified.integrity.workspaceId,
       backupPath: verified.backupPath,
       displacedWorkspaceBackup: targetBackup?.backupPath || null,
+      displacedWorkspaceRecoveryKeyPath: targetBackup?.recoveryKeyPath || null,
+      incomingBackupLedgerWritten: backupLedgerReconciliation.incoming?.written === true,
+      ...(backupLedgerReconciliation.incoming?.reason ? { incomingBackupLedgerReason: backupLedgerReconciliation.incoming.reason } : {}),
+      ...(targetBackup ? {
+        displacedWorkspaceBackupLedgerWritten: backupLedgerReconciliation.displaced?.written === true,
+        ...(backupLedgerReconciliation.displaced?.reason ? { displacedWorkspaceBackupLedgerReason: backupLedgerReconciliation.displaced.reason } : {})
+      } : {}),
       files: verified.integrity.entries.filter((entry) => entry.type === 'file').length,
       operationReceiptWritten: receipt.written,
       ...activationInfo,
@@ -1478,6 +1671,7 @@ async function restore(options = {}) {
       nextAction
     };
   } catch (error) {
+    attachSurvivingSafetyBackup(error, targetBackup);
     if (stage) await fsp.rm(stage, { recursive: true, force: true }).catch(() => {});
     if (!options['dry-run'] && receiptEligible) {
       await appendFailedBackupReceipt(target, {
@@ -1517,7 +1711,8 @@ async function consent(options = {}) {
   const projectionChange = await consentProjectionNeedsChange(target, stateResult.state);
   const preview = structuredClone(stateResult.state);
   const change = applyConsentChoice(preview, { category, value, retention: options.retention, eventSource: 'cli-consent' });
-  if (!change.changed && !projectionChange) {
+  const lifecycleTranscriptChanged = mirrorActiveTranscriptState(preview);
+  if (!change.changed && !projectionChange && !lifecycleTranscriptChanged) {
     return {
       status: 'unchanged',
       workspacePath: target,
@@ -1579,6 +1774,70 @@ function controlEvent(category, from, to, now = new Date().toISOString()) {
   return { eventId: `control-${require('node:crypto').randomUUID()}`, at: now, category, from, to };
 }
 
+function mirrorActiveTranscriptState(state) {
+  const lifecycle = state.sessionLifecycle;
+  const transcript = state.consent?.transcriptState;
+  if (!lifecycle || !['active', 'interrupted'].includes(lifecycle.state) || !transcript) return false;
+  let next;
+  if (transcript.state === 'off') {
+    next = transcriptSnapshot();
+  } else {
+    invariant(
+      transcript.sessionId === lifecycle.sessionId && transcript.sessionId === state.consent.currentSessionId,
+      'Transcript state does not belong to the active canonical session.',
+      'TRANSCRIPT_SESSION_MISMATCH'
+    );
+    next = transcriptSnapshot({
+      state: transcript.state,
+      sessionId: transcript.sessionId,
+      captureGrade: transcript.captureGrade,
+      knownGaps: transcript.knownGaps,
+      pausedIntervals: transcript.pausedIntervals,
+      finalizedAt: transcript.state === 'stopped' ? transcript.stoppedAt : null,
+      fullCoverageProven: false
+    });
+  }
+  const changed = JSON.stringify(lifecycle.transcript) !== JSON.stringify(next);
+  if (changed) lifecycle.transcript = next;
+  let globalEvidenceChanged = false;
+  if (transcript.state !== 'off') {
+    globalEvidenceChanged = transcript.captureGrade !== next.captureGrade
+      || JSON.stringify(transcript.pausedIntervals) !== JSON.stringify(next.pausedIntervals)
+      || JSON.stringify(transcript.knownGaps) !== JSON.stringify(next.knownGaps);
+    transcript.captureGrade = next.captureGrade;
+    transcript.pausedIntervals = structuredClone(next.pausedIntervals);
+    transcript.knownGaps = structuredClone(next.knownGaps);
+  }
+  return changed || globalEvidenceChanged;
+}
+
+function synchronizeGlobalTranscriptFromLifecycle(state, previousTranscriptState) {
+  const lifecycle = state.sessionLifecycle;
+  const evidence = lifecycle.transcript;
+  if (evidence.state === 'off') {
+    state.consent.transcriptState = {
+      state: 'off', sessionId: null, captureGrade: null, startedAt: null,
+      pausedIntervals: [], stoppedAt: null, knownGaps: []
+    };
+    return;
+  }
+  const globalState = evidence.state === 'finalized' ? 'stopped' : evidence.state;
+  const previousBelongsToSession = previousTranscriptState?.sessionId === lifecycle.sessionId;
+  state.consent.transcriptState = {
+    state: globalState,
+    sessionId: lifecycle.sessionId,
+    captureGrade: evidence.captureGrade,
+    startedAt: previousBelongsToSession && previousTranscriptState.startedAt
+      ? previousTranscriptState.startedAt
+      : lifecycle.startedAt,
+    pausedIntervals: structuredClone(evidence.pausedIntervals),
+    stoppedAt: globalState === 'stopped'
+      ? evidence.finalizedAt || lifecycle.closedAt || state.updatedAt
+      : null,
+    knownGaps: structuredClone(evidence.knownGaps)
+  };
+}
+
 function activationDisclosure(activation, destructive = false, existingCopies = []) {
   const rollbackRetained = Boolean(activation?.retainedRollbackPath);
   const pointerWarning = Boolean(activation?.finalizationWarnings?.length);
@@ -1617,6 +1876,27 @@ async function currentWorkspaceContext(options, label) {
   return { target, loaded, state: structuredClone(stateResult.state), expectedTargetSnapshot };
 }
 
+async function contentFreeWorkspaceContext(options, label) {
+  invariant(options.target || options.workspace, `${label} requires --workspace (or --target).`, 'INVALID_ARGUMENT');
+  const target = assertSafeWorkspaceTarget(resolvePortablePath(options.target || options.workspace));
+  await rejectSymlinkPath(target);
+  invariant(await isNonEmptyDirectory(target), 'Workspace does not exist or is empty.', 'WORKSPACE_NOT_FOUND', { target });
+  const loaded = await loadManifest(DISTRIBUTION_MANIFEST);
+  const stateResult = await loadWorkspaceState(target, loaded.manifest);
+  invariant(stateResult.kind === 'current', `${label} requires a valid schema v2 workspace; run a pinned update first.`, 'WORKSPACE_STATE_MIGRATION_REQUIRED', { kind: stateResult.kind });
+  return { target, loaded, state: structuredClone(stateResult.state) };
+}
+
+async function requireUnsealedPrivateAccess(options, label) {
+  const context = await contentFreeWorkspaceContext(options, label);
+  invariant(
+    context.state.consent.memoryPause.state !== 'sealed_pause',
+    'Private workspace access is unavailable while sealed pause is active.',
+    'MEMORY_SEALED'
+  );
+  return context;
+}
+
 async function applyContentTransaction(context, label, plan, receipt, options = {}) {
   const { expectedTargetSnapshot } = context;
   invariant(expectedTargetSnapshot, 'Content transaction requires the pre-read workspace snapshot.', 'ACTIVATION_SNAPSHOT_REQUIRED');
@@ -1625,6 +1905,7 @@ async function applyContentTransaction(context, label, plan, receipt, options = 
     await copyTree(context.target, stage, { expectedSourceSnapshot: expectedTargetSnapshot });
     const appliedPlan = options.replan ? await options.replan(stage) : plan;
     await applyPlan(stage, appliedPlan);
+    if (options.verifyPlan) await verifyContentPlan(stage, appliedPlan, options.verifyLabel || 'Content');
     const receiptWritten = receipt && context.state.consent.usageLedgers === 'on'
       ? await appendDeletionReceipt(stage, receipt)
       : false;
@@ -1824,6 +2105,7 @@ async function rollbackPreviewValues(root, revisionId) {
 async function changes(options = {}) {
   const action = options.action;
   invariant(['propose', 'approve', 'reject', 'history', 'rollback'].includes(action), 'changes action must be propose, approve, reject, history, or rollback.', 'INVALID_ARGUMENT');
+  await requireUnsealedPrivateAccess(options, 'changes');
   const context = await currentWorkspaceContext(options, 'changes');
   assertSupportedRetentionClasses(context.state, ['behavior_customization']);
 
@@ -1943,25 +2225,6 @@ async function readJsonObjectOption(options, directKey, fileKey, label, maxBytes
   return parsed;
 }
 
-async function sourceMemoryIds(options) {
-  invariant(!(options.proposedMemoryIds !== undefined && options['proposed-memory-file'] !== undefined), 'Proposed memory IDs accept either direct input or a file, not both.', 'INVALID_ARGUMENT');
-  if (options.proposedMemoryIds !== undefined) {
-    invariant(Array.isArray(options.proposedMemoryIds), 'Proposed memory IDs must be an array.', 'INVALID_ARGUMENT');
-    return [...options.proposedMemoryIds];
-  }
-  if (options['proposed-memory-id'] !== undefined) return [...options['proposed-memory-id']];
-  if (options['proposed-memory-file'] === undefined) return [];
-  const filename = resolvePortablePath(String(options['proposed-memory-file']));
-  await rejectSymlinkPath(filename);
-  const raw = (await readBoundedRegularFile(filename, 128 * 1024, {
-    typeCode: 'SOURCE_INPUT_INVALID', sizeCode: 'SOURCE_INPUT_TOO_LARGE', changedCode: 'SOURCE_INPUT_CHANGED'
-  })).toString('utf8');
-  let parsed;
-  try { parsed = JSON.parse(raw); } catch { throw new ScalvinError('Proposed memory ID file is not valid JSON.', 'INVALID_ARGUMENT'); }
-  invariant(Array.isArray(parsed), 'Proposed memory ID file must contain one JSON array.', 'INVALID_ARGUMENT');
-  return parsed;
-}
-
 function sourceConsentOptions(options) {
   const proof = (direct, eventKey, retentionKey, category) => {
     if (direct !== undefined) return structuredClone(direct);
@@ -2017,7 +2280,7 @@ async function sourceTransaction(context, label, options, run) {
     await projectConsentState(stage, state);
     await writeState(stage, state, context.loaded.manifest);
     await hardenTree(stage);
-    if (['source-reject', 'source-delete'].includes(label)) await validatePrivacyWorkspaceStage(stage, { expectedState: state });
+    if (['source-reject', 'source-delete', 'source-retention-delete'].includes(label)) await validatePrivacyWorkspaceStage(stage, { expectedState: state });
     else await validateWorkspaceStage(stage);
     if (options['dry-run']) {
       await fsp.rm(stage, { recursive: true, force: true });
@@ -2070,13 +2333,49 @@ function sourceMutationOutput(context, transaction, action) {
 
 async function source(options = {}) {
   const action = options.action;
-  invariant(['add', 'status', 'integrate', 'reject', 'delete'].includes(action), 'source action must be add, status, integrate, reject, or delete.', 'INVALID_ARGUMENT');
+  invariant(['add', 'status', 'process', 'proposals', 'integrate', 'reject', 'delete'].includes(action), 'source action must be add, status, process, proposals, integrate, reject, or delete.', 'INVALID_ARGUMENT');
+  if (action !== 'delete') await requireUnsealedPrivateAccess(options, 'source');
+  if (action === 'process') {
+    const preflight = await contentFreeWorkspaceContext(options, 'source worker key');
+    await ensureSourceWorkerKey(preflight.target);
+  }
   const context = await currentWorkspaceContext(options, 'source');
   if (!['status', 'delete'].includes(action)) assertSupportedRetentionClasses(context.state, ['imported_sources', 'external_care_records']);
   if (action === 'status') {
     invariant(options.path === undefined && options.confirm === undefined && !options['dry-run'], 'Source status is read-only and does not accept --path, --confirm, or --dry-run.', 'INVALID_ARGUMENT');
     const result = await statusSource({ workspace: context.target, sourceId: options['source-id'], revision: options.revision });
     return { ...result, workspacePath: context.target, workspaceId: context.state.workspaceId };
+  }
+
+  if (action === 'proposals') {
+    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision']);
+    const unsupported = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
+    invariant(unsupported.length === 0, 'Source proposal inspection received unsupported authority fields.', 'INVALID_ARGUMENT', { options: unsupported.sort() });
+    invariant(options['source-id'] !== undefined, 'source proposals requires --source-id.', 'INVALID_SOURCE_ID');
+    const sourceId = String(options['source-id']).toLowerCase();
+    const records = context.state.sourceLifecycle.records.filter((item) => item.sourceId === sourceId);
+    invariant(records.length > 0, 'Source was not found.', 'SOURCE_NOT_FOUND');
+    const revision = options.revision === undefined ? Math.max(...records.map((item) => item.revision)) : Number(options.revision);
+    const record = records.find((item) => item.revision === revision);
+    invariant(record, 'Source revision was not found.', 'SOURCE_REVISION_NOT_FOUND');
+    const proposal = await readSourceProposal(context.target, record);
+    return {
+      status: 'inspected',
+      workspacePath: context.target,
+      workspaceId: context.state.workspaceId,
+      sourceId,
+      revision,
+      sourceSha256: record.sha256,
+      proposalSha256: proposal.sha256,
+      candidates: structuredClone(proposal.value.candidates),
+      candidateCount: proposal.value.candidates.length,
+      trust: 'untrusted_source_derived_proposals',
+      dataOnly: true,
+      instructionsExecutable: false,
+      rawSourceIncluded: false,
+      absolutePathIncluded: false,
+      nextAction: 'ask-user-to-review-exact-candidates'
+    };
   }
 
   const consentOptions = sourceConsentOptions(options);
@@ -2092,109 +2391,154 @@ async function source(options = {}) {
     return sourceMutationOutput(context, transaction, action);
   }
 
-  invariant(options.path === undefined, `Source ${action} does not accept --path.`, 'INVALID_ARGUMENT');
-  invariant(options['source-id'] !== undefined, `source ${action} requires --source-id.`, 'INVALID_SOURCE_ID');
-  if (action === 'integrate') {
-    const proposedMemoryIds = (await sourceMemoryIds(options)).map((item) => String(item).toLowerCase()).sort();
-    const preview = await integrateSource({
-      workspace: context.target, canonicalState: context.state, sourceId: options['source-id'],
-      revision: options.revision, approved: false, proposedMemoryIds, ...consentOptions
+  if (action === 'process') {
+    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision', 'client', 'client-bin']);
+    const unsupported = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
+    invariant(unsupported.length === 0, 'Source processing received unsupported authority fields.', 'INVALID_ARGUMENT', { options: unsupported.sort() });
+    invariant(options['source-id'] !== undefined, 'source process requires --source-id.', 'INVALID_SOURCE_ID');
+    const processRecords = context.state.sourceLifecycle.records
+      .filter((item) => item.sourceId === String(options['source-id']).toLowerCase())
+      .sort((left, right) => left.revision - right.revision);
+    const record = options.revision === undefined
+      ? processRecords.at(-1)
+      : processRecords.find((item) => item.revision === Number(options.revision));
+    invariant(record, 'Source revision was not found.', 'SOURCE_REVISION_NOT_FOUND');
+    invariant(record.status === 'ready', 'Only a ready source revision can enter the isolated worker.', 'SOURCE_STATE_TRANSITION_INVALID');
+    const prepared = await runIsolatedSourceWorker({
+      workspace: context.target,
+      sourceId: record.sourceId,
+      revision: record.revision,
+      client: options.client || 'codex',
+      clientExecutable: options['client-bin']
     });
-    if (preview.status === 'pending_consent') {
-      return sourceMutationOutput(context, { result: preview, persisted: false }, action);
-    }
-    if (preview.status === 'already_integrated') {
-      const patchRecord = preview.canonicalPatch?.sourceLifecycle?.record;
-      const currentRecord = context.state.sourceLifecycle.records.find((item) => item.sourceId === patchRecord?.sourceId && item.revision === patchRecord?.revision);
-      if (currentRecord && JSON.stringify(currentRecord) === JSON.stringify(patchRecord)) {
-        return sourceMutationOutput(context, { result: preview, persisted: false }, action);
-      }
-      const transaction = await sourceTransaction(context, 'source-integrate', options, (stage) => integrateSource({
-        workspace: stage, canonicalState: context.state, sourceId: options['source-id'],
-        revision: options.revision, approved: false, proposedMemoryIds, ...consentOptions
-      }));
-      return sourceMutationOutput(context, transaction, action);
-    }
-    invariant(preview.status === 'approval_required' && typeof preview.sha256 === 'string', 'Source integration preview is invalid.', 'SOURCE_RESULT_INVALID');
-    const planNow = destructivePlanTimestamp('source-integrate', options);
-    const planned = await integrateSource({
-      workspace: context.target, canonicalState: context.state, sourceId: options['source-id'],
-      revision: options.revision, approved: true, expectedHash: preview.sha256,
-      proposedMemoryIds, now: planNow, planOnly: true, ...consentOptions
-    });
-    invariant(planned.status === 'integration_planned' && planned.plannedWrites instanceof Map, 'Source integration plan is invalid.', 'SOURCE_RESULT_INVALID');
-    const integrationPlan = {
-      selector: `${planned.sourceId}:r${planned.revision}`,
-      ids: proposedMemoryIds,
-      revisions: [planned.revision],
-      writes: planned.plannedWrites,
-      deletes: [],
-      affectedPaths: [planned.contentObject, ...planned.plannedWrites.keys()]
-    };
-    const tokenOptions = {
-      sourceId: planned.sourceId,
-      revision: planned.revision,
-      contentHash: planned.sha256,
-      proposedMemoryIds,
-      consentProof: consentOptions,
-      planTimestamp: planNow
-    };
-    const expectedConfirmation = await destructivePlanToken(
-      context.target, context.state.workspaceId, 'source-integrate', integrationPlan, tokenOptions
-    );
-    const response = {
-      status: 'preview', workspacePath: context.target, workspaceId: context.state.workspaceId,
-      sourceId: preview.sourceId, revision: preview.revision, before: 'ready', after: 'integrated',
-      expectedHash: preview.sha256, confirmationRequired: expectedConfirmation,
-      proposedMemoryCount: proposedMemoryIds.length, memoryWritten: false,
-      instructionsExecutable: false, contentIncluded: false, absolutePathIncluded: false,
-      nextAction: 'review-exact-hash-then-rerun-with-confirm'
-    };
-    if (!options.confirm || options['dry-run']) return response;
-    assertFreshConfirmation(options.confirm, expectedConfirmation);
-    const transaction = await sourceTransaction(context, 'source-integrate', options, async (stage) => {
-      const stagedPreview = await integrateSource({
-        workspace: stage, canonicalState: context.state, sourceId: options['source-id'],
-        revision: options.revision, approved: false, proposedMemoryIds, ...consentOptions
-      });
-      invariant(stagedPreview.status === 'approval_required', 'Source integration stage is no longer approval-ready.', 'SOURCE_PLAN_STALE');
-      const stagedPlanned = await integrateSource({
-        workspace: stage, canonicalState: context.state, sourceId: options['source-id'],
-        revision: options.revision, approved: true, expectedHash: stagedPreview.sha256,
-        proposedMemoryIds, now: planNow, planOnly: true, ...consentOptions
-      });
-      const stagedPlan = {
-        selector: `${stagedPlanned.sourceId}:r${stagedPlanned.revision}`,
-        ids: proposedMemoryIds,
-        revisions: [stagedPlanned.revision],
-        writes: stagedPlanned.plannedWrites,
-        deletes: [],
-        affectedPaths: [stagedPlanned.contentObject, ...stagedPlanned.plannedWrites.keys()]
+    const relative = proposalPathFor(record.sourceId, record.revision);
+    const transaction = await sourceTransaction(context, 'source-process', options, async (stage) => {
+      const stagedRecord = context.state.sourceLifecycle.records.find((item) => item.sourceId === record.sourceId && item.revision === record.revision);
+      invariant(stagedRecord?.status === 'ready' && stagedRecord.sha256 === prepared.sha256, 'Source changed after isolated processing.', 'SOURCE_PROPOSAL_MISMATCH');
+      const filename = path.resolve(stage, relative);
+      assertInside(stage, filename, 'Source proposal');
+      await atomicWriteFile(filename, prepared.raw);
+      return {
+        status: 'prepared',
+        sourceId: record.sourceId,
+        revision: record.revision,
+        sha256: record.sha256,
+        proposedMemoryIds: prepared.proposal.candidates.map((item) => item.id),
+        memoryWritten: false,
+        contentIncluded: false,
+        absolutePathIncluded: false,
+        isolatedWorker: prepared.isolation,
+        workerClient: prepared.client,
+        canonicalPatch: {
+          sourceLifecycle: {
+            operation: 'upsert',
+            sourceId: record.sourceId,
+            revision: record.revision,
+            record: structuredClone(record)
+          }
+        },
+        written: [relative],
+        deleted: []
       };
-      const stagedExpected = await destructivePlanToken(stage, context.state.workspaceId, 'source-integrate', stagedPlan, tokenOptions);
-      assertFreshConfirmation(options.confirm, stagedExpected);
-      return integrateSource({
-        workspace: stage, canonicalState: context.state, sourceId: options['source-id'],
-        revision: options.revision, approved: true, expectedHash: stagedPreview.sha256,
-        proposedMemoryIds, now: planNow, ...consentOptions
-      });
     });
-    return sourceMutationOutput(context, transaction, action);
+    return {
+      ...sourceMutationOutput(context, transaction, action),
+      candidateCount: prepared.candidateCount,
+      workerClient: prepared.client,
+      isolatedWorker: prepared.isolation,
+      nextAction: 'review-source-proposals-before-integration'
+    };
   }
 
+  if (action === 'integrate') {
+    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision', 'proposed-memory-id', 'confirm', 'dry-run']);
+    const unsupported = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
+    invariant(unsupported.length === 0, 'Source integration received unsupported authority fields.', 'INVALID_ARGUMENT', { options: unsupported.sort() });
+    invariant(options['source-id'] !== undefined, 'source integrate requires --source-id.', 'INVALID_SOURCE_ID');
+    const sourceId = String(options['source-id']).toLowerCase();
+    const records = context.state.sourceLifecycle.records.filter((item) => item.sourceId === sourceId);
+    invariant(records.length > 0, 'Source was not found.', 'SOURCE_NOT_FOUND');
+    const revision = options.revision === undefined ? Math.max(...records.map((item) => item.revision)) : Number(options.revision);
+    const record = records.find((item) => item.revision === revision);
+    invariant(record, 'Source revision was not found.', 'SOURCE_REVISION_NOT_FOUND');
+    invariant(record.status === 'ready', 'Source revision is not ready for integration.', 'SOURCE_STATE_TRANSITION_INVALID');
+    const proposal = await readSourceProposal(context.target, record);
+    const availableIds = new Set(proposal.value.candidates.map((item) => item.id));
+    invariant(options['proposed-memory-id'] === undefined || Array.isArray(options['proposed-memory-id']), 'Approved proposal IDs must be a bounded list.', 'INVALID_PROPOSED_MEMORY_IDS');
+    const selected = [...new Set((options['proposed-memory-id'] || []).map((item) => String(item).toLowerCase()))].sort();
+    invariant(selected.every((id) => availableIds.has(id)), 'Integration selected a memory ID outside the attested proposal.', 'INVALID_PROPOSED_MEMORY_IDS');
+    invariant(proposal.value.candidates.length === 0 || options['proposed-memory-id'] !== undefined,
+      'Integration requires an explicit approved candidate-ID list; choose none only through the typed broker.', 'SOURCE_PROPOSAL_SELECTION_REQUIRED');
+    const selectionDigest = crypto.createHash('sha256').update(JSON.stringify(selected)).digest('hex');
+    const expectedConfirmation = confirmationToken(context.state.workspaceId, 'source-integrate', `${sourceId}@${revision}:${proposal.sha256}:${selectionDigest}`);
+    const response = {
+      status: 'preview',
+      workspacePath: context.target,
+      workspaceId: context.state.workspaceId,
+      sourceId,
+      revision,
+      sha256: record.sha256,
+      proposalSha256: proposal.sha256,
+      availableCandidateCount: proposal.value.candidates.length,
+      approvedCandidateCount: selected.length,
+      memoryWritten: false,
+      contentIncluded: false,
+      absolutePathIncluded: false,
+      confirmationRequired: expectedConfirmation,
+      nextAction: 'review-exact-proposals-then-rerun-with-confirm'
+    };
+    const brokerConfirmation = options[CONFIRMED_SOURCE_INTEGRATION];
+    if (!options.confirm && !brokerConfirmation) return response;
+    if (options.confirm) invariant(options.confirm === expectedConfirmation, 'Source integration confirmation is stale or invalid.', 'STALE_CONFIRMATION');
+    if (brokerConfirmation) {
+      invariant(
+        brokerConfirmation.proposalSha256 === proposal.sha256
+        && JSON.stringify(brokerConfirmation.proposedMemoryIds) === JSON.stringify(selected),
+        'Source integration broker confirmation is stale or invalid.',
+        'STALE_CONFIRMATION'
+      );
+    }
+    if (options['dry-run']) return { ...response, status: 'dry-run' };
+    const transaction = await sourceTransaction(context, 'source-integrate', options, async (stage) => {
+      const stagedProposal = await readSourceProposal(stage, record);
+      invariant(stagedProposal.sha256 === proposal.sha256, 'Source proposal changed after approval.', 'SOURCE_PROPOSAL_CHANGED');
+      return integrateSource({
+        workspace: stage,
+        canonicalState: context.state,
+        sourceId,
+        revision,
+        approved: true,
+        expectedHash: record.sha256,
+        proposedMemoryIds: selected,
+        now: new Date().toISOString()
+      });
+    });
+    return {
+      ...sourceMutationOutput(context, transaction, action),
+      proposalSha256: proposal.sha256,
+      approvedCandidateCount: selected.length,
+      nextAction: selected.length ? 'confirm-proposed-memories-live-before-writing' : 'none'
+    };
+  }
+
+  invariant(options.path === undefined, `Source ${action} does not accept --path.`, 'INVALID_ARGUMENT');
+  invariant(options['source-id'] !== undefined, `source ${action} requires --source-id.`, 'INVALID_SOURCE_ID');
+  const planNow = await monotonicContextTimestamp(context.target, destructivePlanTimestamp(`source-${action}`, options));
   const preview = await planSourceRemoval({
     workspace: context.target, canonicalState: context.state,
-    sourceId: options['source-id'], revision: options.revision, action
+    sourceId: options['source-id'], revision: options.revision, action, now: planNow
   });
   const sourceConfirmation = await destructivePlanToken(context.target, context.state.workspaceId, `source-${action}`, preview, {
     sourceId: preview.sourceId,
     revision: options.revision === undefined ? null : Number(options.revision),
-    action
+    action,
+    planTimestamp: planNow
   });
   const response = {
     status: 'preview', workspacePath: context.target, workspaceId: context.state.workspaceId,
     sourceId: preview.sourceId, revisions: preview.revisions, operation: action,
     affectedFiles: preview.affectedPaths.length, derivedMemoryCount: preview.derivedMemoryIds.length,
+    contextReferenceRewrites: preview.contextReferenceRewrites, planTimestamp: planNow,
     knownBackupRecords: preview.knownBackupRecords, backupsRemainSeparateCopies: preview.backupActionRequired,
     confirmationRequired: sourceConfirmation,
     instructionsExecutable: false, contentIncluded: false, absolutePathIncluded: false,
@@ -2205,12 +2549,13 @@ async function source(options = {}) {
   const transaction = await sourceTransaction(context, `source-${action}`, options, async (stage) => {
     const stagedPlan = await planSourceRemoval({
       workspace: stage, canonicalState: context.state,
-      sourceId: options['source-id'], revision: options.revision, action
+      sourceId: options['source-id'], revision: options.revision, action, now: planNow
     });
     const stagedConfirmation = await destructivePlanToken(stage, context.state.workspaceId, `source-${action}`, stagedPlan, {
       sourceId: stagedPlan.sourceId,
       revision: options.revision === undefined ? null : Number(options.revision),
-      action
+      action,
+      planTimestamp: planNow
     });
     assertFreshConfirmation(options.confirm, stagedConfirmation);
     return applySourceRemoval({
@@ -2221,6 +2566,7 @@ async function source(options = {}) {
   return {
     ...output, revisions: transaction.result.revisions,
     derivedMemoryCount: (transaction.result.derivedMemoryIdsRemoved || []).length,
+    contextReferenceRewrites: transaction.result.contextReferenceRewrites || 0,
     knownBackupRecords: transaction.result.knownBackupRecords || 0,
     backupsRemainSeparateCopies: transaction.result.backupActionRequired === true || Boolean(transaction.activation?.retainedRollbackPath),
     nextAction: transaction.activation?.retainedRollbackPath && transaction.activation?.finalizationNextAction
@@ -2272,11 +2618,16 @@ async function readSessionInput(options, directKey, fileKey, label, maximumBytes
   if (options[fileKey] === undefined) return undefined;
   const filename = resolvePortablePath(String(options[fileKey]));
   await rejectSymlinkPath(filename);
-  return (await readBoundedRegularFile(filename, maximumBytes, {
+  const bytes = await readBoundedRegularFile(filename, maximumBytes, {
     typeCode: 'ARTIFACT_INPUT_INVALID',
     sizeCode: 'ARTIFACT_INPUT_TOO_LARGE',
     changedCode: 'ARTIFACT_INPUT_CHANGED'
-  })).toString('utf8');
+  });
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new ScalvinError(`${label} must be valid UTF-8.`, 'INVALID_ARTIFACT_CONTENT');
+  }
 }
 
 async function readTranscriptInput(options) {
@@ -2300,6 +2651,19 @@ function lifecycleSessionFromState(state, requestedSessionId) {
     invariant(SESSION_ID_PATTERN.test(requestedSessionId), 'Session ID must be s-<UUID-v4>.', 'INVALID_SESSION_ID');
     invariant(requestedSessionId.toLowerCase() === lifecycle.sessionId.toLowerCase(), 'Requested session does not match canonical session state.', 'SESSION_ID_MISMATCH');
   }
+  const globalTranscript = state.consent.transcriptState;
+  const lifecycleTranscript = lifecycle.transcript?.state === 'off'
+    && globalTranscript?.state !== 'off'
+    && globalTranscript?.sessionId === lifecycle.sessionId
+    ? transcriptSnapshot({
+      state: globalTranscript.state,
+      sessionId: globalTranscript.sessionId,
+      captureGrade: globalTranscript.captureGrade,
+      knownGaps: globalTranscript.knownGaps,
+      pausedIntervals: globalTranscript.pausedIntervals,
+      finalizedAt: globalTranscript.state === 'stopped' ? globalTranscript.stoppedAt : null
+    })
+    : structuredClone(lifecycle.transcript);
   return {
     id: lifecycle.sessionId,
     state: lifecycle.state,
@@ -2314,17 +2678,46 @@ function lifecycleSessionFromState(state, requestedSessionId) {
     lastPersistedTurn: lifecycle.checkpoint?.lastPersistedTurn || null,
     paths: artifactPaths(lifecycle.startedAt, lifecycle.sessionId),
     checkpoint: structuredClone(lifecycle.checkpoint),
+    transcript: lifecycleTranscript
+  };
+}
+
+function retainedCheckpointSessionFromState(state, requestedSessionId) {
+  const lifecycle = state.sessionLifecycle;
+  invariant(lifecycle?.checkpoint && typeof lifecycle.sessionId === 'string', 'Canonical lifecycle has no retained checkpoint.', 'SESSION_RECOVERY_NOT_FOUND');
+  invariant(SESSION_ID_PATTERN.test(requestedSessionId), 'Session ID must be s-<UUID-v4>.', 'INVALID_SESSION_ID');
+  invariant(requestedSessionId.toLowerCase() === lifecycle.sessionId.toLowerCase(), 'Requested session does not match canonical session state.', 'SESSION_ID_MISMATCH');
+  return {
+    id: lifecycle.sessionId,
+    state: 'interrupted',
+    startedAt: lifecycle.startedAt,
+    startedAtUtc: lifecycle.startedAtUtc,
+    timezone: lifecycle.timezone,
+    resumedAt: structuredClone(lifecycle.resumedAt),
+    closedAt: null,
+    completion: null,
+    consentEventId: state.consent.eventId,
+    authorName: state.preferences.companionName,
+    lastPersistedTurn: lifecycle.checkpoint.lastPersistedTurn,
+    paths: artifactPaths(lifecycle.startedAt, lifecycle.sessionId),
+    checkpoint: structuredClone(lifecycle.checkpoint),
     transcript: structuredClone(lifecycle.transcript)
   };
 }
 
 async function planSessionRecoveryDelete(root, state, requestedSessionId) {
   const sessionId = requestedSessionId.toLowerCase();
-  const found = await findInterruptedSessions({ workspace: root, canonicalState: state });
-  let recovered = found.candidates.find((candidate) => candidate.sessionId.toLowerCase() === sessionId)?.session || null;
-  if (!recovered && state.sessionLifecycle?.sessionId?.toLowerCase() === sessionId) {
-    recovered = lifecycleSessionFromState(state, requestedSessionId);
+  let recovered = null;
+  if (state.sessionLifecycle?.sessionId?.toLowerCase() === sessionId
+    && state.sessionLifecycle?.checkpoint) {
+    recovered = ['active', 'interrupted'].includes(state.sessionLifecycle.state)
+      ? lifecycleSessionFromState(state, requestedSessionId)
+      : retainedCheckpointSessionFromState(state, requestedSessionId);
     recovered.state = 'interrupted';
+  }
+  if (!recovered) {
+    const found = await findInterruptedSessions({ workspace: root, canonicalState: state });
+    recovered = found.candidates.find((candidate) => candidate.sessionId.toLowerCase() === sessionId)?.session || null;
   }
   invariant(recovered?.checkpoint?.path, 'No matching interrupted session checkpoint was found.', 'SESSION_RECOVERY_NOT_FOUND');
   const checkpointPath = validateRelativePath(recovered.checkpoint.path);
@@ -2361,18 +2754,42 @@ async function verifyLifecycleResult(stage, result) {
   }
 }
 
+function validateLifecyclePlan(root, result) {
+  invariant(Array.isArray(result.written || []) && Array.isArray(result.deleted || []), 'Lifecycle result paths are invalid.', 'SESSION_RESULT_INVALID');
+  const paths = [...(result.written || []), ...(result.deleted || [])];
+  invariant(new Set(paths).size === paths.length, 'Lifecycle result paths must be unique.', 'SESSION_RESULT_INVALID');
+  for (const relative of paths) {
+    const normalized = validateRelativePath(relative);
+    assertInside(root, path.resolve(root, normalized), 'Lifecycle plan');
+  }
+}
+
 async function lifecycleTransaction(context, label, options, run) {
   const { expectedTargetSnapshot } = context;
   invariant(expectedTargetSnapshot, 'Lifecycle transaction requires the pre-read workspace snapshot.', 'ACTIVATION_SNAPSHOT_REQUIRED');
-  const stage = await makeSiblingTemp(context.target, `${label}-stage`);
+  const dryRun = options['dry-run'] === true;
+  let stage = null;
   try {
-    await copyTree(context.target, stage, { expectedSourceSnapshot: expectedTargetSnapshot });
-    const result = await run(stage);
-    await verifyLifecycleResult(stage, result);
+    let result;
+    if (dryRun) {
+      result = await run(context.target, true);
+      validateLifecyclePlan(context.target, result);
+    } else {
+      if (process.env.SCALVIN_TEST_FORBID_LIFECYCLE_STAGE === '1') {
+        throw new ScalvinError('Injected lifecycle stage-creation prohibition.', 'TEST_FAILPOINT');
+      }
+      stage = await makeSiblingTemp(context.target, `${label}-stage`);
+      await copyTree(context.target, stage, { expectedSourceSnapshot: expectedTargetSnapshot });
+      result = await run(stage, false);
+      await verifyLifecycleResult(stage, result);
+    }
     const deepDiveWritten = Boolean(result.session?.paths?.deepDive && (result.written || []).includes(result.session.paths.deepDive));
     if (!result.canonicalPatch) {
       invariant((result.written || []).length === 0 && (result.deleted || []).length === 0, 'Lifecycle writes require a canonical patch.', 'SESSION_PATCH_REQUIRED');
-      await fsp.rm(stage, { recursive: true, force: true });
+      if (stage) {
+        await fsp.rm(stage, { recursive: true, force: true });
+        stage = null;
+      }
       return {
         status: result.status,
         workspacePath: context.target,
@@ -2392,24 +2809,13 @@ async function lifecycleTransaction(context, label, options, run) {
     nextState.consent.currentSessionId = result.canonicalPatch.consent.currentSessionId;
     nextState.sessionLifecycle = structuredClone(result.canonicalPatch.sessionLifecycle);
     nextState.updatedAt = new Date().toISOString();
-    if (['closed', 'abandoned'].includes(nextState.sessionLifecycle.state)) {
-      const evidence = nextState.sessionLifecycle.transcript;
-      const stoppedAt = nextState.sessionLifecycle.closedAt || nextState.updatedAt;
-      const pausedIntervals = evidence.pausedIntervals.map((interval) => interval.endedAt === null ? { ...interval, endedAt: stoppedAt } : interval);
-      const knownGaps = structuredClone(evidence.knownGaps);
-      for (const interval of pausedIntervals) {
-        if (!knownGaps.some((gap) => gap.reason === 'paused_no_backfill' && gap.from === interval.startedAt)) {
-          knownGaps.push({ from: interval.startedAt, to: interval.endedAt, reason: 'paused_no_backfill' });
-        }
-      }
-      nextState.consent.transcriptState = {
-        state: 'stopped',
-        sessionId: nextState.sessionLifecycle.sessionId,
-        captureGrade: evidence.captureGrade,
-        startedAt: context.state.consent.transcriptState.startedAt || nextState.sessionLifecycle.startedAt,
-        pausedIntervals,
-        stoppedAt,
-        knownGaps
+    synchronizeGlobalTranscriptFromLifecycle(nextState, context.state.consent.transcriptState);
+    if (dryRun) {
+      return {
+        status: 'dry-run', workspacePath: context.target, workspaceId: nextState.workspaceId,
+        sessionId: nextState.sessionLifecycle.sessionId, lifecycleState: nextState.sessionLifecycle.state,
+        persisted: false, filesWritten: (result.written || []).length, filesDeleted: (result.deleted || []).length,
+        deepDiveWritten, backupReminder: null, nextAction: `run-${label}`
       };
     }
     const backupReminder = nextState.sessionLifecycle.state === 'closed' && context.state.sessionLifecycle.state !== 'closed'
@@ -2420,20 +2826,10 @@ async function lifecycleTransaction(context, label, options, run) {
     await hardenTree(stage);
     if (options.privacyValidation === true) await validatePrivacyWorkspaceStage(stage, { expectedState: nextState });
     else await validateWorkspaceStage(stage);
-    if (options['dry-run']) {
-      await fsp.rm(stage, { recursive: true, force: true });
-      return {
-        status: 'dry-run', workspacePath: context.target, workspaceId: nextState.workspaceId,
-        sessionId: nextState.sessionLifecycle.sessionId, lifecycleState: nextState.sessionLifecycle.state,
-        persisted: false, filesWritten: (result.written || []).length, filesDeleted: (result.deleted || []).length,
-        deepDiveWritten,
-        backupReminder: backupReminder ? { ...backupReminder, recorded: false, dryRun: true } : null,
-        nextAction: `run-${label}`
-      };
-    }
     await preflightExplicitLocalPointerDestination();
     testFailpoint(`${label}-before-activate`);
     const activation = await activateDirectory(context.target, stage, { expectedTargetSnapshot });
+    stage = null;
     await finalizeLocalPointerAfterActivation(context.target, nextState.workspaceId, activation, label);
     return {
       status: result.status,
@@ -2459,7 +2855,17 @@ async function lifecycleTransaction(context, label, options, run) {
       ...activationDisclosure(activation, options.destructiveActivation === true)
     };
   } catch (error) {
-    await fsp.rm(stage, { recursive: true, force: true }).catch(() => {});
+    if (stage) {
+      try {
+        await fsp.rm(stage, { recursive: true, force: true });
+      } catch (cleanupError) {
+        throw new ScalvinError('A private lifecycle stage could not be removed after failure.', 'PRIVATE_STAGE_CLEANUP_FAILED', {
+          originalErrorCode: error.code || 'UNEXPECTED_ERROR',
+          cleanupErrorCode: cleanupError.code || 'UNEXPECTED_ERROR',
+          retainedPrivateStagePath: stage
+        });
+      }
+    }
     throw error;
   }
 }
@@ -2467,6 +2873,20 @@ async function lifecycleTransaction(context, label, options, run) {
 async function session(options = {}) {
   invariant(['begin', 'checkpoint', 'close', 'recover', 'status'].includes(options.action), 'Session action is invalid.', 'INVALID_ARGUMENT');
   invariant(options.action === 'close' || (options['deep-dive-file'] === undefined && options.deepDiveBody === undefined), '--deep-dive-file is accepted only by session close.', 'INVALID_ARGUMENT');
+  if (options.action === 'status') {
+    const control = await contentFreeWorkspaceContext(options, 'session status');
+    if (control.state.consent.memoryPause.state === 'sealed_pause') {
+      return {
+        status: 'sealed', workspacePath: control.target, workspaceId: control.state.workspaceId,
+        lifecycleState: control.state.sessionLifecycle.state,
+        sessionId: control.state.sessionLifecycle.sessionId,
+        currentSessionId: control.state.consent.currentSessionId,
+        checkpointPresent: control.state.sessionLifecycle.checkpoint !== null,
+        recoveryStatus: 'sealed', recoveryCandidates: [], checkpointFilesRead: false,
+        checkpointBodyExposed: false, nextAction: 'resume-memory-out-of-band-before-recovery-inspection'
+      };
+    }
+  }
   const context = await currentWorkspaceContext(options, 'session');
   const recoveryAction = options.action === 'recover' ? String(options['recovery-action'] || '').replaceAll('-', '_') : null;
   if (!(options.action === 'recover' && recoveryAction === 'delete')) {
@@ -2498,8 +2918,8 @@ async function session(options = {}) {
     const now = options.now || timestampForTimezone(timezone);
     const authorName = options['author-name'] === undefined ? context.state.preferences.companionName : String(options['author-name']);
     invariant(authorName.length > 0 && authorName.length <= 100 && !/[\0\r\n]/.test(authorName), 'Session author name is invalid.', 'INVALID_ARTIFACT_CONTENT');
-    return lifecycleTransaction(context, 'session-begin', options, (stage) => beginSession({
-      workspace: stage, canonicalState: context.state, now, timezone, authorName
+    return lifecycleTransaction(context, 'session-begin', options, (stage, planOnly) => beginSession({
+      workspace: stage, canonicalState: context.state, now, timezone, authorName, planOnly
     }));
   }
 
@@ -2513,30 +2933,38 @@ async function session(options = {}) {
       readSessionInput(options, 'carryForward', 'carry-forward-file', 'Checkpoint carry-forward'),
       readTranscriptInput(options)
     ]);
-    return lifecycleTransaction(context, 'session-checkpoint', options, (stage) => checkpointTurn({
+    return lifecycleTransaction(context, 'session-checkpoint', options, (stage, planOnly) => checkpointTurn({
       workspace: stage, canonicalState: context.state, session: sessionState, turnNumber,
       now: options.now, liveThread: liveThread || '', unresolved: unresolved || '', carryForward: carryForward || '',
-      ...(transcriptInput ? { transcript: transcriptInput } : {})
+      ...(transcriptInput ? { transcript: transcriptInput } : {}), planOnly
     }));
   }
 
   if (options.action === 'close') {
     const sessionState = lifecycleSessionFromState(context.state, options['session-id']);
+    invariant(!(options.primerFields !== undefined && (options.primerBody !== undefined || options['primer-file'] !== undefined)), 'Next primer accepts either typed fields or a complete file body, not both.', 'INVALID_ARGUMENT');
     const [noteBody, deepDiveBody, primerBody, transcriptInput] = await Promise.all([
       readSessionInput(options, 'noteBody', 'note-file', 'Session note'),
       readSessionInput(options, 'deepDiveBody', 'deep-dive-file', 'Deep dive'),
       readSessionInput(options, 'primerBody', 'primer-file', 'Next primer'),
       readTranscriptInput(options)
     ]);
-    return lifecycleTransaction(context, 'session-close', options, (stage) => closeSession({
+    return lifecycleTransaction(context, 'session-close', options, (stage, planOnly) => closeSession({
       workspace: stage, canonicalState: context.state, session: sessionState, explicit: true,
       now: options.now, completion: options.completion, noteBody, deepDiveBody, primerBody,
-      ...(transcriptInput ? { transcript: transcriptInput } : {})
+      ...(options.primerFields === undefined ? {} : { primerFields: structuredClone(options.primerFields) }),
+      ...(transcriptInput ? { transcript: transcriptInput } : {}), planOnly
     }));
   }
 
   invariant(['continue', 'close_interrupted', 'delete', 'abandon'].includes(recoveryAction), 'Session recover requires --recovery-action continue, close_interrupted, delete, or abandon.', 'INVALID_ARGUMENT');
   invariant(SESSION_ID_PATTERN.test(options['session-id'] || ''), 'Session recover requires --session-id s-<UUID-v4>.', 'INVALID_SESSION_ID');
+  invariant(
+    !context.state.consent.currentSessionId
+      || context.state.consent.currentSessionId.toLowerCase() === options['session-id'].toLowerCase(),
+    'A different canonical session is active; recovery cannot replace it.',
+    'SESSION_ALREADY_ACTIVE'
+  );
   let recoveryDeletePlan = null;
   if (recoveryAction === 'delete') {
     recoveryDeletePlan = await planSessionRecoveryDelete(context.target, context.state, options['session-id']);
@@ -2562,7 +2990,7 @@ async function session(options = {}) {
     ...options,
     privacyValidation: recoveryAction === 'delete',
     destructiveActivation: recoveryAction === 'delete'
-  }, async (stage) => {
+  }, async (stage, planOnly) => {
     if (recoveryAction === 'delete') {
       const stagedPlan = await planSessionRecoveryDelete(stage, context.state, options['session-id']);
       const stagedExpected = await destructivePlanToken(stage, context.state.workspaceId, 'session-recovery-delete', stagedPlan, {
@@ -2571,12 +2999,16 @@ async function session(options = {}) {
       assertFreshConfirmation(options.confirm, stagedExpected);
       recoveryDeletePlan = stagedPlan;
     }
-    const found = await findInterruptedSessions({ workspace: stage, canonicalState: context.state });
-    let recovered = recoveryDeletePlan?.session
-      || found.candidates.find((candidate) => candidate.sessionId.toLowerCase() === options['session-id'].toLowerCase())?.session;
-    if (!recovered && context.state.sessionLifecycle.sessionId?.toLowerCase() === options['session-id'].toLowerCase()) {
+    let recovered = recoveryDeletePlan?.session || null;
+    if (!recovered
+      && ['active', 'interrupted'].includes(context.state.sessionLifecycle.state)
+      && context.state.sessionLifecycle.sessionId?.toLowerCase() === options['session-id'].toLowerCase()) {
       recovered = lifecycleSessionFromState(context.state, options['session-id']);
       recovered.state = 'interrupted';
+    }
+    if (!recovered) {
+      const found = await findInterruptedSessions({ workspace: stage, canonicalState: context.state });
+      recovered = found.candidates.find((candidate) => candidate.sessionId.toLowerCase() === options['session-id'].toLowerCase())?.session;
     }
     invariant(recovered, 'No matching interrupted session checkpoint was found.', 'SESSION_RECOVERY_NOT_FOUND');
     recovered.authorName = context.state.preferences.companionName;
@@ -2584,7 +3016,7 @@ async function session(options = {}) {
     return recoverSession({
       workspace: stage, canonicalState: context.state, session: recovered, action: recoveryAction,
       canResumeContext: options['can-resume-context'] === true, now: options.now,
-      noteBody, primerBody, ...(transcriptInput ? { transcript: transcriptInput } : {})
+      noteBody, primerBody, ...(transcriptInput ? { transcript: transcriptInput } : {}), planOnly
     });
   });
 }
@@ -2704,7 +3136,7 @@ async function addDefaultPersonalizationReset(context, plan) {
 
 async function planMemoryDestruction(root, context, action, options, planNow) {
   let plan = action === 'forget'
-    ? await planForget(root, { id: options.id, scope: options.scope })
+    ? await planForget(root, { id: options.id, scope: options.scope, canonicalState: context.state })
     : await planDeleteAll(root);
   if (action === 'delete-all') plan = await addDefaultPersonalizationReset(context, plan);
   let contextReferenceRewrites = 0;
@@ -2753,6 +3185,7 @@ async function destructivePlanToken(root, workspaceId, operation, plan, options 
   invariant(typeof workspaceId === 'string' && workspaceId.length > 0, 'Destructive plan workspace identity is invalid.', 'DESTRUCTIVE_PLAN_INVALID');
   const paths = [...new Set([
     '.scalvin/state.json',
+    ...(plan.snapshotPaths || []),
     ...(plan.affectedPaths || []),
     ...(plan.writes instanceof Map ? [...plan.writes.keys()] : []),
     ...(Array.isArray(plan.deletes) ? plan.deletes : [])
@@ -2951,6 +3384,7 @@ async function contextGraph(options = {}) {
   const allowed = new Set([...commonKeys, ...actionKeys[action]]);
   const ignored = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
   invariant(ignored.length === 0, `Context ${action} received options that do not apply to this action.`, 'INVALID_ARGUMENT', { options: ignored.sort() });
+  if (action !== 'forget') await requireUnsealedPrivateAccess(options, 'context');
   const context = await currentWorkspaceContext(options, 'context');
   if (action !== 'forget') assertSupportedRetentionClasses(context.state, ['context_graph']);
   if (action !== 'forget') graphAccess(context.state);
@@ -3079,11 +3513,337 @@ function assertSupportedRetentionClasses(state, dataClasses) {
   }
 }
 
+function sourceRetentionClass(dataClass) {
+  return ['imported_sources', 'external_care_records'].includes(dataClass);
+}
+
+async function executeSourceRetentionRemovals(workspace, canonicalState, sourceIds, receipt = null) {
+  const workingState = structuredClone(canonicalState);
+  const written = new Set();
+  const deleted = new Set();
+  const revisions = [];
+  const derivedMemoryIds = new Set();
+  let contextReferenceRewrites = 0;
+  const lifecycleRecords = [];
+  for (const sourceId of sourceIds) {
+    const removalPlan = await planSourceRemoval({
+      workspace,
+      canonicalState: workingState,
+      sourceId,
+      action: 'delete',
+      now: receipt?.at || new Date().toISOString()
+    });
+    const result = await applySourceRemoval({
+      workspace,
+      plan: removalPlan,
+      confirm: true,
+      confirmationToken: removalPlan.confirmationToken
+    });
+    invariant(result.status === 'deleted' && result.canonicalPatch, 'Native source retention deletion failed closed.', 'SOURCE_RETENTION_DELETE_FAILED', { sourceId, error: result.error || null });
+    applySourceLifecyclePatch(workingState, result.canonicalPatch);
+    for (const relative of result.written || []) written.add(validateRelativePath(relative));
+    for (const relative of result.deleted || []) deleted.add(validateRelativePath(relative));
+    for (const revision of result.revisions || []) revisions.push(revision);
+    for (const memoryId of result.derivedMemoryIdsRemoved || []) derivedMemoryIds.add(memoryId);
+    contextReferenceRewrites += result.contextReferenceRewrites || 0;
+    lifecycleRecords.push(...result.canonicalPatch.sourceLifecycle.records);
+  }
+  let receiptWritten = false;
+  if (receipt && canonicalState.consent?.usageLedgers === 'on') {
+    receiptWritten = await appendDeletionReceipt(workspace, { ...receipt, derivedCount: derivedMemoryIds.size });
+    if (receiptWritten) written.add('.therapy/state/DELETION-LEDGER.md');
+  }
+  return {
+    status: 'deleted',
+    canonicalPatch: { sourceLifecycle: { operation: 'delete_many', records: lifecycleRecords } },
+    written: [...written].sort(),
+    deleted: [...deleted].sort(),
+    revisions: revisions.sort((left, right) => left - right),
+    derivedMemoryIdsRemoved: [...derivedMemoryIds].sort(),
+    contextReferenceRewrites,
+    receiptWritten
+  };
+}
+
+async function simulateSourceRetentionRemovals(root, state, sourceIds, receipt) {
+  const snapshot = await snapshotWorkspaceTree(root);
+  const scratch = await makeSiblingTemp(root, 'source-retention-plan');
+  try {
+    await copyTree(root, scratch, { expectedSourceSnapshot: snapshot });
+    const result = await executeSourceRetentionRemovals(scratch, state, sourceIds, receipt);
+    const plannedWriteHashes = [];
+    for (const relative of result.written) {
+      const filename = path.resolve(scratch, relative);
+      assertInside(scratch, filename, 'Source retention planned write');
+      if (!(await pathExists(filename))) continue;
+      plannedWriteHashes.push({ path: relative, sha256: await sha256File(filename) });
+    }
+    return {
+      result,
+      plannedWriteHashes: plannedWriteHashes.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0),
+      affectedPaths: [...new Set([...result.written, ...result.deleted])].sort(),
+      deletes: result.deleted
+    };
+  } finally {
+    await fsp.rm(scratch, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+async function planSourceRetentionApply(root, state, options = {}) {
+  const inspection = await inspectRetention(root, state, { dataClass: options.dataClass, now: options.now });
+  const classStatus = inspection.classes[0];
+  const policy = inspection.control.policies[options.dataClass] || null;
+  invariant(policy, 'No cleanup policy is configured for this data class.', 'RETENTION_POLICY_NOT_CONFIGURED');
+  const due = classStatus._decisions.filter((item) => item.decision.state === 'due').map((item) => item.object);
+  const sourceIds = [...new Set(due.map((object) => object.sourceId))].sort();
+  const receipt = {
+    eventId: `delete-${options.receiptUuid}`,
+    at: inspection.now,
+    dataClass: options.dataClass,
+    objectIds: [],
+    scope: `retention:${options.dataClass}`,
+    derivedCount: null,
+    knownBackupRecords: inspection.knownBackupRecords
+  };
+  const simulated = sourceIds.length
+    ? await simulateSourceRetentionRemovals(root, state, sourceIds, receipt)
+    : { result: { revisions: [] }, plannedWriteHashes: [], affectedPaths: [], deletes: [] };
+  return {
+    selector: `retention:${options.dataClass}`,
+    ids: sourceIds,
+    revisions: simulated.result.revisions,
+    plannedWriteHashes: simulated.plannedWriteHashes,
+    deletes: simulated.deletes,
+    snapshotPaths: [RETENTION_CONTROL_PATH],
+    affectedPaths: simulated.affectedPaths,
+    sourceIds,
+    receipt,
+    dataClass: options.dataClass,
+    policy: classStatus.cleanupPolicy,
+    dueCount: classStatus.dueCount,
+    blockedCount: classStatus.blockedCount,
+    prePolicyCount: classStatus.prePolicyCount,
+    retainedCount: classStatus.retainedCount,
+    knownBackupRecords: inspection.knownBackupRecords,
+    retainedSeparateCopies: inspection.knownBackupRecords > 0 ? ['known_backups_outside_live_workspace'] : []
+  };
+}
+
 async function memory(options = {}) {
   const action = options.action;
   const reviewActions = ['review-due', 'review-confirm', 'review-decline', 'review-suppress', 'review-unsuppress'];
-  invariant(['pause', 'seal', 'resume', 'status', 'view', 'show', 'export', 'correct', 'forget', 'delete-all', ...reviewActions].includes(action), 'memory --action is invalid.', 'INVALID_ARGUMENT');
+  const retentionActions = ['retention-status', 'retention-set', 'retention-apply'];
+  invariant(['pause', 'seal', 'resume', 'status', 'view', 'show', 'export', 'correct', 'create', 'add-scene', 'forget', 'delete-all', ...retentionActions, ...reviewActions].includes(action), 'memory --action is invalid.', 'INVALID_ARGUMENT');
+  if (action === 'status') {
+    const context = await contentFreeWorkspaceContext(options, 'memory status');
+    return {
+      status: 'unchanged', workspacePath: context.target, workspaceId: context.state.workspaceId,
+      ...controlStatusMemory(context.state), nextAction: 'none'
+    };
+  }
+  if (action === 'pause' || action === 'seal') {
+    const control = await contentFreeWorkspaceContext(options, 'memory control');
+    if (control.state.consent.memoryPause.state === 'sealed_pause') {
+      invariant(action === 'seal', 'Only an explicit out-of-band resume may leave sealed pause.', 'MEMORY_SEALED');
+      return {
+        status: 'unchanged', workspacePath: control.target, workspaceId: control.state.workspaceId,
+        memoryPause: 'sealed_pause', startedAt: control.state.consent.memoryPause.startedAt,
+        nextAction: 'none'
+      };
+    }
+  }
+  if (retentionActions.includes(action)) {
+    const allowedByAction = {
+      'retention-status': new Set(['action', 'target', 'workspace', 'json', 'help', 'version', 'data-class', 'now']),
+      'retention-set': new Set(['action', 'target', 'workspace', 'json', 'help', 'version', 'data-class', 'policy', 'days', 'expires-at', 'now', 'dry-run']),
+      'retention-apply': new Set(['action', 'target', 'workspace', 'json', 'help', 'version', 'data-class', 'now', 'confirm', 'dry-run'])
+    };
+    const ignored = Object.keys(options).filter((key) => options[key] !== undefined && !allowedByAction[action].has(key));
+    invariant(ignored.length === 0, `Memory ${action} received options that do not apply to this action.`, 'INVALID_ARGUMENT', { options: ignored.sort() });
+    const dataClass = options['data-class'];
+    if (dataClass !== undefined) invariant(RETENTION_DATA_CLASSES.includes(dataClass), 'Retention data class is invalid.', 'RETENTION_DATA_CLASS_INVALID', { supported: RETENTION_DATA_CLASSES });
+    const control = await contentFreeWorkspaceContext(options, 'memory retention');
+    const sealed = control.state.consent.memoryPause.state === 'sealed_pause';
+    if (action === 'retention-status' && sealed) {
+      const inspection = await inspectRetention(control.target, control.state, { dataClass, now: options.now, inventory: false });
+      return {
+        status: 'inspected', workspacePath: control.target, workspaceId: control.state.workspaceId,
+        ...publicRetentionInspection(inspection),
+        warnings: [{ code: 'RETENTION_INVENTORY_SEALED', message: 'Policy and backup status are available, but live-memory counts were not read during sealed pause.' }],
+        nextAction: inspection.knownBackupRecords > 0 ? 'review-backup-rotation-separately' : 'none'
+      };
+    }
+    invariant(!sealed, 'Retention mutation is unavailable while sealed pause is active.', 'MEMORY_SEALED');
+    const context = await currentWorkspaceContext(options, 'memory retention');
+    invariant(
+      JSON.stringify(context.state) === JSON.stringify(control.state),
+      'Workspace state changed after retention control preflight; inspect again.',
+      'STALE_CONFIRMATION'
+    );
+    if (action === 'retention-status') {
+      const inspection = await inspectRetention(context.target, context.state, { dataClass, now: options.now, inventory: true });
+      return {
+        status: 'inspected', workspacePath: context.target, workspaceId: context.state.workspaceId,
+        ...publicRetentionInspection(inspection),
+        warnings: [],
+        nextAction: inspection.knownBackupRecords > 0 ? 'review-backup-rotation-separately' : 'none'
+      };
+    }
+    if (action === 'retention-set') {
+      invariant(dataClass && options.policy, 'Retention-set requires --data-class and --policy.', 'INVALID_ARGUMENT');
+      const policyInputs = {
+        dataClass,
+        policy: options.policy,
+        days: options.days,
+        expiresAt: options['expires-at'],
+        now: options.now || new Date().toISOString()
+      };
+      const plan = await planRetentionPolicyChange(context.target, context.state, policyInputs);
+      const output = {
+        dataClass: plan.dataClass,
+        basePolicy: plan.basePolicy,
+        previousPolicy: plan.previousPolicy,
+        cleanupPolicy: plan.policy,
+        enforcementMode: 'manual_preview_and_exact_confirmation',
+        contentIncluded: false,
+        objectIdentifiersIncluded: false
+      };
+      if (options['dry-run']) return { status: 'dry-run', workspacePath: context.target, workspaceId: context.state.workspaceId, changed: plan.changed, ...output, nextAction: plan.changed ? 'run-memory-retention-set' : 'none' };
+      if (!plan.changed) return { status: 'unchanged', workspacePath: context.target, workspaceId: context.state.workspaceId, changed: false, ...output, nextAction: 'none' };
+      const transaction = await applyContentTransaction(context, 'memory-retention-set', plan, null, {
+        replan: (stage) => planRetentionPolicyChange(stage, context.state, policyInputs),
+        verifyPlan: true,
+        verifyLabel: 'Retention policy'
+      });
+      return {
+        status: 'updated', workspacePath: context.target, workspaceId: context.state.workspaceId,
+        changed: true, ...output, nextAction: 'run-memory-retention-status',
+        ...activationDisclosure(transaction.activation)
+      };
+    }
+
+    invariant(dataClass, 'Retention-apply requires one exact --data-class.', 'INVALID_ARGUMENT');
+    const planNow = destructivePlanTimestamp('memory-retention-apply', options);
+    const contextReceiptUuid = deterministicUuidV4(`${context.state.workspaceId}\0memory-retention-context\0${dataClass}\0${planNow}`);
+    const retentionReceiptUuid = deterministicUuidV4(`${context.state.workspaceId}\0memory-retention-receipt\0${dataClass}\0${planNow}`);
+    const sourceRetention = sourceRetentionClass(dataClass);
+    const plan = sourceRetention
+      ? await planSourceRetentionApply(context.target, context.state, {
+        dataClass, now: planNow, receiptUuid: retentionReceiptUuid
+      })
+      : await planRetentionApply(context.target, context.state, {
+        dataClass, now: planNow, idFactory: () => contextReceiptUuid
+      });
+    const mutationCount = sourceRetention ? plan.affectedPaths.length : plan.writes.size + plan.deletes.length;
+    const common = {
+      dataClass,
+      cleanupPolicy: plan.policy,
+      planTimestamp: planNow,
+      dueCount: plan.dueCount,
+      blockedCount: plan.blockedCount,
+      prePolicyCount: plan.prePolicyCount,
+      retainedCount: plan.retainedCount,
+      affectedFiles: mutationCount,
+      knownBackupRecords: plan.knownBackupRecords,
+      backupsRemainSeparateCopies: plan.knownBackupRecords > 0,
+      retainedSeparateCopies: plan.retainedSeparateCopies,
+      contentIncluded: false,
+      objectIdentifiersIncluded: false
+    };
+    if (mutationCount === 0) {
+      return {
+        status: plan.blockedCount > 0 ? 'blocked' : 'up-to-date', workspacePath: context.target, workspaceId: context.state.workspaceId,
+        ...common,
+        nextAction: plan.blockedCount > 0 ? 'review-blocked-retention-metadata-or-delete-explicitly' : plan.knownBackupRecords > 0 ? 'review-backup-rotation-separately' : 'none'
+      };
+    }
+    const tokenOptions = {
+      dataClass,
+      cleanupPolicy: plan.policy,
+      dueCount: plan.dueCount,
+      blockedCount: plan.blockedCount,
+      retainedSeparateCopies: plan.retainedSeparateCopies,
+      planTimestamp: planNow
+    };
+    const expected = await destructivePlanToken(context.target, context.state.workspaceId, 'memory-retention-apply', plan, tokenOptions);
+    if (!options.confirm || options['dry-run']) {
+      return {
+        status: 'preview', workspacePath: context.target, workspaceId: context.state.workspaceId,
+        ...common,
+        confirmationRequired: expected,
+        nextAction: `rerun-with---confirm-${expected}`
+      };
+    }
+    assertFreshConfirmation(options.confirm, expected);
+    if (sourceRetention) {
+      const transaction = await sourceTransaction(context, 'source-retention-delete', options, async (stage) => {
+        const staged = await planSourceRetentionApply(stage, context.state, {
+          dataClass, now: planNow, receiptUuid: retentionReceiptUuid
+        });
+        const stagedExpected = await destructivePlanToken(stage, context.state.workspaceId, 'memory-retention-apply', staged, {
+          dataClass,
+          cleanupPolicy: staged.policy,
+          dueCount: staged.dueCount,
+          blockedCount: staged.blockedCount,
+          retainedSeparateCopies: staged.retainedSeparateCopies,
+          planTimestamp: planNow
+        });
+        assertFreshConfirmation(options.confirm, stagedExpected);
+        return executeSourceRetentionRemovals(stage, context.state, staged.sourceIds, staged.receipt);
+      });
+      return {
+        status: 'deleted', workspacePath: context.target, workspaceId: context.state.workspaceId,
+        ...common,
+        receiptWritten: transaction.result.receiptWritten,
+        nextAction: plan.blockedCount > 0
+          ? 'review-blocked-retention-metadata-or-delete-explicitly'
+          : plan.knownBackupRecords > 0 ? 'review-backup-rotation-separately' : 'none',
+        ...activationDisclosure(transaction.activation, true, plan.retainedSeparateCopies)
+      };
+    }
+    // Context deletion already carries its native suppression receipt inside
+    // the exact, confirmation-bound plan. A second generic receipt would
+    // duplicate the event and change final ledger bytes outside that plan.
+    const receipt = dataClass === 'context_graph' ? null : {
+      eventId: `delete-${retentionReceiptUuid}`,
+      at: planNow,
+      dataClass,
+      objectIds: [],
+      scope: `retention:${dataClass}`,
+      derivedCount: plan.writes.size,
+      knownBackupRecords: plan.knownBackupRecords
+    };
+    const transaction = await applyContentTransaction(context, 'memory-retention-apply', plan, receipt, {
+      replan: async (stage) => {
+        const staged = await planRetentionApply(stage, context.state, {
+          dataClass, now: planNow, idFactory: () => contextReceiptUuid
+        });
+        const stagedExpected = await destructivePlanToken(stage, context.state.workspaceId, 'memory-retention-apply', staged, {
+          dataClass,
+          cleanupPolicy: staged.policy,
+          dueCount: staged.dueCount,
+          blockedCount: staged.blockedCount,
+          retainedSeparateCopies: staged.retainedSeparateCopies,
+          planTimestamp: planNow
+        });
+        assertFreshConfirmation(options.confirm, stagedExpected);
+        return staged;
+      },
+      verifyPlan: true,
+      verifyLabel: 'Retention deletion'
+    });
+    return {
+      status: 'deleted', workspacePath: context.target, workspaceId: context.state.workspaceId,
+      ...common,
+      receiptWritten: plan.nativeReceiptPlanned === true || transaction.receiptWritten,
+      nextAction: plan.blockedCount > 0
+        ? 'review-blocked-retention-metadata-or-delete-explicitly'
+        : plan.knownBackupRecords > 0 ? 'review-backup-rotation-separately' : 'none',
+      ...activationDisclosure(transaction.activation, true, plan.retainedSeparateCopies)
+    };
+  }
   if (reviewActions.includes(action)) {
+    await requireUnsealedPrivateAccess(options, 'memory review');
     const context = await currentWorkspaceContext(options, 'memory review');
     assertSupportedRetentionClasses(context.state, ['profile_memory', 'themes_and_focus', 'client_scene_memories']);
     if (action === 'review-due') {
@@ -3123,7 +3883,130 @@ async function memory(options = {}) {
       ...activationDisclosure(transaction.activation)
     };
   }
+  if (action === 'create') {
+    const allowed = new Set(['action', 'target', 'workspace', 'dry-run', 'category', 'title', 'statement', 'kind']);
+    const unsupported = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
+    invariant(unsupported.length === 0, 'Memory creation received unsupported authority fields.', 'INVALID_ARGUMENT', { options: unsupported.sort() });
+    const confirmedWrite = options[CONFIRMED_MEMORY_CREATE];
+    if (!options['dry-run']) {
+      invariant(
+        confirmedWrite && typeof confirmedWrite === 'object' &&
+        /^(?:mem|theme|focus)-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(confirmedWrite.memoryId || ''),
+        'Memory creation requires an exact broker-bound user confirmation.',
+        'MEMORY_CONFIRMATION_REQUIRED'
+      );
+    }
+    await requireUnsealedPrivateAccess(options, 'memory creation');
+    const context = await currentWorkspaceContext(options, 'memory creation');
+    invariant(context.state.consent.continuityMemory === 'on', 'Memory creation requires explicit continuity-memory consent.', 'MEMORY_CONSENT_REQUIRED');
+    invariant(context.state.consent.memoryPause.state === 'none', 'Memory creation is unavailable while memory is paused.', 'MEMORY_PAUSE_ACTIVE');
+    const categoryRetention = { profile: 'profile_memory', themes: 'themes_and_focus', focus: 'themes_and_focus' };
+    const retentionClass = categoryRetention[options.category];
+    invariant(retentionClass, 'Memory creation category is unsupported.', 'MEMORY_CREATE_INVALID');
+    assertSupportedRetentionClasses(context.state, [retentionClass]);
+    invariant(context.state.consent.retention[retentionClass] === 'until_deleted', 'Memory creation is disabled by retention policy.', 'RETENTION_DO_NOT_STORE');
+    const sessionId = context.state.consent.currentSessionId;
+    invariant(
+      context.state.sessionLifecycle?.state === 'active' &&
+      typeof sessionId === 'string' &&
+      context.state.sessionLifecycle.sessionId === sessionId,
+      'Memory creation requires the active canonical session.',
+      'MEMORY_CREATE_SESSION_REQUIRED'
+    );
+    const consentEventId = context.state.consent.decisions?.continuity_memory?.eventId;
+    invariant(/^consent-[0-9a-f-]{36}$/i.test(consentEventId || ''), 'Memory creation requires the canonical continuity-consent event.', 'MEMORY_CONSENT_REQUIRED');
+    const observedAt = new Date().toISOString();
+    const prefix = options.category === 'profile' ? 'mem' : options.category === 'themes' ? 'theme' : 'focus';
+    const id = options['dry-run'] ? `${prefix}-${crypto.randomUUID()}` : confirmedWrite.memoryId.toLowerCase();
+    const plan = await planMemoryCreate(context.target, {
+      id,
+      category: options.category,
+      title: options.title,
+      statement: options.statement,
+      kind: options.kind,
+      observedAt,
+      sessionId,
+      consentEventId
+    });
+    const output = {
+      workspacePath: context.target,
+      workspaceId: context.state.workspaceId,
+      memoryId: plan.id,
+      category: plan.category,
+      retentionClass: plan.retentionClass,
+      affectedFiles: plan.affectedPaths.length,
+      contentIncluded: false
+    };
+    if (options['dry-run']) return { status: 'dry-run', ...output, nextAction: 'request-exact-user-confirmation' };
+    context.state.updatedAt = observedAt;
+    const transaction = await applyContentTransaction(context, 'memory-create', plan, null);
+    return {
+      status: 'created',
+      ...output,
+      nextAction: 'use-memory-by-stable-id-only',
+      ...activationDisclosure(transaction.activation)
+    };
+  }
+  if (action === 'add-scene') {
+    const allowed = new Set(['action', 'target', 'workspace', 'dry-run', 'title', 'statement', 'scene']);
+    const unsupported = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
+    invariant(unsupported.length === 0, 'Client-scene creation received unsupported authority fields.', 'INVALID_ARGUMENT', { options: unsupported.sort() });
+    const confirmedWrite = options[CONFIRMED_CLIENT_SCENE_WRITE];
+    if (!options['dry-run']) {
+      invariant(
+        confirmedWrite && typeof confirmedWrite === 'object' &&
+        /^mem-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(confirmedWrite.memoryId || ''),
+        'Client-scene creation requires an exact broker-bound user confirmation.',
+        'MEMORY_CONFIRMATION_REQUIRED'
+      );
+    }
+    await requireUnsealedPrivateAccess(options, 'client-scene creation');
+    const context = await currentWorkspaceContext(options, 'client-scene creation');
+    invariant(context.state.consent.continuityMemory === 'on', 'Client-scene creation requires explicit continuity-memory consent.', 'MEMORY_CONSENT_REQUIRED');
+    invariant(context.state.consent.memoryPause.state === 'none', 'Client-scene creation is unavailable while memory is paused.', 'MEMORY_PAUSE_ACTIVE');
+    assertSupportedRetentionClasses(context.state, ['client_scene_memories']);
+    invariant(context.state.consent.retention.client_scene_memories === 'until_deleted', 'Client-scene creation is disabled by retention policy.', 'RETENTION_DO_NOT_STORE');
+    const sessionId = context.state.consent.currentSessionId;
+    invariant(
+      context.state.sessionLifecycle?.state === 'active' &&
+      typeof sessionId === 'string' &&
+      context.state.sessionLifecycle.sessionId === sessionId,
+      'Client-scene creation requires the active canonical session.',
+      'CLIENT_SCENE_SESSION_REQUIRED'
+    );
+    const consentEventId = context.state.consent.decisions?.continuity_memory?.eventId;
+    invariant(/^consent-[0-9a-f-]{36}$/i.test(consentEventId || ''), 'Client-scene creation requires the canonical continuity-consent event.', 'MEMORY_CONSENT_REQUIRED');
+    const sceneInput = { title: options.title, statement: options.statement, scene: options.scene };
+    const observedAt = new Date().toISOString();
+    const id = options['dry-run'] ? `mem-${crypto.randomUUID()}` : confirmedWrite.memoryId.toLowerCase();
+    const plan = await planClientSceneCreate(context.target, {
+      id,
+      ...sceneInput,
+      observedAt,
+      sessionId,
+      consentEventId
+    });
+    const output = {
+      workspacePath: context.target,
+      workspaceId: context.state.workspaceId,
+      memoryId: plan.id,
+      category: plan.category,
+      retentionClass: plan.retentionClass,
+      affectedFiles: plan.affectedPaths.length,
+      contentIncluded: false
+    };
+    if (options['dry-run']) return { status: 'dry-run', ...output, nextAction: 'request-exact-user-confirmation' };
+    context.state.updatedAt = observedAt;
+    const transaction = await applyContentTransaction(context, 'memory-add-scene', plan, null);
+    return {
+      status: 'created',
+      ...output,
+      nextAction: 'use-memory-by-stable-id-only',
+      ...activationDisclosure(transaction.activation)
+    };
+  }
   if (['view', 'show', 'export', 'correct', 'forget', 'delete-all'].includes(action)) {
+    if (['view', 'show', 'export', 'correct'].includes(action)) await requireUnsealedPrivateAccess(options, 'memory');
     const context = await currentWorkspaceContext(options, 'memory');
     if (action === 'view' || action === 'show') {
       invariant(context.state.consent.memoryPause.state !== 'sealed_pause', 'Memory cannot be read while sealed pause is active.', 'MEMORY_SEALED');
@@ -3134,26 +4017,36 @@ async function memory(options = {}) {
       assertSupportedRetentionClasses(context.state, [...new Set(Object.values(categoryRetention))]);
       if (options.id !== undefined) invariant(/^(?:mem|theme|focus)-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(options.id), 'Memory ID is invalid.', 'INVALID_MEMORY_ID');
       const readableCategories = Object.keys(categoryRetention);
-      let items = await listMemoryItems(context.target, { id: options.id, categories: readableCategories });
+      if (options.scope === 'primer') {
+        invariant(options.id === undefined, 'Primer inspection does not accept a memory ID.', 'INVALID_ARGUMENT');
+        const primer = await readPrimerSingleton(context.target);
+        return {
+          status: 'inspected', workspacePath: context.target, workspaceId: context.state.workspaceId,
+          scope: 'primer', primer, count: primer.present ? 1 : 0, nextAction: 'none'
+        };
+      }
       if (options.scope) {
         const allowed = ['profile', 'themes', 'focus', 'primer', 'client-scenes', 'all-active'];
         invariant(allowed.includes(options.scope), 'Unknown memory view scope.', 'INVALID_MEMORY_SCOPE', { available: allowed });
-        if (options.scope !== 'all-active') items = items.filter((item) => item.category === options.scope);
       }
+      const selectedCategories = options.scope && options.scope !== 'all-active'
+        ? [options.scope]
+        : readableCategories.filter((category) => category !== 'primer');
+      const items = await listMemoryItems(context.target, { id: options.id, categories: selectedCategories });
       return { status: 'inspected', workspacePath: context.target, workspaceId: context.state.workspaceId, scope: options.scope || (options.id ? 'item' : 'all-active'), items, count: items.length, nextAction: 'none' };
     }
     if (action === 'export') {
       invariant(context.state.consent.memoryPause.state === 'none', 'Memory export creates a sensitive copy and is unavailable during either pause mode.', 'MEMORY_PAUSE_ACTIVE');
+      invariant(options['allow-plaintext-export'] === true, 'Memory export is plaintext; rerun with --allow-plaintext-export after choosing a private destination.', 'PLAINTEXT_EXPORT_CONFIRMATION_REQUIRED');
       assertSupportedRetentionClasses(context.state, Object.keys(context.state.consent.retention));
       const output = assertSafeBackupOutput(options.output);
       return createMemoryExport(context.target, { scope: options.scope, output, dryRun: options['dry-run'] });
     }
     if (action === 'correct') {
       invariant(context.state.consent.continuityMemory === 'on' && context.state.consent.memoryPause.state === 'none', 'Memory correction requires continuity memory on and unpaused.', 'MEMORY_PERSISTENCE_DISABLED');
-      const retentionClass = String(options.id || '').startsWith('theme-') || String(options.id || '').startsWith('focus-') ? 'themes_and_focus' : 'profile_memory';
-      assertSupportedRetentionClasses(context.state, [retentionClass]);
-      invariant(context.state.consent.retention?.[retentionClass] === 'until_deleted', 'Memory correction is disabled by retention policy.', 'RETENTION_DO_NOT_STORE');
       const plan = await planCorrection(context.target, options.id, options.statement);
+      assertSupportedRetentionClasses(context.state, [plan.retentionClass]);
+      invariant(context.state.consent.retention?.[plan.retentionClass] === 'until_deleted', 'Memory correction is disabled by retention policy.', 'RETENTION_DO_NOT_STORE');
       if (options['dry-run']) return { status: 'dry-run', workspacePath: context.target, workspaceId: context.state.workspaceId, memoryId: plan.id, affectedFiles: plan.affectedPaths.length, nextAction: 'run-memory-correction' };
       const now = new Date().toISOString();
       context.state.consent.lastOperationalEvent = controlEvent('memory_correction', plan.id, plan.id, now);
@@ -3273,10 +4166,30 @@ async function memory(options = {}) {
   }
   return controlTransaction(options, 'memory', (state) => {
     const current = state.consent.memoryPause.state;
-    if (action === 'status') return { changed: false, output: { memoryPause: current, startedAt: state.consent.memoryPause.startedAt, nextAction: 'none' } };
+    if (action === 'status') return {
+      changed: false,
+      output: {
+        memoryPause: current,
+        startedAt: state.consent.memoryPause.startedAt,
+        continuityMemory: state.consent.continuityMemory,
+        continuityRetention: state.consent.retention?.profile_memory || 'do_not_store',
+        consentControls: {
+          status: state.consent.status,
+          continuityMemory: state.consent.continuityMemory,
+          contextGraph: state.consent.contextGraph,
+          transcripts: state.consent.transcripts,
+          importedSources: state.consent.importedSources,
+          externalCare: state.consent.externalCare,
+          behaviorLearning: state.consent.behaviorLearning,
+          usageLedgers: state.consent.usageLedgers,
+          retention: structuredClone(state.consent.retention || {})
+        },
+        nextAction: 'none'
+      }
+    };
     const desired = action === 'pause' ? 'write_pause' : action === 'seal' ? 'sealed_pause' : 'none';
     if (current === desired) return { changed: false, output: { memoryPause: current, startedAt: state.consent.memoryPause.startedAt, nextAction: 'none' } };
-    const now = new Date().toISOString();
+    const now = assertLifecycleTimestamp(options.now || new Date().toISOString(), 'Memory-control timestamp');
     let transcriptTransition = null;
     if (desired !== 'none' && state.consent.transcriptState.state === 'recording') {
       state.consent.transcriptState.state = 'paused';
@@ -3284,6 +4197,7 @@ async function memory(options = {}) {
       transcriptTransition = { from: 'recording', to: 'paused', reason: 'memory_pause_no_backfill' };
     }
     state.consent.memoryPause = { state: desired, startedAt: desired === 'none' ? null : now };
+    mirrorActiveTranscriptState(state);
     state.consent.lastOperationalEvent = controlEvent('memory_pause', transcriptTransition ? `${current};transcript=recording` : current, transcriptTransition ? `${desired};transcript=paused` : desired, now);
     state.updatedAt = now;
     return {
@@ -3305,6 +4219,23 @@ async function memory(options = {}) {
 async function transcript(options = {}) {
   const action = options.action;
   invariant(['start', 'pause', 'resume', 'stop', 'status', 'delete'].includes(action), 'transcript --action must be start, pause, resume, stop, status, or delete.', 'INVALID_ARGUMENT');
+  if (action !== 'delete') {
+    const control = await contentFreeWorkspaceContext(options, 'transcript');
+    const transcriptState = control.state.consent.transcriptState;
+    if (action === 'status') {
+      return {
+        status: 'unchanged', workspacePath: control.target, workspaceId: control.state.workspaceId,
+        transcriptState: transcriptState.state, sessionId: transcriptState.sessionId,
+        captureGrade: transcriptState.captureGrade, knownGaps: structuredClone(transcriptState.knownGaps),
+        nextAction: 'none'
+      };
+    }
+    invariant(
+      control.state.consent.memoryPause.state !== 'sealed_pause',
+      'Transcript controls are unavailable while sealed pause is active.',
+      'MEMORY_SEALED'
+    );
+  }
   if (action === 'delete') {
     const context = await currentWorkspaceContext(options, 'transcript');
     const plan = await planTranscriptDelete(context.target, { sessionId: options['session-id'], scope: options.scope });
@@ -3322,10 +4253,9 @@ async function transcript(options = {}) {
     if (!options.confirm || options['dry-run']) return preview;
     assertFreshConfirmation(options.confirm, expectedConfirmation);
     const now = new Date().toISOString();
-    const activeSession = context.state.consent.transcriptState.sessionId;
-    if (options.scope === 'all' || activeSession === options['session-id']) {
-      context.state.consent.transcriptState = { state: 'off', sessionId: null, captureGrade: null, startedAt: null, pausedIntervals: [], stoppedAt: null, knownGaps: [] };
-    }
+    // Deleting transcript content never erases content-free capture evidence.
+    // In particular, a broad deletion of historical artifacts must not reset
+    // an unrelated in-flight session or make same-session capture restartable.
     context.state.consent.lastOperationalEvent = controlEvent('transcript_deletion', plan.selector, 'deleted', now);
     context.state.updatedAt = now;
     const receipt = {
@@ -3356,13 +4286,24 @@ async function transcript(options = {}) {
     const transcriptState = state.consent.transcriptState;
     const current = transcriptState.state;
     if (action === 'status') return { changed: false, output: { transcriptState: current, sessionId: transcriptState.sessionId, captureGrade: transcriptState.captureGrade, knownGaps: transcriptState.knownGaps, nextAction: 'none' } };
-    const now = new Date().toISOString();
+    const now = assertLifecycleTimestamp(options.now || new Date().toISOString(), 'Transcript-control timestamp');
     let desired;
     if (action === 'start') {
       invariant(state.consent.transcripts === 'on', 'Raw transcript consent must be on before capture starts.', 'TRANSCRIPT_CONSENT_REQUIRED');
       invariant(state.consent.memoryPause.state === 'none', 'Transcript capture cannot start while memory persistence is paused.', 'MEMORY_PAUSE_ACTIVE');
-      invariant(current === 'off' || current === 'stopped', 'Transcript is already active.', 'TRANSCRIPT_STATE_INVALID', { current });
+      invariant(current === 'off', 'Stopped transcript capture is final for this session; start a new session instead of erasing coverage evidence.', 'TRANSCRIPT_STATE_INVALID', { current });
       invariant(/^s-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(options['session-id'] || ''), 'transcript start requires --session-id s-<UUID-v4>.', 'INVALID_SESSION_ID');
+      invariant(
+        state.sessionLifecycle?.state === 'active' && state.consent.currentSessionId
+          && state.sessionLifecycle.sessionId === state.consent.currentSessionId,
+        'Transcript capture requires one active canonical session.',
+        'SESSION_NOT_ACTIVE'
+      );
+      invariant(
+        options['session-id'].toLowerCase() === state.consent.currentSessionId.toLowerCase(),
+        'Transcript session ID must match the active canonical session.',
+        'SESSION_ID_MISMATCH'
+      );
       invariant(['client_captured', 'turn_captured', 'best_effort_context', 'partial'].includes(options['capture-grade']), 'transcript start requires a valid --capture-grade.', 'INVALID_CAPTURE_GRADE');
       invariant(['best_effort_context', 'partial'].includes(options['capture-grade']), 'This client has no verified adapter capability for authoritative per-turn capture; use best_effort_context or partial.', 'TRANSCRIPT_CAPABILITY_UNVERIFIED');
       Object.assign(transcriptState, {
@@ -3372,7 +4313,9 @@ async function transcript(options = {}) {
         startedAt: now,
         pausedIntervals: [],
         stoppedAt: null,
-        knownGaps: []
+        knownGaps: Date.parse(now) > Date.parse(state.sessionLifecycle.startedAt)
+          ? [{ from: state.sessionLifecycle.startedAt, to: now, reason: 'capture_started_late' }]
+          : []
       });
       desired = 'recording';
     } else if (action === 'pause') {
@@ -3404,6 +4347,7 @@ async function transcript(options = {}) {
       desired = 'stopped';
     }
     state.consent.lastOperationalEvent = controlEvent('transcript_state', current, desired, now);
+    mirrorActiveTranscriptState(state);
     state.updatedAt = now;
     return {
       changed: true,
@@ -3422,6 +4366,7 @@ async function transcript(options = {}) {
 }
 
 async function preferences(options = {}) {
+  await requireUnsealedPrivateAccess(options, 'preferences');
   return controlTransaction(options, 'preferences', (state) => {
     const mutations = [];
     const now = new Date().toISOString();
@@ -3528,7 +4473,111 @@ async function preferences(options = {}) {
   });
 }
 
+function controlStatusMemory(state) {
+  const consent = state.consent;
+  return {
+    memoryPause: consent.memoryPause.state,
+    startedAt: consent.memoryPause.startedAt,
+    continuityMemory: consent.continuityMemory,
+    continuityRetention: consent.retention?.profile_memory || 'do_not_store',
+    consentControls: {
+      status: consent.status,
+      continuityMemory: consent.continuityMemory,
+      contextGraph: consent.contextGraph,
+      transcripts: consent.transcripts,
+      importedSources: consent.importedSources,
+      externalCare: consent.externalCare,
+      behaviorLearning: consent.behaviorLearning,
+      usageLedgers: consent.usageLedgers,
+      retention: structuredClone(consent.retention || {})
+    }
+  };
+}
+
+async function memoryControlStatus(options = {}) {
+  const context = await contentFreeWorkspaceContext(options, 'memory control status');
+  return controlStatusMemory(context.state);
+}
+
+async function controlStatusPart(run) {
+  try {
+    return { available: true, result: await run() };
+  } catch (error) {
+    return {
+      available: false,
+      code: /^[A-Z0-9_]+$/.test(error?.code || '') ? error.code : 'CONTROL_STATUS_UNAVAILABLE'
+    };
+  }
+}
+
+async function controlStatus(options = {}) {
+  const context = await contentFreeWorkspaceContext(options, 'control status');
+  const memoryStatus = controlStatusMemory(context.state);
+  if (memoryStatus.memoryPause === 'sealed_pause') {
+    return { status: 'sealed', coherent: true, memory: memoryStatus };
+  }
+
+  const transcript = {
+    transcriptState: context.state.consent.transcriptState.state,
+    sessionId: context.state.consent.transcriptState.sessionId,
+    captureGrade: context.state.consent.transcriptState.captureGrade,
+    knownGaps: structuredClone(context.state.consent.transcriptState.knownGaps || [])
+  };
+  const lifecycle = context.state.sessionLifecycle;
+  const checkpointRecorded = lifecycle.checkpoint !== null && ['active', 'interrupted'].includes(lifecycle.state);
+  const recoveryStatus = context.state.consent.continuityMemory !== 'on'
+    ? 'disabled'
+    : context.state.consent.retention?.primers_and_checkpoints === 'do_not_store'
+      ? 'retention_disabled'
+      : checkpointRecorded ? 'canonical_checkpoint_recorded_unverified' : 'none';
+  const sessionStatus = {
+    available: true,
+    result: {
+      status: 'inspected',
+      lifecycleState: lifecycle.state,
+      checkpointPresent: lifecycle.checkpoint !== null,
+      recoveryStatus,
+      recoveryCandidates: checkpointRecorded ? [{ sessionId: lifecycle.sessionId }] : [],
+      contentFilesRead: false,
+      nextAction: checkpointRecorded ? 'request-explicit-session-status-before-recovery' : 'none'
+    }
+  };
+  const sourceStatus = await controlStatusPart(() => statusSource({ workspace: context.target }));
+  const contextStatus = {
+    available: true,
+    result: {
+      status: context.state.consent.contextGraph === 'on' ? 'enabled' : 'disabled',
+      countsAvailable: false,
+      entityFilesRead: false
+    }
+  };
+  const sessionProfile = {
+    companionName: context.state.preferences.companionName,
+    companionSlug: context.state.preferences.companionSlug,
+    language: context.state.preferences.language,
+    persona: context.state.preferences.persona,
+    structure: context.state.preferences.structure,
+    modalities: [...context.state.preferences.modalities],
+    timezone: structuredClone(context.state.consent.timezone),
+    accessibility: structuredClone(context.state.consent.accessibility),
+    reviewPreferences: {
+      staleMemoryOffers: context.state.consent.reviewPreferences.staleMemoryOffers
+    }
+  };
+  return {
+    status: 'inspected',
+    coherent: true,
+    memory: memoryStatus,
+    transcript: { available: true, result: transcript },
+    session: sessionStatus,
+    source: sourceStatus,
+    context: contextStatus,
+    sessionProfile
+  };
+}
+
 async function withWorkspaceMutationLock(operationName, operation, options = {}, defaultTarget = null) {
+  if (options[CALLER_HOLDS_MUTATION_LOCK] === true) return operation(options);
   const targetInput = options.target || options.workspace || defaultTarget;
   if (!targetInput) return operation(options);
   const target = assertSafeWorkspaceTarget(resolvePortablePath(targetInput));
@@ -3590,11 +4639,29 @@ const lockedContextGraph = (options = {}) => withWorkspaceMutationLock('context'
 const lockedChanges = (options = {}) => withWorkspaceMutationLock('changes', changes, options);
 const lockedSource = (options = {}) => withWorkspaceMutationLock('source', source, options);
 const lockedPreferences = (options = {}) => withWorkspaceMutationLock('preferences', preferences, options);
+const lockedMemoryControlStatus = (options = {}) => withWorkspaceMutationLock('memory-control-status', memoryControlStatus, options);
+const lockedControlStatus = (options = {}) => withWorkspaceMutationLock('control-status', controlStatus, options);
 
 async function doctor(options = {}) {
   const target = options.target || options.workspace;
   invariant(target, 'doctor requires --workspace (or --target).', 'INVALID_ARGUMENT');
   const resolved = assertSafeWorkspaceTarget(resolvePortablePath(target));
+  const doctorContext = {
+    distributionRoot: DISTRIBUTION_ROOT,
+    distributionManifest: DISTRIBUTION_MANIFEST
+  };
+
+  // A missing, inaccessible, non-directory, or symlinked target cannot have a
+  // cooperating Scalvin writer. Let doctor report that target condition before
+  // attempting to place a sibling mutation lock; deep missing parents would
+  // otherwise surface as the unrelated MUTATION_LOCK_FAILED error.
+  try {
+    await rejectSymlinkPath(resolved);
+    const stat = await fsp.lstat(resolved);
+    if (!stat.isDirectory()) return runDoctor(resolved, doctorContext);
+  } catch {
+    return runDoctor(resolved, doctorContext);
+  }
   let release;
   try {
     release = await acquireMutationLock(resolved);
@@ -3611,6 +4678,13 @@ async function doctor(options = {}) {
         code: 'WORKSPACE_MUTATION_BUSY',
         message: `Workspace inspection was not started because a cooperative mutation lock is ${lock.status}.${lock.lockPath ? ` Lock: ${lock.lockPath}.` : ''} ${error.details?.guidance || 'Confirm that no Scalvin mutation is running before manual lock recovery.'}`
       }],
+      capabilities: {
+        mechanicalSafetyBackstop: {
+          state: 'degraded',
+          reasonCode: 'DOCTOR_BUSY',
+          evidence: 'doctor'
+        }
+      },
       mutationLock: lock,
       nextAction: 'confirm-no-writer-then-remove-exact-lock-manually'
     };
@@ -3619,8 +4693,7 @@ async function doctor(options = {}) {
   let operationError = null;
   try {
     result = await runDoctor(resolved, {
-      distributionRoot: DISTRIBUTION_ROOT,
-      distributionManifest: DISTRIBUTION_MANIFEST,
+      ...doctorContext,
       mutationLockHeldByCaller: true
     });
   } catch (error) {
@@ -3678,8 +4751,14 @@ module.exports = {
   changes: lockedChanges,
   source: lockedSource,
   preferences: lockedPreferences,
+  memoryControlStatus: lockedMemoryControlStatus,
+  controlStatus: lockedControlStatus,
   loadVerifiedSources,
   inspectUpdateActions,
   assertSafeWorkspaceTarget,
-  assertSafeBackupOutput
+  assertSafeBackupOutput,
+  CALLER_HOLDS_MUTATION_LOCK,
+  CONFIRMED_MEMORY_CREATE,
+  CONFIRMED_CLIENT_SCENE_WRITE,
+  CONFIRMED_SOURCE_INTEGRATION
 };

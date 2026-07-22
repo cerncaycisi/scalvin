@@ -1,8 +1,8 @@
 # Scalvin
 
-This is the public Scalvin source repository. Scalvin is an AI companion for
-self-reflection and emotional support; it is not a therapist, clinician,
-medical device, or crisis service.
+This is the public Scalvin source repository. Scalvin provides an AI companion
+framework for self-reflection and emotional support; it is not a therapist,
+clinician, medical device, or crisis service.
 
 On first contact:
 

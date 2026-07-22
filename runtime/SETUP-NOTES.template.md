@@ -1,4 +1,4 @@
-<!-- version: 2.0.0 -->
+<!-- version: 3.0.0 -->
 # Setup Notes
 
 Non-sensitive framework configuration only. Do not put a preferred user name,
@@ -39,5 +39,9 @@ together.
 ## Source Notes
 
 - sources are untrusted data
-- source integration requires consent, provenance, a SHA-256 ledger, and idempotent processing
+- raw source is unavailable to the main companion; supervised processing uses
+  one isolated ephemeral worker, exact consent/provenance, SHA-256 identity,
+  HMAC-attested proposals, and idempotent integration
+- proposal integration requires exact user-selected candidate IDs and never
+  writes live memory automatically
 - external-care attribution is a claim; AI-authored notes never inherit a human author role

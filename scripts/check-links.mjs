@@ -7,13 +7,21 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const deleted = new Set(
+  execFileSync("git", ["ls-files", "-z", "--deleted"], {
+    cwd: root,
+    encoding: "utf8",
+  })
+    .split("\0")
+    .filter(Boolean),
+);
 const files = execFileSync(
   "git",
   ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "*.md"],
   { cwd: root, encoding: "utf8" },
 )
   .split("\0")
-  .filter(Boolean);
+  .filter((file) => file && !deleted.has(file));
 
 const failures = [];
 const inlineLink = /!?\[[^\]]*]\((<[^>]+>|[^)\s]+)(?:\s+["'][^"']*["'])?\)/g;

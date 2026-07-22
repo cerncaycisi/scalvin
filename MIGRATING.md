@@ -142,6 +142,57 @@ scalvin update \
 
 Then apply after review. A no-op update should produce no file changes.
 
+### Development snapshot `a98dfba`: Scalvin persona to Susan
+
+Commit `a98dfba` used manifest SHA-256
+`2e6d3b99399e7d36c96aeb419f3da8d44c6d721cfd20a954f4d1c0c7e7e4182f`
+and selected the now-removed `scalvin` persona by default. The current updater
+recognizes only that exact product-manifest hash plus the matching state pin in
+order to canonicalize the selector to `susan`. If the old preferences still
+have the complete default-shaped tuple (`Scalvin`, `scalvin`, `scalvin`), the
+companion name and slug also become `Susan` and `susan`. A different companion
+name is preserved. Pass an explicit `--companion-name` during the update if the
+literal display name `Scalvin` is intentional.
+
+This recognition is compatibility routing, not an overwrite trust root. The
+old distribution is not bundled with the new release, and mutable workspace
+state is never accepted as proof that a file is unmodified. Therefore a real
+`a98dfba` workspace can report:
+
+- `LEGACY_SCALVIN_PERSONA_CANONICALIZED`;
+- `UNVERIFIED_PRIOR_TARGETS_PRESERVED`;
+- changed framework targets as conflicts with `priorHash: null`.
+
+That result is expected and fail-closed. The non-forced update must stop with
+`CUSTOMIZATIONS_DETECTED`. Review the dry-run conflict list against the trusted
+old checkout and any intentional local changes. If replacement is correct,
+rerun with `--force` and the exact fresh confirmation token. The updater creates
+a full safety backup before activation; verify and retain its reported recovery
+material. Do not copy `susan.md` or edit `.scalvin/state.json` by hand.
+
+Removed or user-owned targets that the new release cannot independently prove
+safe to replace are preserved rather than silently deleted or rewritten. A
+real default `a98dfba` workspace therefore retains all of the following after
+the forced migration:
+
+- legacy `scalvin.md`;
+- `.therapy/library/personas/scalvin.md`;
+- the old companion/persona display lines in the seed file `SETUP-NOTES.md`.
+
+The canonical `.scalvin/state.json`, active `.therapy/persona.md`, and new
+`susan.md` select Susan after migration; the retained files above do not
+override that canonical selection. After a successful update, backup
+verification, and doctor run, review the two legacy files and the non-sensitive
+setup-note lines against the trusted old checkout. Retire or correct them only
+when their generated origin is confirmed or their customization is
+intentionally no longer needed. Preservation is deliberate: the new updater
+does not turn mutable old state hashes into deletion or overwrite authority.
+
+Any other development-manifest hash with a `scalvin` selector is unsupported
+and is not eligible for this compatibility canonicalization. Do not forge the
+`a98dfba` hash. Use the exact trusted old checkout to select `susan` first, or
+request manual migration help with only synthetic metadata and error codes.
+
 ## Rollback
 
 If update fails, the CLI attempts automatic rollback and reports its status.

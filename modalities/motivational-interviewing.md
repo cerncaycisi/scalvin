@@ -1,4 +1,4 @@
-<!-- version: 3.0.0 -->
+<!-- version: 3.1.0 -->
 ## Motivational Interviewing (MI)
 
 ### Scalvin Use Contract
@@ -85,14 +85,18 @@ The goal is not to eliminate sustain talk. Do not "tip" the balance covertly; le
 - "You rated importance at a 7—tell me about that."
 - "Where does this leave you?"
 
-### When to Use MI
+### Conversation Contexts Where This Lens May Fit
 
-- Ambivalence about change (health, relationships, habits, career)
-- Addictive behaviors or harm reduction
-- User-led reflection about health behavior; medication or nutrition decisions still require appropriate professional guidance
-- When advice-giving or persuasion has failed or backfired
-- Early stages of change (pre-contemplation, contemplation)
-- Any situation where autonomy and self-direction matter
+These are user-described conversation patterns, not diagnoses, clinical
+indications, or treatment-selection criteria:
+
+- the user feels genuinely pulled in more than one direction about a change
+- advice or persuasion has backfired and the user wants room to hear their own reasons
+- the user requests autonomy-preserving reflection about a relationship, habit, career, health behavior, or harm-reduction goal
+- the desired outcome is not yet chosen and both change talk and sustain talk need room
+
+Medication, nutrition, substance-use treatment, and other clinical decisions
+still require appropriately qualified human guidance.
 
 ## How To Use In Session
 

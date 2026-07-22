@@ -57,7 +57,10 @@ distribution doctor enforce this boundary in layers.
 ## Private generated workspace
 
 A workspace contains the user's continuity state and a verified copy of the
-framework needed to operate it. Its logical areas are:
+managed framework content. In the development preview, terminal lifecycle
+commands and the optional local broker still come from the retained installer
+checkout; the workspace is not claimed to be operationally self-contained. Its
+logical areas are:
 
 ```text
 workspace/
@@ -75,12 +78,19 @@ workspace/
     ├── immutable verified framework
     ├── active configuration
     ├── user overlays and change log
-    ├── consent and machine state
+    ├── consent and machine state, including optional private retention control
     └── integrity registry
 ```
 
 The exact file list is defined by `manifest.json`, not by a second hardcoded
 registry.
+
+The optional `RETENTION-CONTROL.json` file is private user state, not a managed
+framework target and not an extension of canonical consent state. It stores
+only versioned cleanup-policy metadata. Retention inspection produces
+content-free counts; enforcement replans inside a snapshot-bound sibling stage
+and requires an exact destructive confirmation. Policy or object drift makes
+the token stale. Backup copies remain a separate lifecycle.
 
 ## Runtime layers
 
@@ -106,16 +116,27 @@ instructions load only when needed.
 
 ### 3. Fast re-entry
 
-The normal session context is intentionally small:
+The normal broker-mediated session context is intentionally small:
 
 - rolling next-session primer;
 - current focus;
-- recent relevant session material;
-- selected persona and user overlay;
+- bounded relevant memory records;
+- selected immutable persona;
 - minimal current safety/consent state.
 
-Profile, active themes, archive, source files, and historical compression
-outputs are opened selectively.
+Profile/theme/focus/primer records are requested by exact broker scope and
+pagination. Sessions, archive, context graph, user overlays, transcripts, and
+raw source have no direct companion access; without a typed operation they stay
+terminal-only or unavailable.
+
+Raw source files are an exception. The main typed broker exposes no raw-source
+read tool, and generated client policy denies direct source reads. A supervised
+ephemeral worker processes one exact revision through a separate MCP surface
+containing only metadata, bounded sequential chunks, and proposal submission.
+It has no built-in filesystem, shell, network, live-memory, or persistent
+session authority. Its HMAC-attested proposal remains untrusted and cannot
+write active memory. Static client policy is still not independently verified
+effective-runtime evidence, so the project does not claim OS-level isolation.
 
 ### 4. Living memory
 
@@ -162,8 +183,57 @@ The Node CLI owns filesystem mutations that need deterministic guarantees:
 - `backup`
 - `restore`
 
-Natural-language requests route to these commands; the model does not recreate
-their behavior from memory.
+Natural-language requests route only to typed operations exposed by the active
+client connection. Other lifecycle commands are terminal-only; the model does
+not recreate their behavior from memory or direct file edits.
+
+### Local capability broker and broker-only preview
+
+Generated Codex and Claude projects register a local stdio capability broker.
+The broker exposes bounded semantic operations rather than arbitrary paths,
+shell, network, or raw-source access. It enforces canonical consent and pause
+state for calls routed through it; mutating calls use snapshot-bound previews
+and exact one-time confirmation challenges.
+
+The generated client profiles pre-approve only bounded read-only broker calls.
+Mutating broker calls stay in the client's mandatory interactive approval
+class and must also satisfy the broker's separate one-time challenge. Source
+workers are the exception: their fresh, non-interactive process auto-approves
+only the three isolated worker tools and has no main-broker or general tool
+authority.
+
+The development preview defaults to `broker_only_unattested`. Project policy
+denies direct access to every private continuity, source, transcript,
+control-state, client-config, and user-overlay surface; ordinary private reads
+and writes must use the broker. The broker currently covers bounded control
+status, memory show/correct/create, pause/seal, consent, session lifecycle,
+prepared-source proposal review/integration, and backup-reminder handling.
+Operations without a typed route remain terminal-only rather than falling back
+to direct file access.
+
+Static project configuration and broker self-report cannot attest the complete
+effective launch. Higher-priority client configuration, client-version drift,
+and alternate launch paths remain outside those files, so
+`hardBoundaryAttested` is always `false` in this preview. Stable release remains
+blocked until each shipped adapter has independently verified,
+exact-candidate effective-launch evidence and the remaining release gates pass.
+
+### Isolated source worker
+
+`source process` launches a fresh Codex or Claude process for one exact ready
+source revision. The launcher suppresses model output, disables persistence,
+uses a temporary private working directory, and registers only the isolated
+source-worker MCP. The worker reads source bytes from the deterministic
+lifecycle rather than a caller path and emits at most twenty schema-bounded
+candidates. Server-generated IDs and an HMAC bind the proposal to source,
+revision, hash, worker version, client, and client version.
+
+The main broker can list those bounded candidates and record an exact selected
+set after a one-time confirmation challenge. It cannot reopen raw source bytes,
+and integration writes no profile/theme/focus item. The runtime self-test and
+HMAC are code/integrity evidence, not proof that a third-party client enforced
+every requested sandbox flag; that distinction is preserved in doctor and the
+stable gate.
 
 ### Install
 
@@ -198,10 +268,11 @@ Doctor distinguishes errors from warnings and validates:
 
 Backups use unique names, no-clobber creation, an integrity manifest, and a
 checksum. Restore rejects path traversal and symlinks, supports dry-run, and
-verifies extracted state before activation. Encryption is an explicit option,
-not an implied property of a plain archive.
+verifies extracted state before activation. New user backups and automatic
+pre-mutation safety backups are encrypted by default. Plain backup requires an
+explicit confidentiality override.
 
-Encrypted backup v2 keeps the private integrity manifest and payload in one
+Encrypted backup v3 keeps the private integrity manifest and payload in one
 AES-256-GCM authenticated ciphertext. The public envelope contains only the
 artifact ID, timestamp, fixed bounded scrypt parameters, random salt/nonce, and
 authentication tag; a separate checksum detects ordinary corruption before
@@ -209,6 +280,12 @@ decryption. Decryption and extraction use private sibling stages, exact schemas,
 bounded regular-file reads, entry/byte limits, exclusive file creation, and the
 same traversal/symlink checks as plain restore. Only a fully verified stage is
 made available to the restore transaction.
+
+V3 uses the fixed `N=2^17, r=8, p=1` scrypt profile. The reader retains an exact
+v2 profile for compatibility; arbitrary envelope parameters are rejected before
+key derivation. When no private passphrase file is supplied, creation writes a
+random recovery key to a separate private store and reports only its path. The
+artifact never contains or identifies the key material.
 
 ### Workspace mutation concurrency boundary
 
@@ -239,6 +316,8 @@ thin and must not fork therapeutic or memory logic.
 - Claude Code can use installed current-time and safety hooks.
 - A client without hooks degrades explicitly; the runtime never claims a hook
   ran when it did not.
+- Static project configuration is defense in depth, not proof of the effective
+  launch profile or a hard private-data boundary.
 
 ## Failure model
 

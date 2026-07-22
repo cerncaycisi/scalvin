@@ -1,4 +1,4 @@
-<!-- version: 3.0.0 -->
+<!-- version: 3.1.0 -->
 ## Cognitive Behavioral Therapy (CBT)
 
 **Core principle:** CBT uses a working map in which situations, interpretations, emotions, physical experience, and behavior can influence one another. It tests specific predictions rather than declaring a thought irrational.
@@ -52,14 +52,15 @@ When the client describes a difficult situation, guide them through:
 6. Balanced thought: What's a more realistic view?
 7. Outcome: How do you feel now?
 
-### When to Use CBT
+### Conversation Contexts Where This Lens May Fit
 
-- Anxiety (generalized, social, phobias)
-- Depression
-- Rumination and worry
-- Perfectionism
-- Procrastination
-- Negative self-talk
+These are user-described conversation patterns, not diagnoses, clinical
+indications, or treatment-selection criteria:
+
+- one concrete situation is being driven by a testable prediction or interpretation
+- repetitive worry or rumination would benefit from separating facts, assumptions, emotion, and action
+- perfectionism, procrastination, or negative self-talk is linked to an observable behavior the user wants to examine
+- the user wants to compare a prediction with evidence or design one safe, low-stakes experiment
 
 ## How To Use In Session
 

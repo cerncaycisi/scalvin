@@ -13,7 +13,7 @@ to automated gates.
 A stable release is blocked until a review artifact tied to the exact release
 commit records:
 
-- the reviewed runtime, safety protocol, default personas, structures, and
+- the reviewed runtime, safety protocol, default persona, structures, and
   active modalities;
 - the exact commit and corpus hashes;
 - reviewer role and relevant qualification, disclosed only to the extent the

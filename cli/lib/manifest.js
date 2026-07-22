@@ -87,7 +87,16 @@ function validateManifest(manifest) {
     invariant(HASH_PATTERN.test(file.sha256 || ''), 'Every file needs a SHA-256 hash.', 'INVALID_MANIFEST', { path: file.path });
     invariant(typeof file.role === 'string' && file.role.length > 0, 'Every file needs a role.', 'INVALID_MANIFEST', { path: file.path });
     invariant(PROTECTIONS.has(file.protection), 'Every file needs a valid protection class.', 'INVALID_MANIFEST', { path: file.path, protection: file.protection });
-    invariant(Array.isArray(file.targets) && file.targets.length > 0, 'Every managed file needs at least one target.', 'INVALID_MANIFEST', { path: file.path });
+    const distributionOnly = file.role === 'distribution-code';
+    invariant(
+      Array.isArray(file.targets) && (distributionOnly ? file.targets.length === 0 : file.targets.length > 0),
+      distributionOnly
+        ? 'Distribution-code entries must not create workspace targets.'
+        : 'Every workspace-managed file needs at least one target.',
+      'INVALID_MANIFEST',
+      { path: file.path }
+    );
+    if (distributionOnly) invariant(file.protection === 'framework', 'Distribution code must use framework protection.', 'INVALID_MANIFEST', { path: file.path });
     for (const target of file.targets) {
       assertOnlyKeys(target, ['path', 'protection', 'render', 'activation'], 'Manifest target');
       const targetPath = validateRelativePath(target.path);

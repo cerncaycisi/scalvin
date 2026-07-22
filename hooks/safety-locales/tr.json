@@ -18,7 +18,7 @@
   ],
   "domains": {
     "self_harm": [
-      "(?:ölmek\\s+istiyorum|yaşamak\\s+istemiyorum|artık\\s+yaşamak\\s+istemiyorum|keşke\\s+ölsem|canıma\\s+kıyacağım|kendimi\\s+öldür(?:eceğim|mek\\s+istiyorum)|kendimi\\s+öldürmeyi\\s+(?:düşünüyorum|planlıyorum)|intihar\\s+(?:etmek\\s+istiyorum|etmeyi\\s+düşünüyorum|etmeyi\\s+planlıyorum|edeceğim)|kendime\\s+zarar\\s+ver(?:mek\\s+istiyorum|eceğim)|kendimi\\s+kes(?:mek\\s+istiyorum|eceğim))",
+      "(?:ölmek\\s+(?:istiyorum|istyrm)|olmek\\s+(?:istiyorum|istyrm)|(?:yaşamak|yasamak)\\s+istemiyorum|artık\\s+(?:yaşamak|yasamak)\\s+istemiyorum|keşke\\s+ölsem|canıma\\s+kıyacağım|kendimi\\s+(?:öldür(?:eceğim|mek\\s+istiyorum)|oldur(?:ecegim|mek\\s+istiyorum)|öldürcem|oldurcem)|kendimi\\s+(?:öldürmeyi|oldurmeyi)\\s+(?:düşünüyorum|dusunuyorum|planlıyorum)|intihar\\s+(?:etmek\\s+istiyorum|etmeyi\\s+(?:düşünüyorum|dusunuyorum|planlıyorum)|edeceğim)|kendime\\s+zarar\\s+ver(?:mek\\s+istiyorum|eceğim)|kendimi\\s+kes(?:mek\\s+istiyorum|eceğim))",
       "\\b(?:ben\\s+olmasam\\s+herkes\\s+daha\\s+iyi|kimse\\s+beni\\s+özlemez|uyanmasam\\s+keşke)\\b"
     ],
     "overdose": [

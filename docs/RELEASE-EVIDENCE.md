@@ -19,6 +19,18 @@ The envelope contains:
 Synthetic repository fixtures are evaluator tests only. They are rejected as
 release evidence by policy even when their shape passes the parser.
 
+The signed clinical/safety envelope and build provenance are separate controls.
+After this envelope passes, the protected workflow packs the exact candidate,
+verifies canonical candidate metadata and a non-circular checksum list that
+binds the archive, archive checksum, SPDX 2.3 SBOM, and metadata, then performs
+a clean install. GitHub build provenance covers all four release-set subjects;
+the separate SBOM attestation binds the SPDX document to the archive subject.
+The metadata itself binds the candidate version and commit plus the manifest
+and package-inventory hashes. Build provenance proves which workflow and
+repository commit produced specific artifact bytes. Neither provenance nor the
+SBOM proves clinical quality, fluent-language review, or safe model behavior,
+and neither control may substitute for the signed review.
+
 ## What the gate proves
 
 The automated gate proves that:

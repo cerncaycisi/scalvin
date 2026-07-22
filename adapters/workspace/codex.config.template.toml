@@ -1,0 +1,115 @@
+# version: 2.0.0
+# Scalvin Codex broker-only project profile.
+#
+# Sandboxed model-generated commands may read only the immutable public
+# framework files listed below. All personal continuity, source, transcript,
+# control-state, client-configuration, and user-overlay paths are denied.
+# Private reads and writes must use the typed local Scalvin MCP broker.
+#
+# This project policy is materially stronger than the former compatibility
+# profile, but a checked-in config file alone is not effective-launch evidence:
+# higher-priority managed requirements, CLI overrides, unsupported client
+# versions, or a user choosing a different launch path can change enforcement.
+# Stable release therefore still requires exact-candidate runtime attestation.
+
+default_permissions = "scalvin-broker-only"
+approval_policy = { granular = { sandbox_approval = false, rules = false, mcp_elicitations = true, request_permissions = false, skill_approval = false } }
+allow_login_shell = false
+web_search = "disabled"
+
+[features]
+apps = false
+browser_use = false
+browser_use_external = false
+browser_use_full_cdp_access = false
+computer_use = false
+fast_mode = false
+goals = false
+hooks = false
+image_generation = false
+in_app_browser = false
+memories = false
+multi_agent = false
+personality = false
+remote_plugin = false
+shell_snapshot = false
+shell_tool = false
+unified_exec = false
+
+[shell_environment_policy]
+inherit = "core"
+ignore_default_excludes = false
+
+[permissions.scalvin-broker-only.filesystem]
+":minimal" = "read"
+
+[permissions.scalvin-broker-only.filesystem.":workspace_roots"]
+"." = "deny"
+".therapy/safety-protocol.md" = "read"
+".therapy/commands.md" = "read"
+".therapy/runtime" = "read"
+".therapy/library" = "read"
+".therapy/persona.md" = "read"
+".therapy/session-structure.md" = "read"
+".therapy/modalities" = "read"
+"START-SESSION.md" = "read"
+"START-CODEX-SESSION.md" = "read"
+"SETUP-NOTES.md" = "deny"
+"profile.md" = "deny"
+"ACTIVE-THEMES.md" = "deny"
+"CURRENT-FOCUS.md" = "deny"
+"NEXT-PRIMER.md" = "deny"
+"sessions" = "deny"
+"context" = "deny"
+"archive" = "deny"
+"sources" = "deny"
+".therapy/user-overrides" = "deny"
+".therapy/state" = "deny"
+".therapy/change-control" = "deny"
+".scalvin" = "deny"
+".codex" = "deny"
+".claude" = "deny"
+".mcp.json" = "deny"
+
+[permissions.scalvin-broker-only.network]
+enabled = false
+
+[mcp_servers.scalvin]
+command = {{NODE_EXECUTABLE_JSON}}
+args = [{{SCALVIN_MCP_ENTRY_JSON}}, "--workspace", "."]
+cwd = "."
+required = true
+enabled = true
+enabled_tools = [
+  "capability_status",
+  "control_status",
+  "backup_reminder",
+  "memory_show",
+  "memory_control",
+  "memory_correct",
+  "memory_create",
+  "memory_add",
+  "consent_set",
+  "session_manage",
+  "source_status",
+  "source_proposals",
+  "source_integrate",
+]
+default_tools_approval_mode = "prompt"
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+
+[mcp_servers.scalvin.tools.capability_status]
+approval_mode = "auto"
+
+[mcp_servers.scalvin.tools.control_status]
+approval_mode = "auto"
+
+[mcp_servers.scalvin.tools.memory_show]
+approval_mode = "auto"
+
+[mcp_servers.scalvin.tools.source_status]
+approval_mode = "auto"
+
+[mcp_servers.scalvin.tools.source_proposals]
+approval_mode = "auto"

@@ -1,4 +1,4 @@
-<!-- version: 3.0.0 -->
+<!-- version: 3.1.0 -->
 ## Acceptance and Commitment Therapy (ACT)
 
 **Core principle:** ACT frames psychological flexibility as making room for internal experience while choosing action connected to personally held values. The goal is not to argue pain away or require acceptance.
@@ -62,15 +62,16 @@ Useful cues: "I know the thought is not fully true, but it still runs me," repea
 - "Is this action moving you toward or away from what matters?"
 - "What would you be willing to feel in order to have the life you want?"
 
-### When to Use ACT
+### Conversation Contexts Where This Lens May Fit
 
-- Chronic pain or illness
-- User-described anxiety when they identify a pattern of avoidance
-- Depression
-- Grief and loss
-- Major life transitions
-- Perfectionism and self-criticism
-- When CBT "thought challenging" isn't landing
+These are user-described conversation patterns, not diagnoses, clinical
+indications, or treatment-selection criteria:
+
+- difficult thoughts or feelings are narrowing choices through repeated avoidance
+- the user wants to relate differently to an experience they cannot simply solve
+- grief, illness, pain, or a major transition is present and the user wants values-oriented reflection rather than symptom claims
+- perfectionism or self-criticism is pulling action away from personally chosen values
+- direct thought-challenging is not useful and the user wants a different conversational lens
 
 ## How To Use In Session
 

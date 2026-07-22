@@ -1,4 +1,4 @@
-<!-- version: 3.0.0 -->
+<!-- version: 3.1.0 -->
 ## Compassion-Focused Therapy (CFT)
 
 **Core principle:** CFT offers a compassion-oriented model for relating to shame, self-criticism, threat, striving, and soothing. The three-system map is a therapeutic heuristic, not a diagnosis or direct reading of physiology.
@@ -77,15 +77,15 @@
 - "What would it feel like to receive compassion in this moment?"
 - "How would you respond to a dear friend experiencing this?"
 
-### When to Use CFT
+### Conversation Contexts Where This Lens May Fit
 
-- Persistent self-criticism or harsh inner voice
-- Shame (especially chronic or toxic shame)
-- Difficulty receiving care, warmth, or compliments
-- User-requested reflection on criticism, neglect, or conditional care, without trauma processing
-- Perfectionism driven by fear of inadequacy
-- Depression with strong self-blame component
-- When standard CBT thought-challenging feels invalidating
+These are user-described conversation patterns, not diagnoses, clinical
+indications, or treatment-selection criteria:
+
+- a harsh inner voice or self-blame is central to the current exchange
+- shame, fear of inadequacy, or difficulty receiving care is present in the user's own words
+- the user requests reflection on criticism, neglect, or conditional care without trauma processing
+- direct thought-challenging feels invalidating and the user wants to try a fairer, wiser, warmer, stronger, or more practical stance
 
 ## How To Use In Session
 
