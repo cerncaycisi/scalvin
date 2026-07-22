@@ -13,7 +13,7 @@ test('recovery-key creation writes a private file without returning secret mater
     const output = path.join(box.base, 'keys', 'portable-recovery.key');
     const dry = await backup({ action: 'key-create', output, 'dry-run': true });
     assert.equal(dry.status, 'dry-run');
-    await assert.rejects(fsp.access(output), { code: 'ENOENT' });
+    await assert.rejects(fsp.readFile(output), { code: 'ENOENT' });
 
     const result = await backup({ action: 'key-create', output });
     assert.deepEqual(Object.keys(result).sort(), ['nextAction', 'recoveryKeyPath', 'secretIncluded', 'status']);
