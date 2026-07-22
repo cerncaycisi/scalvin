@@ -83,6 +83,9 @@ when they establish a reusable engineering rule.
 - Reuse rule: finish edits, run `npm run inventory:refresh` and `npm run
   manifest:refresh`, freeze the worktree, then run `npm run check` and the full
   test suite. Do not edit managed files during that suite.
+- Follow-up: this exact invalid run recurred once during CodeQL hardening. The
+  fail-closed `DISTRIBUTION_INTEGRITY_FAILED` results were discarded, the
+  manifest was refreshed, and no conclusion was taken from that run.
 
 ### Local workspace pointer during smoke installs
 

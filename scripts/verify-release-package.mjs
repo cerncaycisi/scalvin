@@ -293,26 +293,15 @@ function verifyMetadata(options, files, hashes) {
   return metadata;
 }
 
-function npmCommand(args) {
-  const npmExecPath = process.env.npm_execpath;
-  if (npmExecPath && existsSync(npmExecPath)) {
-    return {
-      command: process.execPath,
-      arguments: [npmExecPath, ...args]
-    };
-  }
-  if (process.platform === 'win32') {
-    return {
-      command: process.env.ComSpec || 'cmd.exe',
-      arguments: ['/d', '/s', '/c', 'npm.cmd', ...args]
-    };
-  }
-  return { command: 'npm', arguments: args };
+function npmCliPath() {
+  const executableDirectory = path.dirname(process.execPath);
+  return process.platform === 'win32'
+    ? path.join(executableDirectory, 'node_modules', 'npm', 'bin', 'npm-cli.js')
+    : path.resolve(executableDirectory, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');
 }
 
 function runNpm(args, options = {}) {
-  const invocation = npmCommand(args);
-  return execFileSync(invocation.command, invocation.arguments, {
+  return execFileSync(process.execPath, [npmCliPath(), ...args], {
     encoding: 'utf8',
     maxBuffer: 32 * 1024 * 1024,
     stdio: ['ignore', 'pipe', 'pipe'],

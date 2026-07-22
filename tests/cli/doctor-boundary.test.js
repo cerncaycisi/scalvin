@@ -106,7 +106,7 @@ test('broker doctor probe executes only integrity-verified code and accepts the 
     const unverified = await probeCapabilityBroker(distribution, { integrityVerified: false });
     assert.equal(unverified.state, 'degraded');
     assert.equal(unverified.reasonCode, 'BROKER_DISTRIBUTION_UNVERIFIED');
-    await assert.rejects(fsp.access(marker));
+    await assert.rejects(fsp.readFile(marker), { code: 'ENOENT' });
 
     const available = await probeCapabilityBroker(distribution, { integrityVerified: true });
     assert.equal(available.state, 'available');

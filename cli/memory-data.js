@@ -256,11 +256,14 @@ function parsePrimerSingleton(markdown, bytes) {
       continue;
     }
     if (line === PRIMER_DISCLAIMER) continue;
-    const field = rawLine.match(/^- ([^:\r\n]+):[ \t]*(.*)$/);
-    const key = field ? labels.get(field[1]) : null;
+    const separator = rawLine.startsWith('- ') ? rawLine.indexOf(':', 2) : -1;
+    const label = separator > 2 ? rawLine.slice(2, separator) : null;
+    const key = label ? labels.get(label) : null;
     invariant(key, 'Next primer contains content outside its bounded data fields.', 'PRIMER_FORMAT_UNSUPPORTED');
     invariant(!seen.has(key), 'Next primer contains a duplicate data field.', 'PRIMER_FORMAT_UNSUPPORTED');
-    const value = field[2].trim();
+    let valueStart = separator + 1;
+    while (rawLine[valueStart] === ' ' || rawLine[valueStart] === '\t') valueStart += 1;
+    const value = rawLine.slice(valueStart).trim();
     invariant(!/[\u0000-\u001f\u007f\u0085\u2028\u2029]/u.test(value), 'Next primer fields must be single-line text.', 'PRIMER_FORMAT_UNSUPPORTED');
     invariant(Buffer.byteLength(value) <= 8192, 'Next primer field is too large.', 'PRIMER_TOO_LARGE');
     fields[key] = value || null;
@@ -366,9 +369,25 @@ async function readPrimerSingleton(root) {
 
 function memoryBlocks(markdown) {
   const headings = [];
-  const expression = /^(#{1,6})\s+([^\r\n]+)$/gm;
-  let match;
-  while ((match = expression.exec(markdown)) !== null) headings.push({ start: match.index, end: expression.lastIndex, depth: match[1].length, title: match[2] });
+  let lineStart = 0;
+  while (lineStart < markdown.length) {
+    const newline = markdown.indexOf('\n', lineStart);
+    const physicalEnd = newline === -1 ? markdown.length : newline;
+    const lineEnd = physicalEnd > lineStart && markdown[physicalEnd - 1] === '\r'
+      ? physicalEnd - 1
+      : physicalEnd;
+    let cursor = lineStart;
+    while (cursor < lineEnd && cursor - lineStart < 6 && markdown[cursor] === '#') cursor += 1;
+    const depth = cursor - lineStart;
+    if (depth > 0 && (markdown[cursor] === ' ' || markdown[cursor] === '\t')) {
+      while (cursor < lineEnd && (markdown[cursor] === ' ' || markdown[cursor] === '\t')) cursor += 1;
+      if (cursor < lineEnd) {
+        headings.push({ start: lineStart, end: lineEnd, depth, title: markdown.slice(cursor, lineEnd) });
+      }
+    }
+    if (newline === -1) break;
+    lineStart = newline + 1;
+  }
   const blocks = [];
   for (let index = 0; index < headings.length; index += 1) {
     const heading = headings[index];
@@ -382,7 +401,17 @@ function memoryBlocks(markdown) {
       }
     }
     const body = markdown.slice(heading.start, end);
-    const field = (name) => body.match(new RegExp(`^- ${name}:\\s*(.*)$`, 'mi'))?.[1].trim() || null;
+    const fields = new Map();
+    for (const rawLine of body.split(/\r?\n/)) {
+      const separator = rawLine.startsWith('- ') ? rawLine.indexOf(':', 2) : -1;
+      if (separator <= 2) continue;
+      const name = rawLine.slice(2, separator).toLowerCase();
+      if (fields.has(name)) continue;
+      let valueStart = separator + 1;
+      while (rawLine[valueStart] === ' ' || rawLine[valueStart] === '\t') valueStart += 1;
+      fields.set(name, rawLine.slice(valueStart).trim() || null);
+    }
+    const field = (name) => fields.get(name.toLowerCase()) || null;
     blocks.push({
       id: idMatch[1].toLowerCase(),
       start: heading.start,
