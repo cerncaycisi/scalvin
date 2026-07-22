@@ -151,3 +151,17 @@ when they establish a reusable engineering rule.
 - Reuse rule: require both the workflow's CodeQL analysis job and the separate
   pull-request Advanced Security check to pass. A successful SARIF upload is
   not proof that the uploaded analysis contains zero blocking alerts.
+
+### Repository history cleanup
+
+- Attempt: a native `git filter-branch` rehearsal removed the target path, but
+  the final procedure used GitHub's recommended `git-filter-repo` sensitive-
+  data workflow in a fresh mirror clone.
+- Result: the approved obsolete archive went from one reachable Git object to
+  zero across every branch and tag ref, and the rewritten mirror passed a full
+  `git fsck`. Five historical pull-request refs were reported separately.
+- Reuse rule: merge or close open pull requests first; create and verify a
+  complete bundle; rewrite a fresh mirror; require zero reachable target
+  objects and a clean object check; then force-push only reviewed branch/tag
+  refs. GitHub pull-request refs are read-only and cached historical views must
+  never be described as purged by an ordinary force-push.
