@@ -140,17 +140,41 @@ function validateRegistry(document) {
 }
 
 function loadRegistry(filename = path.join(__dirname, 'emergency-resources.json')) {
-  const preflight = fs.lstatSync(filename);
-  if (!preflight.isFile() || preflight.isSymbolicLink()) throw new Error('Emergency resource registry file is invalid');
   const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0);
-  const descriptor = fs.openSync(filename, flags);
+  let descriptor;
+  try {
+    descriptor = fs.openSync(filename, flags);
+  } catch {
+    throw new Error('Emergency resource registry file is invalid');
+  }
   let bytes;
   try {
     const opened = fs.fstatSync(descriptor);
-    if (!opened.isFile() || opened.size <= 0 || opened.size > MAX_REGISTRY_BYTES) {
+    const linked = fs.lstatSync(filename);
+    if (
+      !opened.isFile()
+      || opened.nlink !== 1
+      || !linked.isFile()
+      || linked.isSymbolicLink()
+      || linked.nlink !== 1
+      || linked.dev !== opened.dev
+      || linked.ino !== opened.ino
+      || opened.size <= 0
+      || opened.size > MAX_REGISTRY_BYTES
+    ) {
       throw new Error('Emergency resource registry file is invalid');
     }
     bytes = fs.readFileSync(descriptor, 'utf8');
+    const after = fs.fstatSync(descriptor);
+    if (
+      after.dev !== opened.dev
+      || after.ino !== opened.ino
+      || after.size !== opened.size
+      || after.mtimeMs !== opened.mtimeMs
+      || after.ctimeMs !== opened.ctimeMs
+    ) {
+      throw new Error('Emergency resource registry changed while it was being read');
+    }
   } finally {
     fs.closeSync(descriptor);
   }

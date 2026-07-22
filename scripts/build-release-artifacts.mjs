@@ -4,10 +4,14 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   chmodSync,
+  closeSync,
+  constants,
   existsSync,
+  fstatSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -52,8 +56,43 @@ function sha(buffer, algorithm = 'sha256') {
   return createHash(algorithm).update(buffer).digest('hex');
 }
 
+function readStableRegularFile(filename, maximumBytes = 32 * 1024 * 1024) {
+  const descriptor = openSync(filename, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
+  try {
+    const opened = fstatSync(descriptor);
+    const linked = lstatSync(filename);
+    if (
+      !opened.isFile()
+      || opened.nlink !== 1
+      || !linked.isFile()
+      || linked.isSymbolicLink()
+      || linked.nlink !== 1
+      || linked.dev !== opened.dev
+      || linked.ino !== opened.ino
+      || opened.size < 0
+      || opened.size > maximumBytes
+    ) {
+      fail('Release input is not a bounded single-link regular file.');
+    }
+    const bytes = readFileSync(descriptor);
+    const after = fstatSync(descriptor);
+    if (
+      after.dev !== opened.dev
+      || after.ino !== opened.ino
+      || after.size !== opened.size
+      || after.mtimeMs !== opened.mtimeMs
+      || after.ctimeMs !== opened.ctimeMs
+    ) {
+      fail('Release input changed while it was being read.');
+    }
+    return { bytes, stat: opened };
+  } finally {
+    closeSync(descriptor);
+  }
+}
+
 function shaFile(filename, algorithm = 'sha256') {
-  return sha(readFileSync(filename), algorithm);
+  return sha(readStableRegularFile(filename).bytes, algorithm);
 }
 
 function canonicalJson(value) {
@@ -82,26 +121,15 @@ function validateTimestamp(value) {
   return value;
 }
 
-function npmCommand(args) {
-  const npmExecPath = process.env.npm_execpath;
-  if (npmExecPath && existsSync(npmExecPath)) {
-    return {
-      command: process.execPath,
-      arguments: [npmExecPath, ...args]
-    };
-  }
-  if (process.platform === 'win32') {
-    return {
-      command: process.env.ComSpec || 'cmd.exe',
-      arguments: ['/d', '/s', '/c', 'npm.cmd', ...args]
-    };
-  }
-  return { command: 'npm', arguments: args };
+function npmCliPath() {
+  const executableDirectory = path.dirname(process.execPath);
+  return process.platform === 'win32'
+    ? path.join(executableDirectory, 'node_modules', 'npm', 'bin', 'npm-cli.js')
+    : path.resolve(executableDirectory, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');
 }
 
 function runNpm(args, options = {}) {
-  const invocation = npmCommand(args);
-  return execFileSync(invocation.command, invocation.arguments, {
+  return execFileSync(process.execPath, [npmCliPath(), ...args], {
     cwd: ROOT,
     encoding: 'utf8',
     maxBuffer: 32 * 1024 * 1024,
@@ -134,9 +162,7 @@ function spdxFileId(relative) {
 function buildSpdx({ version, commit, createdAt, archiveHash, packageReport }) {
   const files = packageReport.files.map((entry) => {
     const absolute = path.join(ROOT, entry.path);
-    const stat = lstatSync(absolute);
-    if (!stat.isFile() || stat.isSymbolicLink()) fail('npm package inventory contains a non-regular file.');
-    const bytes = readFileSync(absolute);
+    const { bytes } = readStableRegularFile(absolute);
     return {
       fileName: `./${entry.path}`,
       SPDXID: spdxFileId(entry.path),

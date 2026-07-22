@@ -13,16 +13,24 @@ test('recovery-key creation writes a private file without returning secret mater
     const output = path.join(box.base, 'keys', 'portable-recovery.key');
     const dry = await backup({ action: 'key-create', output, 'dry-run': true });
     assert.equal(dry.status, 'dry-run');
-    await assert.rejects(fsp.access(output), { code: 'ENOENT' });
+    await assert.rejects(fsp.readFile(output), { code: 'ENOENT' });
 
     const result = await backup({ action: 'key-create', output });
     assert.deepEqual(Object.keys(result).sort(), ['nextAction', 'recoveryKeyPath', 'secretIncluded', 'status']);
     assert.equal(result.secretIncluded, false);
     assert.equal(JSON.stringify(result).includes('scalvin-recovery-key-v1:'), false);
-    const stat = await fsp.lstat(output);
+    const handle = await fsp.open(output, 'r');
+    let stat;
+    let recoveryKey;
+    try {
+      stat = await handle.stat();
+      recoveryKey = await handle.readFile('utf8');
+    } finally {
+      await handle.close();
+    }
     assert.equal(stat.isFile(), true);
     if (process.platform !== 'win32') assert.equal(stat.mode & 0o777, 0o600);
-    assert.match(await fsp.readFile(output, 'utf8'), /^scalvin-recovery-key-v1:[A-Za-z0-9_-]{43}\n$/);
+    assert.match(recoveryKey, /^scalvin-recovery-key-v1:[A-Za-z0-9_-]{43}\n$/);
     await assert.rejects(backup({ action: 'key-create', output }), { code: 'RECOVERY_KEY_EXISTS' });
   } finally {
     await box.cleanup();

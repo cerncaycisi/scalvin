@@ -83,6 +83,9 @@ when they establish a reusable engineering rule.
 - Reuse rule: finish edits, run `npm run inventory:refresh` and `npm run
   manifest:refresh`, freeze the worktree, then run `npm run check` and the full
   test suite. Do not edit managed files during that suite.
+- Follow-up: this exact invalid run recurred once during CodeQL hardening. The
+  fail-closed `DISTRIBUTION_INTEGRITY_FAILED` results were discarded, the
+  manifest was refreshed, and no conclusion was taken from that run.
 
 ### Local workspace pointer during smoke installs
 
@@ -135,3 +138,16 @@ when they establish a reusable engineering rule.
 - Reuse rule: distinguish filesystem paths from serialized manifest paths and
   escaped configuration strings. Assert canonical `/` paths in stored state;
   make display/config assertions tolerate platform-specific escaping.
+
+### CodeQL alert closure
+
+- Finding: the first Advanced Security review reported nine alerts: two
+  polynomial-regex parsers, four check-then-use file patterns, and three
+  environment- or shell-controlled release commands.
+- Result: linear parsing, descriptor-bound reads, and a deterministic
+  shell-free npm CLI path closed eight alerts in the first fix pass. The
+  remaining test-only alert came from an `access()` absence check before a
+  later open and was removed by asserting the read failure directly.
+- Reuse rule: require both the workflow's CodeQL analysis job and the separate
+  pull-request Advanced Security check to pass. A successful SARIF upload is
+  not proof that the uploaded analysis contains zero blocking alerts.

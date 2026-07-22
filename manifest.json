@@ -394,7 +394,7 @@
       "path": "cli/memory-data.js",
       "source": "repo:cli/memory-data.js",
       "version": "1.0.0",
-      "sha256": "05b10bc2397edbdeed68ff683c2fd928a66209e22726030e5e87dc55b66bae0d",
+      "sha256": "9bc969e818bbe0702ae3b7a1bfcd16676b88f4d0d0e2c82f15e3ca45459db72d",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -503,7 +503,7 @@
       "path": "hooks/emergency-resources.cjs",
       "source": "repo:hooks/emergency-resources.cjs",
       "version": "1.0.0",
-      "sha256": "62126e04b50d490b9c0caac6f6427651719c62d76f241f6e9174889358d76ec6",
+      "sha256": "9d8b4d8b7a69cb3bd2ee5505834a73cd7bfc123eb9702376c795d5022fb8834d",
       "role": "client-hook-data:emergency-resources",
       "protection": "framework",
       "targets": [
