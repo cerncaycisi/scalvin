@@ -1,7 +1,7 @@
 ---
 record_kind: ai_authored_session_note
 author_role: ai_companion
-author_name: "[configured companion name; default Scalvin]"
+author_name: "[configured companion name; default Susan]"
 session_id: s-<uuid>
 started_at: YYYY-MM-DDTHH:MM:SS+HH:MM
 closed_at: YYYY-MM-DDTHH:MM:SS+HH:MM

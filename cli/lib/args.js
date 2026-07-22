@@ -3,26 +3,27 @@
 const { ScalvinError } = require('./errors');
 
 const BOOLEAN_OPTIONS = new Set([
-  'dry-run', 'force', 'json', 'help', 'version', 'non-interactive', 'check', 'encrypt', 'clear-preferred-user-name', 'show-preferred-user-name', 'can-resume-context', 'decline-reminder'
+  'dry-run', 'force', 'json', 'help', 'version', 'non-interactive', 'check', 'encrypt', 'allow-plaintext-backup', 'allow-plaintext-export', 'clear-preferred-user-name', 'show-preferred-user-name', 'can-resume-context', 'decline-reminder'
 ]);
 const REPEATABLE_OPTIONS = new Set(['modality', 'proposed-memory-id', 'approved-id']);
 const COMMON = ['help', 'version', 'json'];
 const COMMAND_OPTIONS = {
   help: COMMON,
   version: COMMON,
-  install: [...COMMON, 'workspace', 'target', 'companion-name', 'language', 'persona', 'structure', 'modality', 'consent', 'force', 'confirm', 'dry-run', 'non-interactive', 'backup-output'],
-  update: [...COMMON, 'workspace', 'target', 'companion-name', 'language', 'persona', 'structure', 'modality', 'force', 'confirm', 'dry-run', 'non-interactive', 'backup-output', 'manifest', 'source', 'release', 'manifest-sha256'],
+  install: [...COMMON, 'workspace', 'target', 'companion-name', 'language', 'persona', 'structure', 'modality', 'consent', 'force', 'confirm', 'dry-run', 'non-interactive', 'backup-output', 'backup-passphrase-file', 'recovery-key-output'],
+  update: [...COMMON, 'workspace', 'target', 'companion-name', 'language', 'persona', 'structure', 'modality', 'force', 'confirm', 'dry-run', 'non-interactive', 'backup-output', 'backup-passphrase-file', 'recovery-key-output', 'manifest', 'source', 'release', 'manifest-sha256'],
   doctor: [...COMMON, 'workspace', 'target'],
-  backup: [...COMMON, 'workspace', 'target', 'action', 'id', 'backup', 'output', 'confirm', 'dry-run', 'encrypt', 'passphrase-file', 'decline-reminder'],
-  restore: [...COMMON, 'workspace', 'target', 'backup', 'backup-output', 'force', 'confirm', 'dry-run', 'passphrase-file'],
+  backup: [...COMMON, 'workspace', 'target', 'action', 'id', 'backup', 'output', 'confirm', 'dry-run', 'encrypt', 'allow-plaintext-backup', 'passphrase-file', 'recovery-key-output', 'decline-reminder'],
+  restore: [...COMMON, 'workspace', 'target', 'backup', 'backup-output', 'force', 'confirm', 'dry-run', 'passphrase-file', 'backup-passphrase-file', 'recovery-key-output'],
   consent: [...COMMON, 'workspace', 'target', 'status', 'category', 'value', 'retention', 'dry-run'],
-  memory: [...COMMON, 'workspace', 'target', 'action', 'id', 'scope', 'statement', 'output', 'confirm', 'session-id', 'limit', 'dry-run'],
+  memory: [...COMMON, 'workspace', 'target', 'action', 'id', 'scope', 'statement', 'output', 'confirm', 'session-id', 'limit', 'dry-run', 'allow-plaintext-export', 'data-class', 'policy', 'days', 'expires-at', 'now'],
   transcript: [...COMMON, 'workspace', 'target', 'action', 'session-id', 'capture-grade', 'scope', 'confirm', 'dry-run'],
   session: [...COMMON, 'workspace', 'target', 'timezone', 'now', 'author-name', 'session-id', 'turn-number', 'live-thread-file', 'unresolved-file', 'carry-forward-file', 'note-file', 'deep-dive-file', 'primer-file', 'transcript-file', 'completion', 'recovery-action', 'can-resume-context', 'confirm', 'dry-run'],
   context: [...COMMON, 'workspace', 'target', 'id', 'candidate-file', 'patch-file', 'candidates-file', 'approved-id', 'status', 'canonical-id', 'merged-id', 'session-id', 'now', 'confirm', 'dry-run'],
   changes: [...COMMON, 'workspace', 'target', 'change-target', 'setting', 'value', 'value-file', 'evidence-status', 'why', 'why-file', 'expected-effect', 'expected-effect-file', 'risks-or-tradeoffs', 'risks-file', 'session-id', 'change-id', 'revision-id', 'wording', 'wording-file', 'confirm', 'dry-run'],
+  client: [...COMMON, 'workspace', 'target', 'client', 'client-bin'],
   preferences: [...COMMON, 'workspace', 'target', 'language', 'timezone', 'preferred-user-name', 'clear-preferred-user-name', 'show-preferred-user-name', 'response-load', 'one-question-at-a-time', 'plain-language-summaries', 'reduced-metaphor', 'extra-processing-time', 'body-prompts', 'sensory-grounding', 'between-session-experiments', 'stale-memory-offers', 'dry-run'],
-  source: [...COMMON, 'workspace', 'target', 'path', 'kind', 'locale', 'source-id', 'revision', 'provenance-file', 'proposed-memory-id', 'proposed-memory-file', 'import-consent-event', 'import-retention', 'external-care-consent-event', 'external-care-retention', 'confirm', 'dry-run'],
+  source: [...COMMON, 'workspace', 'target', 'path', 'kind', 'locale', 'source-id', 'revision', 'provenance-file', 'proposed-memory-id', 'proposed-memory-file', 'import-consent-event', 'import-retention', 'external-care-consent-event', 'external-care-retention', 'client', 'client-bin', 'confirm', 'dry-run'],
   'review-due': [...COMMON, 'workspace', 'target', 'date', 'timezone']
 };
 

@@ -1,4 +1,4 @@
-<!-- version: 3.0.0 -->
+<!-- version: 3.1.0 -->
 ## Solution-Focused Brief Therapy (SFBT)
 
 **Core principle:** SFBT deliberately looks for preferred outcomes, exceptions, coping, and small next steps. It does not assume every person already has every resource they need or that structural constraints can be solved by optimism.
@@ -70,15 +70,16 @@ Treat these as SFBT working prompts, not universal facts:
 - "What's one small sign of progress you could look for this week?"
 - "On a scale of 1-10, how confident are you that you can take that next step?"
 
-### When to Use SFBT
+### Conversation Contexts Where This Lens May Fit
 
-- Feeling stuck or hopeless
-- Clear desire for change but unsure how to start
-- Situations where problem-analysis has become circular
-- Building momentum after a setback
-- Brief or time-limited reflective conversations
-- When someone needs a confidence boost grounded in real evidence
-- Complement to other approaches (SFBT pairs well with nearly anything)
+These are user-described conversation patterns, not diagnoses, clinical
+indications, or treatment-selection criteria:
+
+- the user wants one observable preferred outcome or next sign rather than more problem analysis
+- the conversation has become circular and the user wants to look for exceptions, coping, or existing support
+- the user wants a small, reversible step after a setback
+- the exchange is brief or time-limited and a bounded question would be useful
+- the user wants confidence grounded in specific evidence rather than reassurance
 
 ## How To Use In Session
 

@@ -9,7 +9,7 @@ Scalvin may learn preferences, but it must not silently rewrite its base behavio
 - User-specific behavior lives under `.therapy/user-overrides/`.
 - Proposed changes live under `.therapy/change-control/pending/`.
 - Approved revision snapshots live under `.therapy/change-control/history/`.
-- Content-free change events live in `.therapy/state/CHANGE-LOG.md`.
+- Content-free change events are maintained by the deterministic change-control operation in `.therapy/state/CHANGE-LOG.md`; the companion does not access that denied state path directly.
 
 Never edit the immutable base to encode one user's preferences. Never let an override weaken safety, consent, deletion, provenance, or source-trust rules.
 

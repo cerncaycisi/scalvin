@@ -41,7 +41,7 @@ jobs:
           - os: windows-latest
             node: "24"
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -69,12 +69,32 @@ jobs:
           python-version: "3.12"
       - run: python tests/compatibility/test_review_due_check.py
 
+  codeql:
+    name: JavaScript security analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - name: Analyze JavaScript
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        with:
+          category: /language:javascript-typescript
+
   required-ci:
     name: Required CI
     if: ${{ always() }}
     needs:
       - test
       - compatibility-python
+      - codeql
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -83,9 +103,10 @@ jobs:
         env:
           MATRIX_RESULT: ${{ needs.test.result }}
           PYTHON_RESULT: ${{ needs.compatibility-python.result }}
+          CODEQL_RESULT: ${{ needs.codeql.result }}
         run: |
-          if [[ "$MATRIX_RESULT" != "success" || "$PYTHON_RESULT" != "success" ]]; then
-            echo "Required CI failed: matrix=$MATRIX_RESULT python=$PYTHON_RESULT" >&2
+          if [[ "$MATRIX_RESULT" != "success" || "$PYTHON_RESULT" != "success" || "$CODEQL_RESULT" != "success" ]]; then
+            echo "Required CI failed: matrix=$MATRIX_RESULT python=$PYTHON_RESULT codeql=$CODEQL_RESULT" >&2
             exit 1
           fi
 
@@ -108,6 +129,8 @@ jobs:
         env:
           VERSION: ${{ inputs.stable_version }}
         run: |
+          node scripts/verify-stable-readiness.mjs
+
           test "$GITHUB_REF" = "refs/heads/main"
           if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "Stable version must be a canonical x.y.z value without a v prefix." >&2
@@ -141,9 +164,11 @@ jobs:
       - release-preflight
     runs-on: ubuntu-latest
     environment: stable-release
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -195,6 +220,64 @@ jobs:
             --expected-commit "$GITHUB_SHA" \
             --expected-version "$package_version" \
             --reviewer-key-sha256 "$SCALVIN_CLINICAL_REVIEWER_KEY_SHA256"
+      - name: Build release archive, checksum, SPDX SBOM, metadata, and release-set checksum
+        shell: bash
+        env:
+          VERSION: ${{ inputs.stable_version }}
+          ARTIFACT_DIRECTORY: ${{ runner.temp }}/scalvin-release-artifacts
+        run: |
+          node scripts/build-release-artifacts.mjs \
+            --output-directory "$ARTIFACT_DIRECTORY" \
+            --expected-version "$VERSION" \
+            --expected-commit "$GITHUB_SHA" \
+            --require-clean
+      - name: Verify clean install from the packed release archive
+        shell: bash
+        env:
+          VERSION: ${{ inputs.stable_version }}
+          ARTIFACT_DIRECTORY: ${{ runner.temp }}/scalvin-release-artifacts
+        run: |
+          node scripts/verify-release-package.mjs \
+            --archive "$ARTIFACT_DIRECTORY/scalvin-${VERSION}.tgz" \
+            --checksum-file "$ARTIFACT_DIRECTORY/scalvin-${VERSION}.tgz.sha256" \
+            --sbom "$ARTIFACT_DIRECTORY/scalvin-${VERSION}.spdx.json" \
+            --metadata "$ARTIFACT_DIRECTORY/scalvin-${VERSION}.release-metadata.json" \
+            --release-set-checksum "$ARTIFACT_DIRECTORY/scalvin-${VERSION}.release-set.sha256" \
+            --expected-version "$VERSION" \
+            --expected-commit "$GITHUB_SHA"
+      - name: Attest complete release artifact-set provenance
+        id: attest-release-provenance
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-checksums: ${{ runner.temp }}/scalvin-release-artifacts/scalvin-${{ inputs.stable_version }}.release-set.sha256
+      - name: Attest release archive SBOM
+        id: attest-release-sbom
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-checksums: ${{ runner.temp }}/scalvin-release-artifacts/scalvin-${{ inputs.stable_version }}.tgz.sha256
+          sbom-path: ${{ runner.temp }}/scalvin-release-artifacts/scalvin-${{ inputs.stable_version }}.spdx.json
+      - name: Preserve attestation bundles with the release candidates
+        shell: bash
+        env:
+          VERSION: ${{ inputs.stable_version }}
+          ARTIFACT_DIRECTORY: ${{ runner.temp }}/scalvin-release-artifacts
+          PROVENANCE_BUNDLE_PATH: ${{ steps.attest-release-provenance.outputs.bundle-path }}
+          SBOM_BUNDLE_PATH: ${{ steps.attest-release-sbom.outputs.bundle-path }}
+        run: |
+          test -f "$PROVENANCE_BUNDLE_PATH"
+          test -f "$SBOM_BUNDLE_PATH"
+          cp "$PROVENANCE_BUNDLE_PATH" \
+            "$ARTIFACT_DIRECTORY/scalvin-${VERSION}.provenance.intoto.jsonl"
+          cp "$SBOM_BUNDLE_PATH" \
+            "$ARTIFACT_DIRECTORY/scalvin-${VERSION}.sbom.intoto.jsonl"
+      - name: Upload verified release candidates
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scalvin-${{ inputs.stable_version }}-release-candidate
+          path: ${{ runner.temp }}/scalvin-release-artifacts/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
       - name: Create immutable stable tag
         shell: bash
         env:

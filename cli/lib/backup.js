@@ -19,6 +19,7 @@ const {
   walkTree,
   copyTree,
   hardenTree,
+  createPrivateExclusiveFile,
   createPrivateStage,
   snapshotWorkspaceTree,
   assertWorkspaceSnapshot,
@@ -45,6 +46,55 @@ function backupName(now = new Date()) {
   const day = iso.slice(0, 10);
   const time = iso.slice(11, 19).replaceAll(':', '');
   return `scalvin-backup-${day}-${time}--${crypto.randomUUID()}.scalvin-backup`;
+}
+
+function defaultRecoveryKeyRoot(workspaceInput) {
+  const workspace = resolvePortablePath(workspaceInput);
+  return path.join(path.dirname(workspace), '.scalvin-recovery-keys');
+}
+
+function recoveryKeyPathFor(workspaceInput, backupId, options = {}) {
+  invariant(BACKUP_ID_PATTERN.test(backupId || ''), 'Recovery key requires a valid backup ID.', 'BACKUP_ID_INVALID');
+  const workspace = resolvePortablePath(workspaceInput);
+  const root = resolvePortablePath(options.recoveryKeyOutput || defaultRecoveryKeyRoot(workspace));
+  const outputRoot = options.backupOutput ? resolvePortablePath(options.backupOutput) : null;
+  invariant(!isInside(workspace, root), 'Recovery keys must be stored outside the workspace.', 'RECOVERY_KEY_INSIDE_WORKSPACE');
+  if (outputRoot) {
+    invariant(!isInside(outputRoot, root) && !isInside(root, outputRoot), 'Recovery keys and backup artifacts must use separate directory trees.', 'RECOVERY_KEY_BACKUP_OVERLAP');
+  }
+  return path.join(root, `${backupId}.key`);
+}
+
+async function createRecoveryKeyFile(outputInput, options = {}) {
+  invariant(outputInput, 'Recovery-key creation requires an exact output file.', 'INVALID_ARGUMENT');
+  const output = resolvePortablePath(outputInput);
+  await rejectSymlinkPath(output, { allowMissing: true });
+  invariant(!(await pathExists(output)), 'Recovery-key output already exists.', 'RECOVERY_KEY_EXISTS');
+  if (options.dryRun) {
+    return { status: 'dry-run', recoveryKeyPath: output, secretIncluded: false, nextAction: 'run-backup-key-create' };
+  }
+  await ensurePrivateDir(path.dirname(output));
+  const random = crypto.randomBytes(32);
+  const body = Buffer.from(`scalvin-recovery-key-v1:${random.toString('base64url')}\n`, 'utf8');
+  random.fill(0);
+  let handle;
+  let created = false;
+  try {
+    handle = await createPrivateExclusiveFile(output);
+    created = true;
+    await handle.writeFile(body);
+    await handle.sync();
+    await handle.close();
+    handle = null;
+    await fsyncDirectory(path.dirname(output));
+    return { status: 'created', recoveryKeyPath: output, secretIncluded: false, nextAction: 'store-recovery-key-separately-and-test-restore' };
+  } catch (error) {
+    await handle?.close().catch(() => {});
+    if (created) await fsp.rm(output, { force: true }).catch(() => {});
+    throw error;
+  } finally {
+    body.fill(0);
+  }
 }
 
 async function readWorkspaceId(workspace) {
@@ -80,10 +130,11 @@ async function appendBackupLedger(workspace, event) {
     invariant(!markdown.includes(`| ${event.backupId} |`), 'Backup ledger event ID already exists.', 'BACKUP_LEDGER_INVALID');
     const row = `| ${event.backupId} | ${event.createdAt} | full_workspace | ${event.destinationClass} | ${event.encryption} | ${event.checksum} | passed | passed | complete | null |`;
     markdown = markdown.replace(header, `${header}\n${row}`);
+    const latest = latestCompleteBackupRecord(parseBackupLedger(markdown).records);
     const reminderValues = {
-      'Last successful backup': event.createdAt,
-      'Last successful backup SHA-256': event.checksum,
-      'Last destination class': event.destinationClass,
+      'Last successful backup': latest?.createdAt || 'null',
+      'Last successful backup SHA-256': latest?.checksum || 'null',
+      'Last destination class': latest?.destinationClass || 'null',
       'Sessions since successful backup': '0',
       'Last reminder at': 'null',
       'Reminder declined until': 'null'
@@ -100,7 +151,14 @@ async function appendBackupLedger(workspace, event) {
       code: 'BACKUP_LEDGER_VERIFY_FAILED',
       message: 'Backup ledger verification could not read a bounded regular file.'
     }));
-    invariant(verified.includes(row) && verified.includes(`- Last successful backup SHA-256: ${event.checksum}`), 'Backup ledger verification failed.', 'BACKUP_LEDGER_VERIFY_FAILED');
+    invariant(
+      verified.includes(row)
+        && verified.includes(`- Last successful backup: ${latest.createdAt}`)
+        && verified.includes(`- Last successful backup SHA-256: ${latest.checksum}`)
+        && verified.includes(`- Last destination class: ${latest.destinationClass}`),
+      'Backup ledger verification failed.',
+      'BACKUP_LEDGER_VERIFY_FAILED'
+    );
     return { written: true, backupId: event.backupId };
   } catch (error) {
     if (error instanceof ScalvinError) throw error;
@@ -162,7 +220,7 @@ async function createBackup(workspaceInput, options = {}) {
   invariant(stat.isDirectory(), 'Workspace must be a directory.', 'INVALID_WORKSPACE');
   const sourceSnapshot = await snapshotWorkspaceTree(workspace);
 
-  invariant(options.encrypt || !options.passphraseFile, '--passphrase-file is only valid with --encrypt.', 'PASSPHRASE_NOT_APPLICABLE');
+  invariant(options.encrypt || !options.passphraseFile, '--passphrase-file is only valid with encrypted backup creation.', 'PASSPHRASE_NOT_APPLICABLE');
   if (options.passphraseFile) {
     const passphrasePath = resolvePortablePath(options.passphraseFile);
     invariant(!isInside(workspace, passphrasePath), 'Passphrase file must be outside the workspace so it is never included in a backup.', 'PASSPHRASE_INSIDE_WORKSPACE');
@@ -176,12 +234,25 @@ async function createBackup(workspaceInput, options = {}) {
   const finalPath = path.join(outputRoot, backupName(options.now));
   invariant(!(await pathExists(finalPath)), 'Backup destination already exists.', 'BACKUP_EXISTS', { path: finalPath });
 
-  if (options.encrypt) {
+  let recoveryKeyPath = null;
+  let generatedRecoveryKey = false;
+  if (options.encrypt && !options.passphraseFile) {
+    invariant(options.autoGenerateRecoveryKey === true, 'Encrypted backup requires --passphrase-file or automatic recovery-key generation.', 'PASSPHRASE_REQUIRED');
+    recoveryKeyPath = recoveryKeyPathFor(workspace, backupId, {
+      recoveryKeyOutput: options.recoveryKeyOutput,
+      backupOutput: outputRoot
+    });
+  }
+  if (options.encrypt && options.passphraseFile) {
     const passphrase = await readPassphrase(options);
     passphrase.fill(0);
   }
   if (options.dryRun) {
-    return { status: 'dry-run', workspacePath: workspace, backupPath: finalPath, encrypted: Boolean(options.encrypt) };
+    return {
+      status: 'dry-run', workspacePath: workspace, backupPath: finalPath,
+      encrypted: Boolean(options.encrypt), recoveryKeyPath, recoveryKeyCreated: false,
+      secretIncluded: false
+    };
   }
 
   await ensurePrivateDir(outputRoot);
@@ -189,6 +260,10 @@ async function createBackup(workspaceInput, options = {}) {
   const payload = path.join(stage, 'payload');
   let activated = false;
   try {
+    if (recoveryKeyPath) {
+      await createRecoveryKeyFile(recoveryKeyPath);
+      generatedRecoveryKey = true;
+    }
     await createPrivateStage(stage);
     await copyTree(workspace, payload);
     await hardenTree(payload);
@@ -204,7 +279,10 @@ async function createBackup(workspaceInput, options = {}) {
     const fileCount = integrity.entries.filter((entry) => entry.type === 'file').length;
     let encryptedPayloadHash = null;
     if (options.encrypt) {
-      encryptedPayloadHash = await encryptPayload(payload, path.join(stage, 'payload.enc'), integrity, options);
+      encryptedPayloadHash = await encryptPayload(payload, path.join(stage, 'payload.enc'), integrity, {
+        ...options,
+        passphraseFile: options.passphraseFile || recoveryKeyPath
+      });
       await fsp.rm(payload, { recursive: true, force: true });
     }
     const raw = `${JSON.stringify(integrity, null, 2)}\n`;
@@ -212,7 +290,7 @@ async function createBackup(workspaceInput, options = {}) {
     const checksum = sha256Buffer(Buffer.from(raw));
     await atomicWriteFile(path.join(stage, 'CHECKSUM.sha256'), `${checksum}  integrity.json\n${encryptedPayloadHash ? `${encryptedPayloadHash}  payload.enc\n` : ''}`);
     await hardenTree(stage);
-    await verifyBackup(stage, { passphraseFile: options.passphraseFile });
+    await verifyBackup(stage, { passphraseFile: options.passphraseFile || recoveryKeyPath });
     invariant(!(await pathExists(finalPath)), 'Backup destination already exists.', 'BACKUP_EXISTS', { path: finalPath });
     await fsp.rename(stage, finalPath);
     activated = true;
@@ -229,23 +307,30 @@ async function createBackup(workspaceInput, options = {}) {
       workspacePath: workspace,
       workspaceId,
       backupPath: finalPath,
+      createdAt,
+      destinationClass: options.output ? 'local_user_selected' : 'local_sibling_default',
       files: fileCount,
       checksum,
       encrypted: Boolean(options.encrypt),
+      recoveryKeyPath,
+      recoveryKeyCreated: generatedRecoveryKey,
+      secretIncluded: false,
       ledgerWritten: ledger.written,
       backupId: ledger.backupId || backupId
     };
   } catch (error) {
     await fsp.rm(stage, { recursive: true, force: true }).catch(() => {});
+    if (generatedRecoveryKey && !activated) await fsp.rm(recoveryKeyPath, { force: true }).catch(() => {});
     if (activated) {
       if (error instanceof ScalvinError) {
-        error.details = { ...(error.details || {}), backupCreated: true, backupPath: finalPath, backupId };
+        error.details = { ...(error.details || {}), backupCreated: true, backupPath: finalPath, backupId, recoveryKeyPath };
         throw error;
       }
       throw new ScalvinError('Backup artifact was created but final receipt handling failed.', 'BACKUP_POST_ACTIVATION_FAILED', {
         backupCreated: true,
         backupPath: finalPath,
         backupId,
+        recoveryKeyPath,
         causeCode: error.code || 'UNKNOWN'
       });
     }
@@ -505,6 +590,16 @@ function parseBackupLedger(markdown) {
   return { records, reminder };
 }
 
+function latestCompleteBackupRecord(records) {
+  let latest = null;
+  for (const record of records) {
+    if (record.artifactStatus !== 'complete') continue;
+    if (!latest || Date.parse(record.createdAt) > Date.parse(latest.createdAt)
+      || (record.createdAt === latest.createdAt && record.backupId > latest.backupId)) latest = record;
+  }
+  return latest;
+}
+
 const OPERATION_HEADER = '| Event ID | At | Operation | Backup ID | Phase | Status | Error code |';
 const OPERATION_DIVIDER = '|---|---|---|---|---|---|---|';
 
@@ -581,12 +676,12 @@ async function readBackupLedgerStatus(workspaceInput, options = {}) {
       reminder: context.reminder
     };
   }
-  const active = context.records.filter((item) => item.artifactStatus === 'complete');
+  const latest = latestCompleteBackupRecord(context.records);
   return {
     status: 'available',
     recordCount: context.records.length,
     operationReceiptCount: parseBackupOperationReceipts(context.markdown).length,
-    latest: active.length ? active[active.length - 1] : null,
+    latest,
     reminder: context.reminder
   };
 }
@@ -644,10 +739,17 @@ async function markBackupDeleted(workspaceInput, options = {}) {
   const newRow = `| ${record.backupId} | ${record.createdAt} | ${record.scope} | ${record.destinationClass} | ${record.encryption} | ${record.checksum} | ${record.integrityCheck} | ${record.restoreCheck} | deleted | ${deletedAt} |`;
   invariant(context.markdown.includes(oldRow), 'Backup ledger row cannot be updated exactly.', 'BACKUP_LEDGER_INVALID');
   let markdown = context.markdown.replace(oldRow, newRow);
-  const lastSuccessful = context.reminder.lastSuccessfulBackup;
-  if (lastSuccessful === record.createdAt) {
-    for (const label of ['Last successful backup', 'Last successful backup SHA-256', 'Last destination class']) {
-      markdown = markdown.replace(new RegExp(`^- ${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:.*$`, 'm'), `- ${label}: null`);
+  const reminderSelectsRecord = context.reminder.lastSuccessfulBackup === record.createdAt
+    && context.reminder.lastSuccessfulBackupSha256 === record.checksum
+    && context.reminder.lastDestinationClass === record.destinationClass;
+  if (reminderSelectsRecord) {
+    const fallback = latestCompleteBackupRecord(context.records.filter((item) => item.backupId !== record.backupId));
+    for (const [label, value] of [
+      ['Last successful backup', fallback?.createdAt || 'null'],
+      ['Last successful backup SHA-256', fallback?.checksum || 'null'],
+      ['Last destination class', fallback?.destinationClass || 'null']
+    ]) {
+      markdown = markdown.replace(new RegExp(`^- ${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:.*$`, 'm'), `- ${label}: ${value}`);
     }
   }
   await atomicWriteFile(context.ledgerPath, markdown);
@@ -774,6 +876,9 @@ async function findDefaultBackupById(workspaceInput, backupId) {
 
 module.exports = {
   backupName,
+  defaultRecoveryKeyRoot,
+  recoveryKeyPathFor,
+  createRecoveryKeyFile,
   createBackup,
   verifyBackup,
   getBackupSummary,

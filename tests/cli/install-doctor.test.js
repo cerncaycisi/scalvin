@@ -12,7 +12,7 @@ const {
   install,
   doctor
 } = require('../../cli/operations');
-const { runDoctor } = require('../../cli/doctor');
+const { runDoctor, probeMechanicalSafetyHook } = require('../../cli/doctor');
 const {
   acquireMutationLock,
   createPrivateExclusiveFile,
@@ -22,6 +22,24 @@ const {
 const { sandbox, readJson } = require('./helpers');
 
 const MANUAL_LOCK_GUIDANCE = 'Manual recovery only: inspect the lock, confirm no Scalvin mutation is running, then remove this exact lock path manually; never delete it based only on age or PID liveness.';
+
+test('doctor reports a deeply missing workspace without attempting a mutation lock', async () => {
+  const box = await sandbox('doctor-missing-workspace');
+  try {
+    const missingParent = path.join(box.base, 'missing-parent');
+    const missingWorkspace = path.join(missingParent, 'workspace');
+    const report = await doctor({ target: missingWorkspace });
+
+    assert.equal(report.status, 'errors');
+    assert.equal(report.errors, 1);
+    assert.equal(report.warnings, 0);
+    assert.ok(report.findings.some((item) => item.code === 'WORKSPACE_NOT_FOUND'));
+    assert.equal(report.findings.some((item) => item.code === 'MUTATION_LOCK_FAILED'), false);
+    await assert.rejects(fsp.access(missingParent));
+  } finally {
+    await box.cleanup();
+  }
+});
 
 for (const consent of ['not-decided', 'granted', 'declined']) {
   test(`install projects canonical ${consent} consent consistently`, async () => {
@@ -40,6 +58,12 @@ for (const consent of ['not-decided', 'granted', 'declined']) {
       assert.match(controls, /\| context_graph \| off \| do_not_store \|/);
       const report = await doctor({ target: box.workspace });
       assert.equal(report.errors, 0);
+      assert.deepEqual(report.capabilities.mechanicalSafetyBackstop, {
+        state: 'available',
+        reasonCode: null,
+        evidence: 'doctor-self-test'
+      });
+      assert.ok(report.findings.some((item) => item.code === 'SAFETY_HOOK_HEALTH_AVAILABLE'));
       assert.equal(report.findings.some((item) => item.code === 'CONSENT_PROJECTION_MISMATCH'), false);
       if (consent === 'not-decided') assert.equal(report.status, 'warnings');
       else assert.equal(report.status, 'healthy');
@@ -71,12 +95,12 @@ test('install is private, manifest-driven, hook-aware, and ignores a valid pre-c
     assert.equal(state.source.pinType, 'manifest-sha256');
     assert.equal(state.source.pin, state.product.manifestSha256);
     assert.equal(state.preferences.language, 'auto');
-    assert.equal(state.preferences.companionName, 'Scalvin');
-    assert.equal(state.preferences.persona, 'scalvin');
+    assert.equal(state.preferences.companionName, 'Susan');
+    assert.equal(state.preferences.persona, 'susan');
     assert.deepEqual(state.preferences.modalities, ['act', 'cft', 'motivational-interviewing']);
     const setupNotes = await fsp.readFile(path.join(box.workspace, 'SETUP-NOTES.md'), 'utf8');
     assert.doesNotMatch(setupNotes, /\{\{[A-Z0-9_]+\}\}|\[name\]/);
-    for (const expected of ['Scalvin', 'auto', 'scalvin', 'moderate', 'act, cft, motivational-interviewing']) assert.ok(setupNotes.includes(expected), expected);
+    for (const expected of ['Susan', 'auto', 'susan', 'moderate', 'act, cft, motivational-interviewing']) assert.ok(setupNotes.includes(expected), expected);
     assert.doesNotMatch(setupNotes, /^\s*[-|]\s*(?:continuity_memory|raw_transcripts)\s*(?:[:|])/mi);
     assert.doesNotMatch(setupNotes, /consent-[0-9a-f]{8}-[0-9a-f-]{27}/i);
     if (process.platform === 'win32') {
@@ -91,6 +115,81 @@ test('install is private, manifest-driven, hook-aware, and ignores a valid pre-c
     assert.match(serialized, /safety-net\.cjs/);
     assert.match(serialized, /current-time\.cjs/);
     assert.equal((serialized.match(/safety-net\.cjs/g) || []).length, 1);
+  } finally {
+    await box.cleanup();
+  }
+});
+
+test('doctor reports content-free available, degraded, and unsupported mechanical safety capability states', async () => {
+  const box = await sandbox('doctor-safety-capability');
+  try {
+    await install({ target: box.workspace, consent: 'granted' });
+    let report = await doctor({ target: box.workspace });
+    assert.deepEqual(report.capabilities.mechanicalSafetyBackstop, {
+      state: 'available',
+      reasonCode: null,
+      evidence: 'doctor-self-test'
+    });
+
+    const privateValue = 'PRIVATE_DOCTOR_HEALTH_VALUE_9f3e2d';
+    const safetyHook = path.join(box.workspace, '.therapy', 'hooks', 'safety-net.cjs');
+    const executionMarker = path.join(box.base, 'modified-hook-executed');
+    await fsp.writeFile(safetyHook, [
+      "'use strict';",
+      `require('node:fs').writeFileSync(${JSON.stringify(executionMarker)}, ${JSON.stringify(privateValue)});`,
+      `process.stdout.write(JSON.stringify({schemaVersion:1,capability:'mechanical_safety_backstop',state:'degraded',reasonCode:${JSON.stringify(privateValue)}}) + '\\n');`
+    ].join('\n'), { mode: 0o600 });
+    report = await doctor({ target: box.workspace });
+    assert.equal(report.capabilities.mechanicalSafetyBackstop.state, 'degraded');
+    assert.equal(report.capabilities.mechanicalSafetyBackstop.reasonCode, 'HOOK_INTEGRITY_UNVERIFIED');
+    await assert.rejects(fsp.access(executionMarker));
+    const healthFinding = report.findings.find((item) => item.code === 'SAFETY_HOOK_HEALTH_DEGRADED');
+    assert.ok(healthFinding);
+    const healthOutput = JSON.stringify({ capability: report.capabilities.mechanicalSafetyBackstop, finding: healthFinding });
+    assert.equal(healthOutput.includes(privateValue), false);
+    assert.equal(healthOutput.includes(box.workspace), false);
+
+    const untrustedProbe = path.join(box.base, 'untrusted-self-test.cjs');
+    await fsp.writeFile(untrustedProbe, [
+      "'use strict';",
+      `process.stdout.write(JSON.stringify({schemaVersion:1,capability:'mechanical_safety_backstop',state:'degraded',reasonCode:${JSON.stringify(privateValue)}}) + '\\n');`
+    ].join('\n'), { mode: 0o600 });
+    const sanitizedProbe = await probeMechanicalSafetyHook(box.base, path.basename(untrustedProbe));
+    assert.deepEqual(sanitizedProbe, {
+      state: 'degraded',
+      reasonCode: 'SELF_TEST_PROTOCOL_INVALID',
+      evidence: 'doctor-self-test'
+    });
+    assert.equal(JSON.stringify(sanitizedProbe).includes(privateValue), false);
+    assert.equal(JSON.stringify(sanitizedProbe).includes(box.base), false);
+
+    const staleResourceProbe = path.join(box.base, 'stale-resource-self-test.cjs');
+    await fsp.writeFile(staleResourceProbe, [
+      "'use strict';",
+      "process.stdout.write(JSON.stringify({schemaVersion:1,capability:'mechanical_safety_backstop',state:'degraded',reasonCode:'EMERGENCY_RESOURCE_REGISTRY_STALE'}) + '\\n');"
+    ].join('\n'), { mode: 0o600 });
+    assert.deepEqual(await probeMechanicalSafetyHook(box.base, path.basename(staleResourceProbe)), {
+      state: 'degraded',
+      reasonCode: 'EMERGENCY_RESOURCE_REGISTRY_STALE',
+      evidence: 'doctor-self-test'
+    });
+
+    const manifest = JSON.parse(await fsp.readFile(DISTRIBUTION_MANIFEST, 'utf8'));
+    manifest.clientIntegrations.claude.hooks = manifest.clientIntegrations.claude.hooks
+      .filter((hook) => !hook.target.endsWith('/safety-net.cjs'));
+    const unsupportedManifest = path.join(box.base, 'manifest-without-safety-hook.json');
+    await fsp.writeFile(unsupportedManifest, `${JSON.stringify(manifest, null, 2)}\n`);
+    const unsupported = await runDoctor(box.workspace, {
+      distributionRoot: DISTRIBUTION_ROOT,
+      distributionManifest: unsupportedManifest,
+      mutationLockHeldByCaller: true
+    });
+    assert.deepEqual(unsupported.capabilities.mechanicalSafetyBackstop, {
+      state: 'unsupported',
+      reasonCode: 'CLIENT_HOOK_NOT_DECLARED',
+      evidence: 'manifest'
+    });
+    assert.ok(unsupported.findings.some((item) => item.code === 'SAFETY_HOOK_UNSUPPORTED'));
   } finally {
     await box.cleanup();
   }
@@ -166,6 +265,20 @@ test('install validates an explicit local pointer destination before workspace a
     await assert.rejects(fsp.access(box.workspace), { code: 'ENOENT' });
   } finally {
     delete process.env.SCALVIN_LOCAL_STATE_DIR;
+    await box.cleanup();
+  }
+});
+
+test('doctor omits source-checkout pointer findings when local pointers are explicitly disabled', async () => {
+  const box = await sandbox('doctor-pointer-disabled');
+  try {
+    await install({ target: box.workspace, consent: 'granted' });
+    process.env.SCALVIN_DISABLE_LOCAL_POINTER = '1';
+    const report = await doctor({ target: box.workspace });
+    assert.equal(report.status, 'healthy');
+    assert.equal(report.findings.some((item) => item.code.startsWith('LOCAL_POINTER_')), false);
+  } finally {
+    delete process.env.SCALVIN_DISABLE_LOCAL_POINTER;
     await box.cleanup();
   }
 });
@@ -261,6 +374,17 @@ test('doctor fails closed for corrupt state and exact managed-target omissions',
 
     await fsp.writeFile(statePath, original);
     const state = JSON.parse(original);
+    state.consent.transcriptState = {
+      state: 'recording', sessionId: null, captureGrade: 'best_effort_context',
+      startedAt: state.createdAt, pausedIntervals: [], stoppedAt: null, knownGaps: []
+    };
+    await fsp.writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`);
+    report = await doctor({ target: box.workspace });
+    assert.ok(report.errors > 0);
+    assert.ok(report.findings.some((item) => item.code === 'STATE_CORRUPT'));
+
+    await fsp.writeFile(statePath, original);
+    Object.assign(state, JSON.parse(original));
     delete state.files['.therapy/commands.md'];
     await fsp.writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`);
     report = await doctor({ target: box.workspace });

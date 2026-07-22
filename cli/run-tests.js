@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// <!-- version: 1.5.0 -->
 'use strict';
 
 const fsp = require('node:fs/promises');
@@ -38,7 +39,7 @@ async function main() {
   else if (mode === 'all') files = await discover('tests');
   else throw new Error(`unknown test group: ${mode}`);
   if (!files.length) throw new Error(`no tests found for group: ${mode}`);
-  const child = spawn(process.execPath, ['--test', ...files], {
+  const child = spawn(process.execPath, ['--test', '--test-concurrency=2', ...files], {
     cwd: ROOT,
     stdio: 'inherit',
     env: { ...process.env, SCALVIN_TEST_ROOT: path.join(ROOT, '.test-tmp') }

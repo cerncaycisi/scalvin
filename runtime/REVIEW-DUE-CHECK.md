@@ -15,21 +15,25 @@ An unconfirmed system timezone cannot produce `DUE`; confirm the user's timezone
 
 Consent and pause are checked by session runtime before invoking the tool; the tool only answers calendar/artifact state.
 
-## Preferred Command
+## Terminal Reference
 
-Use the cross-platform Node CLI and pass the confirmed IANA timezone from `.therapy/state/DATA-CONTROLS.md`:
+This command is terminal-only in the development preview. Run it from the
+retained public checkout, targeting the private workspace, and pass the
+confirmed IANA timezone:
 
 ```bash
-scalvin review-due --workspace . --timezone Europe/Istanbul
+node bin/scalvin.js review-due --workspace "<workspace>" --timezone Europe/Istanbul
 ```
 
 Deterministic test override:
 
 ```bash
-scalvin review-due --workspace . --date 2026-07-14
+node bin/scalvin.js review-due --workspace "<workspace>" --date 2026-07-14
 ```
 
-`review_due_check.py` is a compatibility/reference implementation for environments that already have Python 3; it is not the cross-platform default:
+`review_due_check.py` is a tested developer compatibility/reference
+implementation for environments that already have Python 3. It is not a user
+requirement or a normal companion-session fallback:
 
 ```bash
 python3 .therapy/runtime/review_due_check.py \

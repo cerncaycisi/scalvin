@@ -13,7 +13,10 @@ conversation continuity, and user-controlled memory.
 
 It combines a natural conversational experience with a deterministic
 installer, explicit data consent, multi-client adapters, layered memory,
-source isolation, safety evals, and verifiable backup/update tooling.
+broker-mediated private workspace access, isolated source processing, safety
+evals, and verifiable backup/update tooling. Generated Codex and Claude policy
+denies direct private-file access, while the project still reports that static
+policy as runtime-unattested rather than claiming a hard sandbox.
 
 Scalvin is not a therapist, clinician, medical device, crisis service, or
 substitute for professional care. The supported public project is designed for
@@ -42,10 +45,12 @@ Scalvin's architecture is built around:
 flowchart LR
     A["Public Scalvin framework"] --> B["Verified installer / updater"]
     B --> C["Private local workspace"]
-    C --> D["Selected minimum context"]
-    U["User consent and controls"] --> C
-    U --> D
-    D --> E["AI client"]
+    C <--> D["Typed local broker"]
+    U["User consent and exact confirmations"] --> D
+    D <--> E["Main AI companion"]
+    C --> W["Isolated one-source worker"]
+    W --> P["Attested bounded proposals"]
+    P --> D
     E --> F["Local model or hosted provider"]
 ```
 
@@ -66,8 +71,14 @@ git clone https://github.com/cerncaycisi/scalvin.git
 cd scalvin
 ```
 
-Open the folder in Codex, Claude Code, or another repo-aware agent and say
-hello in any language. The default language preference is `auto`.
+Open this source folder in Codex, Claude Code, or another repo-aware agent and
+say hello in any language. The default language preference is `auto`.
+
+Conversation capability is not the same as published safety evidence. Scalvin
+can respond in any language the active model handles reliably, while the
+currently bundled mechanical safety packs and release-evaluation samples cover
+only finite English (`en`) and Turkish (`tr`) cases. An unevaluated language is
+not represented as safety-equivalent evidence.
 
 Scalvin first explains:
 
@@ -86,7 +97,19 @@ node bin/scalvin.js install \
   --consent not-decided
 ```
 
-Then verify:
+Installation ends the bootstrap session. Next:
+
+1. keep this checkout in place during the development preview;
+2. close the source-repository session;
+3. open `~/scalvin-workspace` as a new client project;
+4. approve the local Scalvin connection if the client asks; and
+5. start a fresh session there.
+
+Opening the generated workspace as a new project is required for its client
+policy and local tool configuration to take effect. Continuing from the source
+repository would bypass those project settings.
+
+Verify from this checkout when needed:
 
 ```bash
 node bin/scalvin.js doctor \
@@ -96,42 +119,41 @@ node bin/scalvin.js doctor \
 See [Getting Started](docs/GETTING-STARTED.md) for selections, JSON mode,
 dry-runs, backups, restores, and updates.
 
-## Neutral defaults
+## Default configuration
 
-- companion: Scalvin;
-- persona: Scalvin;
+- companion: Susan;
+- persona: Susan;
 - structure: moderate;
 - active modalities: ACT, CFT, Motivational Interviewing;
 - transcripts: off;
 - body prompts: ask first;
 - between-session experiments: ask first.
 
-Susan and the rest of the persona library remain optional. Advanced modality
+Other personas remain available. Advanced modality
 references are installed as library material but are not automatically active.
 Risk-tier and consent rules still apply after selection.
 
 ## User controls
 
-Scalvin recognizes natural language and explicit forms:
+The development preview supports bounded status, memory
+inspection/correction/creation, pause/seal, consent, session lifecycle,
+prepared-source proposal review/integration, and backup-reminder handling
+through its local connection. Source processing runs in a separate ephemeral
+Codex or Claude worker with only one assigned-source reader and proposal
+submission; the main companion never receives raw source chunks.
+
+The following privacy-sensitive lifecycle controls remain terminal-only:
 
 ```text
-/memory status
-/memory show
-/memory pause
-/memory resume
-/memory correct <item>
-/memory forget <item-or-category>
-/memory review-due|review-confirm|review-decline <item>
-/transcript start|status|pause|resume|stop
-/transcript delete <session-or-all>
-/data export <active|continuity|all>
-/data delete all
-/source add|status|integrate|reject|delete
-/close
+memory resume after sealed pause; forget/delete/export/review/retention;
+transcript controls; context mutations; preferences; backup/restore/update;
+behavior changes; source add/process/reject/delete
 ```
 
-Memory and transcript consent are separate. Imported sources and external-care
-records use per-import consent. A paused interval is not silently backfilled.
+Use `node bin/scalvin.js help` from the retained checkout for those commands.
+Memory and transcript consent are separate. A paused interval is not silently
+backfilled. A prepared source proposal remains untrusted, requires explicit
+candidate-ID selection, and never writes live memory automatically.
 
 ## Layered continuity
 
@@ -189,30 +211,40 @@ confidentiality. Current location-aware guidance lives in
 ## Deterministic lifecycle
 
 ```bash
-scalvin install --help
-scalvin doctor --workspace "<workspace>"
-scalvin backup --workspace "<workspace>" --output "<directory>"
-scalvin restore --backup "<backup>" --workspace "<workspace>" --dry-run
-scalvin changes history --workspace "<workspace>"
-scalvin update --workspace "<workspace>" --manifest-sha256 "<exact-manifest-sha256>" --dry-run
-scalvin review-due --workspace "<workspace>" --json
+node bin/scalvin.js install --help
+node bin/scalvin.js doctor --workspace "<workspace>"
+node bin/scalvin.js backup --workspace "<workspace>" --output "<directory>"
+node bin/scalvin.js restore --backup "<backup>" --workspace "<workspace>" --dry-run
+node bin/scalvin.js changes history --workspace "<workspace>"
+node bin/scalvin.js update --workspace "<workspace>" --manifest-sha256 "<exact-manifest-sha256>" --dry-run
+node bin/scalvin.js review-due --workspace "<workspace>" --json
 ```
 
 Lifecycle commands support previews, verify managed files, preserve user data
 and local customizations, and roll back failed mutations. Destructive changes
 require the exact confirmation returned by a fresh preview.
 
-Backups are integrity-checked and may be encrypted:
+Backups are integrity-checked and encrypted by default. Without a custom
+passphrase file, Scalvin creates a separate private recovery-key file:
 
 ```bash
-scalvin backup --workspace "<workspace>" --output "<directory>" \
-  --encrypt --passphrase-file "<private-passphrase-file>"
-scalvin restore --backup "<backup>" --workspace "<workspace>" \
+node bin/scalvin.js backup --workspace "<workspace>" --output "<directory>"
+node bin/scalvin.js restore --backup "<backup>" --workspace "<workspace>" \
+  --passphrase-file "<generated-recovery-key-file>" --dry-run
+```
+
+To supply your own high-entropy passphrase file instead:
+
+```bash
+node bin/scalvin.js backup --workspace "<workspace>" --output "<directory>" \
+  --passphrase-file "<private-passphrase-file>"
+node bin/scalvin.js restore --backup "<backup>" --workspace "<workspace>" \
   --passphrase-file "<private-passphrase-file>" --dry-run
 ```
 
-The passphrase is read from a private file, never from a command argument or
-environment value. Losing it makes the backup unrecoverable. See
+The key/passphrase is read from a private file, never from a command argument
+or environment value. Keep it separately from the backup; losing it makes the
+backup unrecoverable. See
 [Getting Started](docs/GETTING-STARTED.md#backup-and-restore) for update,
 backup, restore, and recovery details.
 
@@ -250,6 +282,7 @@ and [Security](SECURITY.md).
 ### Contributors and maintainers
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Engineering Experiment Log](docs/ENGINEERING-EXPERIMENT-LOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Clinical and Safety Review Gate](docs/CLINICAL-SAFETY-REVIEW.md)
 - [Stable Release Evidence](docs/RELEASE-EVIDENCE.md)

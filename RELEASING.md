@@ -52,6 +52,12 @@ npm test
 npm pack --dry-run
 ```
 
+`npm run check` includes the offline emergency-resource registry gate. It fails
+when any national entry is missing, malformed, not yet valid, or stale. Before
+changing `verifiedAt` and the derived `expiresAt`, manually re-check every
+`officialSource`; the checker intentionally performs no network fetch. The
+stable-readiness gate repeats this freshness check independently.
+
 For every provider/model/client-adapter combination evaluated for the release,
 capture a complete behavioral response set from the exact candidate commit.
 At least one tuple is mandatory for every shipped adapter declared by
@@ -120,20 +126,55 @@ In a repo-local isolated fixture:
 Delete only the generated fixture after the checks pass. Never use a real
 workspace for release testing.
 
+The protected stable workflow repeats a bounded clean-install gate from the
+actual packed archive. It builds these candidate artifacts before tag creation:
+
+- `scalvin-<version>.tgz`;
+- `scalvin-<version>.tgz.sha256`, binding the exact archive bytes;
+- `scalvin-<version>.spdx.json`, an SPDX 2.3 SBOM for the package inventory;
+- `scalvin-<version>.release-metadata.json`, binding version, commit, manifest,
+  package inventory, archive digest, and SBOM digest;
+- `scalvin-<version>.release-set.sha256`, binding the exact archive, archive
+  checksum, SBOM, and metadata bytes without a circular metadata hash;
+- `scalvin-<version>.provenance.intoto.jsonl`, the GitHub build-provenance
+  attestation bundle produced for all four release-set subjects;
+- `scalvin-<version>.sbom.intoto.jsonl`, the separate GitHub SBOM-attestation
+  bundle binding the SPDX document to the same archive subject.
+
+Before installation, the verifier requires canonical metadata with exact known
+fields, checks its version and commit, recomputes the archive, checksum, SBOM,
+manifest, and package-inventory hashes, and verifies the release-set checksum.
+It then installs the archive into a fresh temporary prefix with lifecycle
+scripts disabled, verifies version/help, creates a synthetic memory-off
+workspace, and requires doctor to report zero errors. Missing or modified
+metadata, artifact generation, clean-install verification, provenance or SBOM
+attestation, or candidate upload failure blocks tag creation. These build
+artifacts do not replace the separately signed clinical/safety evidence.
+
 ## 5. Commit and protected stable tag
 
 The release commit contains version, manifest, changelog, and migration notes.
 Merge it to protected `main` only after the required `Required CI` check passes.
+That aggregate check includes the full cross-platform test matrix, Python
+compatibility, and the pinned extended JavaScript CodeQL analysis; none may be
+skipped or merely reported by an unrelated optional workflow.
 Humans do not create `v*` tags directly. In GitHub, open **Actions → CI → Run
 workflow**, select `main`, enter the canonical version without the `v` prefix in
 `stable_version`, and start the run.
 
 The manual stable-release path reruns the complete cross-platform matrix,
+first requires `scripts/verify-stable-readiness.mjs` to fail closed unless the
+Codex, Claude Code, and generic shipped adapters each have an independently
+verified effective-launch hard boundary for the exact candidate, in addition
+to the shipped broker-only typed surface and isolated source-worker evidence,
 verifies version and manifest agreement, enters the protected `stable-release`
 environment, verifies the signed private evidence for that exact `main` commit,
-and only then creates an annotated `v<version>` tag. The repository's tag
-settings must enforce creation by the GitHub Actions App only and prohibit every
-update or deletion after creation.
+builds and smoke-tests the release archive, emits its checksum and SPDX SBOM,
+creates GitHub provenance over the archive/checksum/SBOM/metadata set plus a
+separate archive SBOM attestation, uploads the verified candidate set, and only
+then creates an annotated `v<version>` tag. The repository's tag settings must
+enforce creation by the GitHub Actions App only and prohibit every update or
+deletion after creation.
 
 Before relying on that path, a repository admin must verify all of these live
 server-side controls; the workflow file cannot impose them by itself:
@@ -149,9 +190,11 @@ server-side controls; the workflow file cannot impose them by itself:
   disabled, self-review prevention enabled, and approval by separate human
   reviewers who did not assemble the evidence.
 
-Do not run the stable-release path until the independent clinical, fluent-
-reviewer, and real captured-response prerequisites are complete. An empty
-`stable_version` is a CI-only dispatch and cannot create a tag.
+Do not run the stable-release path until the architecture gate plus the
+independent clinical, fluent-reviewer, and real captured-response prerequisites
+are complete. The architecture gate is intentionally red in the current
+`broker_only_unattested` preview. An empty `stable_version` is a CI-only
+dispatch and cannot create a tag.
 
 ## 6. GitHub release
 
@@ -162,9 +205,14 @@ Create a GitHub release from the exact tag:
 - safety/privacy/migration notices first;
 - supported Node and client versions;
 - known limitations and accepted safety-eval boundaries;
-- package archive and SHA-256 checksum.
+- exact package archive and SHA-256 checksum produced by the protected run;
+- SPDX SBOM, release metadata, release-set checksum, provenance bundle, and
+  SBOM-attestation bundle from that same run.
 
-Verify the release page and install instructions from a clean environment.
+Verify the archive with the checksum before publishing. Verify its GitHub
+attestation against this repository, then verify the release page and install
+instructions from a clean environment. Do not rebuild or replace the protected
+run's archive manually.
 
 ## 7. Package publishing
 

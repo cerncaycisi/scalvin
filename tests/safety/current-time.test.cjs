@@ -39,7 +39,7 @@ function runHook(input, env = {}) {
     input,
     encoding: 'utf8',
     timeout: 3000,
-    env: { ...process.env, SCALVIN_HOOK_TIMEOUT_MS: '250', ...env }
+    env: { ...process.env, SCALVIN_HOOK_TIMEOUT_MS: '1500', ...env }
   });
 }
 

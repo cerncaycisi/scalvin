@@ -19,7 +19,7 @@ If consent is not yet recorded, continue ephemerally. Do not create a session no
 
 ## Consent Categories
 
-Record each category independently in `.therapy/state/DATA-CONTROLS.md` and append every change to `.therapy/state/CONSENT-LEDGER.md`.
+Canonical consent state and its content-free ledger are owned by deterministic CLI/broker operations. The companion must not read or write `.therapy/state/` directly. Use the typed consent operation for each category; it atomically updates the private state projections and ledger after validation.
 
 | Category | What it covers | Default before choice |
 |---|---|---|
@@ -74,7 +74,7 @@ While either pause is active:
 - do not backfill the paused interval after resume unless the user separately and explicitly asks to save a specific item
 - safety support continues, but the safety exchange is not written unless the user separately consents
 
-On resume, state only that persistence has resumed and from what moment. Append the state transition to the consent ledger without conversation content.
+On resume, state only that persistence has resumed and from what moment. Use the typed memory-control operation; the deterministic implementation appends a content-free state transition without conversation content.
 
 ## Retention By Category
 
@@ -83,7 +83,20 @@ The current deterministic CLI accepts exactly two retention policies:
 - `until_deleted`
 - `do_not_store`
 
-Default, after consent, is `until_deleted`. Time-based and session-only policies are not yet supported because the current workspace does not have trustworthy per-object expiry anchors for every data class. Requests for `rolling_days`, `until`, or `session_only` fail before any source/content read or write with `UNSUPPORTED_RETENTION_POLICY`; never simulate them from file modification time or a category decision timestamp.
+Default, after consent, is `until_deleted`. A separate deterministic cleanup
+control can set `session_only`, `rolling_days`, or `expire_at` for one supported
+data class. These policies do not alter consent, do not run in the background,
+and never infer age from file modification time. Cleanup is manual: first show
+content-free due/blocked counts, then require the exact fresh confirmation
+token. Objects without a trustworthy creation/confirmation anchor are blocked
+rather than deleted. Backups remain separate copies.
+
+Native scheduled cleanup is available for canonical reviews, context entities,
+and imported/external-care source lifecycles. It fails closed on retained review
+summary references, partial source-revision scope, or a source ID spanning data
+classes. Behavior-customization history and overlays are reported as blocked
+until a native atomic retirement operation exists; deleting those JSON files
+individually could orphan approval provenance or change active behavior.
 
 A category-level change shows which data classes it alters. The public setter changes one whole supported consent category, not an arbitrary individual data-class row. `do_not_store` prevents new persistence and is not a claim that already-stored records, separate backups, or provider copies vanished. Use the exact memory, transcript, source, or context deletion control for narrower existing data, or the all-data control for the complete managed personal-data scope. If deletion fails, say so plainly and do not claim completion.
 
@@ -95,7 +108,11 @@ Do not promise secure erasure: SSD wear leveling, filesystem snapshots, provider
 
 ## User Data Controls
 
-These controls are always available and never require the user to know filenames.
+Users may always request these outcomes without knowing filenames. Interface
+availability differs in the development preview: use a typed broker operation
+when one exists, and otherwise explain that the deterministic action is
+terminal-only from the retained checkout. Never substitute direct edits for a
+missing operation.
 
 ### Show
 
@@ -104,6 +121,17 @@ These controls are always available and never require the user to know filenames
 ### Correct
 
 `/memory correct <item>` records the user's wording as the current truth, preserves the previous revision in the item's revision history, and marks the correction `user_confirmed`. Do not debate the correction or retain the old version as an active competing formulation.
+
+### Remember A Client-Told Scene
+
+Use the typed `memory_add` capability only after the user explicitly chooses to
+keep one concrete scene. The capability accepts bounded title, current
+statement, and user-told scene fields; it does not accept a path, source,
+timestamp, session ID, consent event, retention class, or memory ID. Scalvin
+derives those authority-bearing fields from the canonical workspace, previews
+the exact request, and requires a fresh user-confirmation challenge before the
+write. If that capability is unavailable, keep the scene in the current
+conversation rather than editing the private file directly.
 
 ### Forget
 
@@ -123,7 +151,7 @@ Deletion must cover derived copies and references, not just the primary item. Pr
 
 ## Raw Transcript Control
 
-Raw transcripts are always off by default and require their own opt-in. Track state in `.therapy/state/DATA-CONTROLS.md` and transitions in the consent ledger.
+Raw transcripts are always off by default and require their own opt-in. Inspect and change their state only through typed transcript controls; the deterministic implementation owns the private state projection and consent ledger.
 
 Recognize:
 
@@ -150,17 +178,17 @@ The capture grade is mandatory:
 - `best_effort_context`: reconstructed at close from the context still available
 - `partial`: known missing turns or interrupted coverage
 
-Only `client_captured` or demonstrably complete `turn_captured` records may be described as verbatim/full. A close-time reconstruction is `best_effort_context`, even if it looks complete. Never fill a gap from memory or smooth wording. Transcript metadata must show start, pause/resume intervals, stop time, capture grade, and known gaps.
+Only an independently attested `client_captured` or demonstrably complete, independently attested `turn_captured` record could be described as full. The current preview has no non-forgeable adapter attestation, accepts no self-asserted proof from transcript JSON, and always keeps `verbatim_claim: false`; high-grade input is therefore downgraded. A close-time reconstruction is `best_effort_context`, even if it looks complete. Never fill a gap from memory or smooth wording. Transcript metadata must show start, pause/resume intervals, stop time, capture grade, and known gaps.
 
 ## Timezone Contract
 
-All persistence timestamps use the user's confirmed IANA timezone, stored in `.therapy/state/DATA-CONTROLS.md`, plus a numeric UTC offset in the record itself.
+All persistence timestamps use the user's confirmed IANA timezone from the typed control status, plus a numeric UTC offset in the record itself. The deterministic implementation stores the canonical choice; the companion does not open its `.therapy/state/` projection.
 
 - Treat the device timezone as a candidate, not a confirmed preference.
 - Ask once when the candidate is missing or conflicts with the user's stated location.
 - Store UTC as a secondary machine reference when practical.
 - Never silently reinterpret old timestamps after a timezone change.
-- A timezone change applies prospectively; record the transition in the consent ledger.
+- A timezone change applies prospectively; request it through the typed preference/control operation so the deterministic implementation records the transition.
 - If timezone is unknown, record UTC and `timezone_status: unconfirmed`; do not fabricate local dates for provenance or retention.
 
 ## Accessibility And Interaction Preferences

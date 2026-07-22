@@ -27,18 +27,36 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
   rollback instead of silent base-runtime self-modification
 - source prompt-injection boundary, stable IDs, content hashes, idempotent
   integration states, and external-care note provenance
+- broker-only Codex and Claude project policies that deny direct private
+  workspace access; bounded typed memory/session/consent/source operations use
+  snapshot-bound previews and exact one-time confirmations
+- supervised ephemeral source processing with a three-tool assigned-source
+  worker, schema-bounded HMAC-attested proposals, explicit candidate selection,
+  and no automatic live-memory write
+- supervised client launch with content-free sealed-pause termination and
+  Codex local history persistence disabled
 - explicit session close/recovery lifecycle, seconds + UUID no-clobber names,
   checkpoints, and honest transcript coverage grades
 - opt-in context graph for people, places, and events with
   Core/Active/Provisional/Dormant lifecycle and supervised backfill
-- neutral Scalvin default persona; Susan remains optional
+- Susan as the default companion persona; the redundant Scalvin-named persona
+  is removed so Scalvin remains the product and project name
 - opt-in guarded Ideal Parent Figure reference
 - locale-pack mechanical safety hook, current-time hook, and
   deterministic must-fire/silent/over-fire eval corpus
+- machine-readable, country-scoped emergency-resource registry with official
+  source provenance, a bounded TTL, startup degradation, and static/release
+  staleness gates
 - public-repository private-data/secret scan, Markdown link check, syntax and
   manifest gates, cross-platform CI, issue forms, CODEOWNERS, governance,
   support, accessibility, localization, architecture, privacy, migration, and
   release documentation
+- per-installed-locale adversarial safety fixtures for code-switching,
+  transliteration, typo/vowel-drop, slang, irony, long-tail signals, and
+  generated text versus live disclosure; no runtime language pair is privileged
+- stable-candidate archive SHA-256, SPDX SBOM, clean-install doctor smoke test,
+  and separate GitHub build-provenance and SBOM attestations before immutable
+  tag creation
 
 ### Changed
 
@@ -53,6 +71,8 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
 - modalities now include risk tiers, consent, AI limitations,
   contraindications, stop/escalation rules, localization, and accessible
   alternatives
+- modality selection guidance now describes user-reported conversation
+  contexts rather than diagnosis-like treatment indications
 - weekly reviews are session-triggered on the first return in a new week when
   the prior week contains a completed session, instead of Monday/Tuesday only
 - local workspace pointers moved from tracked `SETUP-NOTES.md` to gitignored
@@ -67,6 +87,11 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
   packs are test coverage, not privileged product-language tiers
 - the model-branded `warm-4o` persona is now provider-neutral `casual-warm`;
   existing selector state is canonicalized during install or update
+- the exact `a98dfba` development manifest's `scalvin` persona selection is
+  canonicalized to `susan` during update; its default-shaped companion name
+  becomes `Susan`, while a different companion name is preserved. The old
+  distribution is not treated as overwrite authority: changed files remain
+  conflict-gated and other historical selectors fail closed
 - alternate-manifest update trust requires the exact manifest SHA-256;
   `--release` is only an additional version constraint and mutable raw `main`
   is rejected

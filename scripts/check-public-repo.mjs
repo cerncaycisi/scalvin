@@ -7,6 +7,14 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const deleted = new Set(
+  execFileSync("git", ["ls-files", "-z", "--deleted"], {
+    cwd: root,
+    encoding: "utf8",
+  })
+    .split("\0")
+    .filter(Boolean),
+);
 const tracked = execFileSync(
   "git",
   ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
@@ -16,7 +24,7 @@ const tracked = execFileSync(
   },
 )
   .split("\0")
-  .filter(Boolean);
+  .filter((file) => file && !deleted.has(file));
 
 const errors = [];
 const maximumScannableBytes = 8_000_000;

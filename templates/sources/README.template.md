@@ -1,6 +1,7 @@
 # Sources
 
-User-approved documents that may be reopened selectively.
+User-approved documents stored for a future isolated source worker. The current
+development preview does not reopen source content for companion integration.
 
 ## Trust Boundary
 
@@ -16,6 +17,11 @@ Folders, symlinks, special files, archives, and packages are rejected. Imports r
 
 ## Integration And Deletion
 
-Integration requires explicit approval and can only propose derived-memory patches; the source adapter does not directly write active memory. External-care provenance remains a claim, and all companion interpretation is labeled AI-authored.
+Integration is unavailable in the current preview. `scalvin source integrate`
+fails with `SOURCE_WORKER_UNAVAILABLE` until a separately attested, tool-free,
+network-free worker exists. The future contract requires explicit approval and
+may only propose derived-memory patches; it may not directly write active
+memory. External-care provenance remains a claim, and all future companion
+interpretation must remain labeled AI-authored.
 
-Reject/delete first produces a confirmation plan. Confirmed execution removes exact bytes, provenance records, retrieval references, and source-derived active-memory blocks atomically. Known backup copies are reported separately and require their own rotation/deletion operation.
+Reject/delete first produces a confirmation plan. Confirmed execution removes exact bytes, provenance records, retrieval references (including canonical context-graph `sourceRefs`), and source-derived active-memory blocks atomically. Known backup copies are reported separately and require their own rotation/deletion operation.

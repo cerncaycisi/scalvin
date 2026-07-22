@@ -13,10 +13,10 @@
         "raw_transcripts": "session_only"
       },
       "transcriptState": {
-        "state": "recording",
+        "state": "off",
         "sessionId": null,
-        "captureGrade": "turn_captured",
-        "startedAt": "2026-07-14T12:00:00+03:00",
+        "captureGrade": null,
+        "startedAt": null,
         "pausedIntervals": [],
         "stoppedAt": null,
         "knownGaps": []
@@ -61,10 +61,10 @@
         "raw_transcripts": "session_only"
       },
       "transcriptState": {
-        "state": "recording",
+        "state": "off",
         "sessionId": null,
-        "captureGrade": "turn_captured",
-        "startedAt": "2026-07-14T12:00:00+03:00",
+        "captureGrade": null,
+        "startedAt": null,
         "pausedIntervals": [],
         "stoppedAt": null,
         "knownGaps": []
@@ -85,11 +85,11 @@
         "raw_transcripts": "session_only"
       },
       "transcriptState": {
-        "state": "paused",
+        "state": "off",
         "sessionId": null,
-        "captureGrade": "turn_captured",
-        "startedAt": "2026-07-14T12:00:00+03:00",
-        "pausedIntervals": [{ "startedAt": "2026-07-14T12:05:00+03:00", "endedAt": null }],
+        "captureGrade": null,
+        "startedAt": null,
+        "pausedIntervals": [],
         "stoppedAt": null,
         "knownGaps": []
       }
@@ -109,10 +109,10 @@
         "raw_transcripts": "session_only"
       },
       "transcriptState": {
-        "state": "paused",
+        "state": "off",
         "sessionId": null,
-        "captureGrade": "turn_captured",
-        "startedAt": "2026-07-14T12:00:00+03:00",
+        "captureGrade": null,
+        "startedAt": null,
         "pausedIntervals": [],
         "stoppedAt": null,
         "knownGaps": []

@@ -5,14 +5,18 @@ const assert = require('node:assert/strict');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { install, consent, source, doctor } = require('../../cli/operations');
+const { canonicalEntityJson } = require('../../cli/context-graph');
 const { sandbox, readJson } = require('./helpers');
 
-test('source command stages add/integrate/delete and exposes no content or absolute source path', async (t) => {
+test('source command stages add/delete, blocks unprepared integration, and exposes no content or absolute source path', async (t) => {
   const box = await sandbox('source-command-lifecycle');
   t.after(box.cleanup);
   await install({ target: box.workspace, consent: 'granted' });
   await consent({
     target: box.workspace, category: 'imported_sources', value: 'on', retention: 'until_deleted'
+  });
+  await consent({
+    target: box.workspace, category: 'context_graph', value: 'on', retention: 'until_deleted'
   });
   const sourcePath = path.join(box.base, 'private-source.txt');
   const privateText = 'Synthetic private source content must never appear in command results.';
@@ -33,6 +37,36 @@ test('source command stages add/integrate/delete and exposes no content or absol
   let state = await readJson(path.join(box.workspace, '.scalvin', 'state.json'));
   assert.equal(state.sourceLifecycle.records[0].sourceId, added.sourceId);
   assert.equal(state.sourceLifecycle.records[0].status, 'ready');
+  const contextId = 'person-70000000-0000-4000-8000-000000000007';
+  const contextRelative = `context/people/${contextId}.json`;
+  const contextRecord = canonicalEntityJson({
+    schemaVersion: 1,
+    type: 'person',
+    id: contextId,
+    status: 'Provisional',
+    label: 'Source cleanup fixture',
+    aliases: [],
+    summary: '',
+    eventTime: null,
+    participantIds: [],
+    placeIds: [],
+    relatedEntityIds: [],
+    memoryIds: [],
+    consentEventId: state.consent.decisions.context_graph.eventId,
+    provenance: {
+      origin: 'imported',
+      firstObservedAt: null,
+      importedAt: '2026-07-14T10:00:00.000Z',
+      lastLiveConfirmedAt: null,
+      lastRelevantAt: null
+    },
+    sourceRefs: [{ sourceId: added.sourceId, revision: 1 }],
+    sessionRefs: [],
+    revision: 1,
+    revisionHistory: [{ revision: 1, at: '2026-07-14T10:00:00.000Z', action: 'backfill', sessionId: null }]
+  });
+  await fsp.mkdir(path.join(box.workspace, 'context', 'people'), { recursive: true });
+  await fsp.writeFile(path.join(box.workspace, contextRelative), contextRecord);
 
   const status = await source({ target: box.workspace, action: 'status', 'source-id': added.sourceId });
   assert.equal(status.status, 'found');
@@ -41,24 +75,16 @@ test('source command stages add/integrate/delete and exposes no content or absol
   assert.equal(JSON.stringify(status).includes(sourcePath), false);
   assert.equal(JSON.stringify(status).includes(privateText), false);
 
-  const preview = await source({ target: box.workspace, action: 'integrate', 'source-id': added.sourceId });
-  assert.equal(preview.status, 'preview');
-  assert.match(preview.confirmationRequired, /^source-integrate:\d{13}:[a-f0-9]{64}$/);
   await assert.rejects(source({
-    target: box.workspace, action: 'integrate', 'source-id': added.sourceId, confirm: '0'.repeat(64)
-  }), { code: 'STALE_CONFIRMATION' });
-  const integrated = await source({
-    target: box.workspace, action: 'integrate', 'source-id': added.sourceId,
-    confirm: preview.confirmationRequired
-  });
-  assert.equal(integrated.status, 'integrated');
-  assert.equal(integrated.memoryWritten, false);
+    target: box.workspace, action: 'integrate', 'source-id': added.sourceId
+  }), { code: 'SOURCE_PROPOSAL_UNAVAILABLE' });
   state = await readJson(path.join(box.workspace, '.scalvin', 'state.json'));
-  assert.equal(state.sourceLifecycle.records[0].status, 'integrated');
+  assert.equal(state.sourceLifecycle.records[0].status, 'ready');
 
   const deletion = await source({ target: box.workspace, action: 'delete', 'source-id': added.sourceId });
   assert.equal(deletion.status, 'preview');
   assert.equal(deletion.revisions.length, 1);
+  assert.equal(deletion.contextReferenceRewrites, 1);
   await assert.rejects(source({
     target: box.workspace, action: 'delete', 'source-id': added.sourceId, confirm: 'wrong'
   }), { code: 'STALE_CONFIRMATION' });
@@ -71,53 +97,45 @@ test('source command stages add/integrate/delete and exposes no content or absol
     target: box.workspace, action: 'delete', 'source-id': added.sourceId,
     confirm: deletion.confirmationRequired
   }), { code: 'STALE_CONFIRMATION' });
+  const contextBoundDeletion = await source({ target: box.workspace, action: 'delete', 'source-id': added.sourceId });
+  assert.deepEqual(contextBoundDeletion.revisions, [1, 2]);
+  const concurrentlyChangedContext = JSON.parse(contextRecord);
+  concurrentlyChangedContext.summary = 'Concurrent context edit must survive.';
+  await fsp.writeFile(path.join(box.workspace, contextRelative), canonicalEntityJson(concurrentlyChangedContext));
+  await assert.rejects(source({
+    target: box.workspace, action: 'delete', 'source-id': added.sourceId,
+    confirm: contextBoundDeletion.confirmationRequired
+  }), { code: 'STALE_CONFIRMATION' });
   const freshDeletion = await source({ target: box.workspace, action: 'delete', 'source-id': added.sourceId });
-  assert.deepEqual(freshDeletion.revisions, [1, 2]);
   const deleted = await source({
     target: box.workspace, action: 'delete', 'source-id': added.sourceId,
     confirm: freshDeletion.confirmationRequired
   });
   assert.equal(deleted.status, 'deleted');
+  assert.equal(deleted.contextReferenceRewrites, 1);
   state = await readJson(path.join(box.workspace, '.scalvin', 'state.json'));
   assert.deepEqual(state.sourceLifecycle.records, []);
+  const cleanedContext = JSON.parse(await fsp.readFile(path.join(box.workspace, contextRelative), 'utf8'));
+  assert.deepEqual(cleanedContext.sourceRefs, []);
+  assert.equal(cleanedContext.revision, 2);
+  assert.equal(cleanedContext.summary, 'Concurrent context edit must survive.');
   assert.equal((await doctor({ target: box.workspace })).errors, 0);
 });
 
-test('source integration token binds the exact proposed memory ID set', async (t) => {
-  const box = await sandbox('source-integrate-stale-proposals');
+test('source integration rejects caller-provided proposal files before changing state', async (t) => {
+  const box = await sandbox('source-integrate-unavailable');
   t.after(box.cleanup);
   await install({ target: box.workspace, consent: 'granted' });
   await consent({ target: box.workspace, category: 'imported_sources', value: 'on', retention: 'until_deleted' });
   const sourcePath = path.join(box.base, 'source.txt');
   await fsp.writeFile(sourcePath, 'proposal binding fixture');
   const added = await source({ target: box.workspace, action: 'add', path: sourcePath });
-  const proposals = path.join(box.base, 'proposed-memory-ids.json');
-  const firstId = 'mem-30000000-0000-4000-8000-000000000001';
-  const secondId = 'mem-30000000-0000-4000-8000-000000000002';
-  await fsp.writeFile(proposals, `${JSON.stringify([firstId])}\n`);
-  const preview = await source({
-    target: box.workspace, action: 'integrate', 'source-id': added.sourceId,
-    'proposed-memory-file': proposals, now: '2026-07-14T12:00:00.000Z'
-  });
-  await fsp.writeFile(proposals, `${JSON.stringify([secondId])}\n`);
+  const before = await fsp.readFile(path.join(box.workspace, '.scalvin', 'state.json'), 'utf8');
   await assert.rejects(source({
     target: box.workspace, action: 'integrate', 'source-id': added.sourceId,
-    'proposed-memory-file': proposals, confirm: preview.confirmationRequired
-  }), { code: 'STALE_CONFIRMATION' });
-  let state = await readJson(path.join(box.workspace, '.scalvin', 'state.json'));
-  assert.equal(state.sourceLifecycle.records[0].status, 'ready');
-
-  const fresh = await source({
-    target: box.workspace, action: 'integrate', 'source-id': added.sourceId,
-    'proposed-memory-file': proposals, now: '2026-07-14T12:01:00.000Z'
-  });
-  const integrated = await source({
-    target: box.workspace, action: 'integrate', 'source-id': added.sourceId,
-    'proposed-memory-file': proposals, confirm: fresh.confirmationRequired
-  });
-  assert.equal(integrated.status, 'integrated');
-  state = await readJson(path.join(box.workspace, '.scalvin', 'state.json'));
-  assert.deepEqual(state.sourceLifecycle.records[0].derivedMemoryIds, [secondId]);
+    'proposed-memory-file': path.join(box.base, 'does-not-exist.json')
+  }), { code: 'INVALID_ARGUMENT' });
+  assert.equal(await fsp.readFile(path.join(box.workspace, '.scalvin', 'state.json'), 'utf8'), before);
 });
 
 test('source wrapper failpoint leaves live workspace and canonical state untouched', async (t) => {

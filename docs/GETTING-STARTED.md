@@ -39,9 +39,10 @@ The adapter loads safety and consent rules first. Scalvin briefly explains:
 You may choose local continuity memory on, off, or decide later. Continued
 conversation is not treated as consent.
 
-When memory is on, the agent invokes the deterministic installer and hands off
-to the private workspace. Filesystem commands stay in the background, but the
-data choice does not.
+When memory is on, the agent invokes the deterministic installer and then stops
+the bootstrap session. Open the generated private workspace as a new client
+project so its local policy and connection actually take effect; do not
+continue into it from the source-repository session.
 
 ## Quick start: explicit CLI
 
@@ -50,24 +51,23 @@ From a checkout:
 ```bash
 node bin/scalvin.js install \
   --workspace "~/scalvin-workspace" \
-  --companion-name "Scalvin" \
-  --language "auto" \
-  --persona "scalvin" \
-  --structure "moderate" \
-  --modality "act" \
-  --modality "cft" \
-  --modality "motivational-interviewing" \
   --consent "not-decided"
 ```
 
-If the `scalvin` package/binary is installed, the equivalent is:
+The development preview is not published as a global package. Use the retained
+checkout's `node bin/scalvin.js` command. Susan, automatic language, the
+moderate structure, and the default modalities are already defaults.
 
-```bash
-scalvin install --workspace "~/scalvin-workspace" --consent not-decided
-```
+After installation:
 
-Use `scalvin install --help` for non-interactive, JSON, dry-run, and selection
-flags.
+1. keep the checkout in place;
+2. close the current client session;
+3. open `~/scalvin-workspace` as a new project;
+4. approve the local Scalvin connection if prompted; and
+5. begin a fresh session there.
+
+Use `node bin/scalvin.js install --help` for non-interactive, JSON, dry-run,
+and selection flags.
 
 The installer:
 
@@ -83,13 +83,13 @@ The installer:
 ## Verify a workspace
 
 ```bash
-scalvin doctor --workspace "~/scalvin-workspace"
+node bin/scalvin.js doctor --workspace "~/scalvin-workspace"
 ```
 
 For integrations:
 
 ```bash
-scalvin doctor --workspace "~/scalvin-workspace" --json
+node bin/scalvin.js doctor --workspace "~/scalvin-workspace" --json
 ```
 
 Doctor checks structure, schema, framework hashes, active configuration,
@@ -110,51 +110,97 @@ only the categories permitted by current data controls.
 
 ## Default behavior
 
-The neutral defaults are:
+The defaults are:
 
-- companion: Scalvin;
-- persona: Scalvin;
+- companion: Susan;
+- persona: Susan;
 - structure: moderate;
 - active modalities: ACT, CFT, and Motivational Interviewing;
 - raw transcripts: off;
 - body-focused prompts: ask first;
 - between-session experiments: ask first.
 
-Susan and other personas remain available. Higher-risk or advanced modality
+Other personas remain available. Higher-risk or advanced modality
 work is never activated merely because its reference file exists.
 
 ## Everyday controls
 
-Natural language works; slash forms make the scope explicit:
+The local development-preview connection supports bounded status, memory
+inspection/correction/creation, pause/seal, consent, session lifecycle,
+prepared-source proposal review/integration, and backup-reminder handling. The
+following operations remain terminal-only:
 
 ```text
-/memory status
-/memory show
-/memory pause
-/memory resume
-/memory correct <item>
-/memory forget <item-or-category>
-/memory review-due
-/memory review-confirm <item>
-/memory review-decline <item>
-/transcript status
-/transcript start
-/transcript pause
-/transcript resume
-/transcript stop
-/transcript delete <session-or-all>
-/data export <active|continuity|all>
-/data delete all
-/close
+sealed-memory resume; forget/delete/export/review/retention;
+transcript controls; context mutations; preferences; backup/restore/update;
+behavior changes; source add/process/reject/delete
 ```
 
-Imported sources and external-care records require a separate per-import
-choice. Source text is treated as untrusted data, not instructions.
+Run `node bin/scalvin.js help` from the retained checkout for exact terminal
+forms. Per-import consent alone does not make source text available to the main
+companion. Raw bytes are available only to the isolated ephemeral source
+worker; its prepared candidates remain untrusted and require exact user
+selection.
+
+All terminal examples below run from the retained public checkout.
 
 Stale-memory review never refreshes memories in bulk. `review-due` offers at
 most three eligible items, and confirm, decline, suppress, or unsuppress always
 selects one exact memory ID. Write pause allows a read-only due check but blocks
 review decisions; sealed pause blocks both.
+
+### Retention dashboard and cleanup policies
+
+The canonical consent state keeps its compatibility policies
+(`until_deleted` or `do_not_store`). A separate private retention-control file
+can add an explicit cleanup schedule without changing that state schema:
+
+```bash
+node bin/scalvin.js memory --workspace "~/scalvin-workspace" --action retention-status
+
+node bin/scalvin.js memory --workspace "~/scalvin-workspace" --action retention-set \
+  --data-class session_notes --policy rolling_days --days 30
+
+node bin/scalvin.js memory --workspace "~/scalvin-workspace" --action retention-set \
+  --data-class raw_transcripts --policy expire_at \
+  --expires-at "2026-12-31T23:59:59Z"
+
+node bin/scalvin.js memory --workspace "~/scalvin-workspace" --action retention-set \
+  --data-class primers_and_checkpoints --policy session_only
+```
+
+`retention-status` returns counts and policy metadata only; it never returns
+statements, object IDs, or artifact paths. During sealed pause it reports the
+policy and known-backup boundary without reading the live-memory inventory.
+
+Cleanup is not a background job. Run `retention-apply --data-class CLASS` to
+receive an exact, snapshot-bound preview token, then rerun with the returned
+`--confirm TOKEN`. Missing, duplicated, malformed, or unsupported metadata is
+counted as blocked and is never deleted automatically. `session_only` is
+prospective: content created before the policy's configuration timestamp is not
+silently backfilled into its deletion scope. Use `--policy inherit` to remove a
+cleanup override.
+
+Current deterministic deletion support covers stable active-memory blocks,
+session notes and deep dives with valid provenance, checkpoints, valid raw
+transcripts, canonical weekly/interim reviews, context-graph entities, and
+imported/external-care source lifecycles. Review cleanup removes canonical
+navigation rows but blocks a review that is still referenced by another review
+or summary. Source cleanup is source-wide: every active revision under the
+source ID must be due in the same data class, otherwise the whole source is
+blocked rather than partially deleted. Context cleanup uses the native graph
+planner, rewrites retained entity references once, and records content-free
+suppression provenance.
+
+Behavior-customization records are inventoried but remain deterministically
+blocked with `behavior_provenance_requires_native_retirement`. Deleting an
+approval/snapshot/overlay file independently could change live behavior or
+orphan its approval chain; a future native retirement operation must update
+that chain atomically before scheduled cleanup can delete these records.
+
+Every dashboard and deletion result shows known backup records separately.
+Live-workspace retention never deletes an external backup or retained
+activation rollback; rotate those copies independently.
 
 ## Session close and deep dives
 
@@ -171,44 +217,44 @@ level lifecycle adapter is retry-safe through byte-identical exclusive writes;
 its direct API deliberately leaves already verified artifacts available for an
 identical retry if a later adapter step fails.
 
-## Source lifecycle
+## Imported sources: isolated processing
 
-Inspecting a source is read-only and reports only a hash, byte count, and fixed
-untrusted-data policy:
-
-```bash
-scalvin source inspect --path "<one-regular-file>"
-```
-
-After imported-source consent is on (or an explicit per-import decision is
-available), add the exact file to the private workspace:
+The deterministic CLI retains a consent-bound source lifecycle. Susan never
+opens raw imported documents. To process one ready source revision, launch the
+separate ephemeral worker from the retained checkout:
 
 ```bash
-scalvin source add \
+node bin/scalvin.js source process \
   --workspace "~/scalvin-workspace" \
-  --path "<one-regular-file>" \
-  --kind imported_source \
-  --locale "<BCP-47-tag>"
+  --source-id "<src-uuid>" \
+  --client codex
+
+node bin/scalvin.js source proposals \
+  --workspace "~/scalvin-workspace" \
+  --source-id "<src-uuid>"
 ```
 
-The result contains a stable source ID, revision, and SHA-256, never the source
-text or its absolute path. Source language is metadata only and never grants
-authority. Check content-free lifecycle metadata with `source status`.
+The worker receives only three typed operations: metadata for the assigned
+revision, bounded sequential chunk reads, and proposal submission. It receives
+no normal filesystem, shell, network, live-memory, or session-persistence
+authority. Its stdout/stderr is suppressed from the companion and the accepted
+proposal is bound to the exact source ID, revision, hash, worker version, and
+client version.
 
-Integration is a second explicit step. The first call returns the exact
-revision hash plus a plan token bound to the revision, consent proof, proposed
-memory IDs, and planned writes. The second confirms that plan token:
+Integrate only explicitly selected proposal IDs. The first call returns an
+exact confirmation token; rerun the same selection with that token:
 
 ```bash
-scalvin source integrate --workspace "~/scalvin-workspace" --source-id "src-<uuid-v4>"
-scalvin source integrate --workspace "~/scalvin-workspace" --source-id "src-<uuid-v4>" --confirm "<exact-plan-token>"
+node bin/scalvin.js source integrate \
+  --workspace "~/scalvin-workspace" \
+  --source-id "<src-uuid>" \
+  --proposed-memory-id "<candidate-id>"
 ```
 
-Integration can propose derived memory IDs but never writes active memory by
-itself. `source reject` and `source delete` also use a preview followed by an
-exact confirmation token. Deletion removes managed source bytes, provenance,
-eligible derived references, and the canonical active record; known backups
-remain separate copies that require their own rotation decision.
+Integration records the approved proposal linkage and writes no live memory.
+Saving a candidate as active profile/theme/focus memory requires a separate
+live confirmation through the broker. Direct source-file access is never an
+acceptable workaround.
 
 ## Controlled behavior changes
 
@@ -220,7 +266,7 @@ source-trust rules.
 Create a proposal with bounded, single-line evidence and tradeoff fields:
 
 ```bash
-scalvin changes propose \
+node bin/scalvin.js changes propose \
   --workspace "~/scalvin-workspace" \
   --change-target session-style \
   --setting response_load \
@@ -234,7 +280,7 @@ scalvin changes propose \
 Approval always starts with a read-only exact diff:
 
 ```bash
-scalvin changes approve \
+node bin/scalvin.js changes approve \
   --workspace "~/scalvin-workspace" \
   --change-id "chg-<uuid-v4>"
 ```
@@ -250,23 +296,43 @@ uses `changes reject --change-id "chg-<uuid-v4>"`.
 Create a unique integrity-checked backup:
 
 ```bash
-scalvin backup --workspace "~/scalvin-workspace" --output "<backup-directory>"
+node bin/scalvin.js backup --workspace "~/scalvin-workspace" --output "<backup-directory>"
 ```
+
+Backup creation is encrypted by default. If `--passphrase-file` is omitted,
+Scalvin creates a random 256-bit recovery-key file in a separate private sibling
+store and returns only its path, never the key material. Move or copy that key to
+a separately protected recovery location and test a restore before relying on
+the backup. A backup cannot be recovered when its key is lost.
+
+To create a portable recovery key before the backup:
+
+```bash
+node bin/scalvin.js backup --action key-create --output "<private-recovery-key-file>"
+node bin/scalvin.js backup \
+  --workspace "~/scalvin-workspace" \
+  --output "<backup-directory>" \
+  --passphrase-file "<private-recovery-key-file>"
+```
+
+The key command uses operating-system randomness, creates a no-clobber private
+file, and prints metadata only. On Unix the file is exactly `0600`; on Windows
+Scalvin creates and verifies a protected ACL.
 
 The result includes a stable `backup-<uuid-v4>` ID. Status and verification do
 not expose the artifact path or workspace content:
 
 ```bash
-scalvin backup --workspace "~/scalvin-workspace" --action status
-scalvin backup --workspace "~/scalvin-workspace" --action verify --id "backup-<uuid-v4>"
+node bin/scalvin.js backup --workspace "~/scalvin-workspace" --action status
+node bin/scalvin.js backup --workspace "~/scalvin-workspace" --action verify --id "backup-<uuid-v4>"
 ```
 
 Deleting a backup first returns an authenticated preview and exact confirmation
 token. Only a second call with that token deletes the artifact:
 
 ```bash
-scalvin backup --workspace "~/scalvin-workspace" --action delete --id "backup-<uuid-v4>"
-scalvin backup --workspace "~/scalvin-workspace" --action delete --id "backup-<uuid-v4>" --confirm "<exact-token>"
+node bin/scalvin.js backup --workspace "~/scalvin-workspace" --action delete --id "backup-<uuid-v4>"
+node bin/scalvin.js backup --workspace "~/scalvin-workspace" --action delete --id "backup-<uuid-v4>" --confirm "<exact-token>"
 ```
 
 For a user-selected non-default backup directory, verification and deletion
@@ -275,26 +341,25 @@ also require the exact `--backup` artifact path.
 Preview a restore:
 
 ```bash
-scalvin restore \
+node bin/scalvin.js restore \
   --backup "<backup-directory>/<backup-name>" \
   --workspace "~/scalvin-workspace" \
   --dry-run
 ```
 
-Then omit `--dry-run` after reviewing the plan. Plain backups are not
-encrypted. To encrypt the full private payload, create a passphrase file using
-a trusted editor or password-manager export without putting the secret in shell
-history. Keep it outside the workspace. On Unix set its mode to exactly `0600`;
-on Windows Scalvin requires a protected ACL it can verify. Then run:
+Then omit `--dry-run` after reviewing the plan. A supplied passphrase or
+recovery-key file must stay outside the workspace. Do not put its contents in
+shell history, an environment variable, logs, or the same artifact directory.
+On Unix set a user-created file to exactly `0600`; on Windows Scalvin requires a
+protected ACL it can verify. Then run:
 
 ```bash
-scalvin backup \
+node bin/scalvin.js backup \
   --workspace "~/scalvin-workspace" \
   --output "<backup-directory>" \
-  --encrypt \
   --passphrase-file "<private-passphrase-file>"
 
-scalvin restore \
+node bin/scalvin.js restore \
   --backup "<backup-directory>/<backup-name>" \
   --workspace "~/scalvin-workspace-restored" \
   --passphrase-file "<private-passphrase-file>" \
@@ -303,19 +368,46 @@ scalvin restore \
 
 Passphrases must contain 12 to 4096 bytes. One final newline is ignored. The
 secret itself is never accepted through command arguments, environment
-variables, output, or the backup ledger. There is no recovery key: test a
-restore and preserve the passphrase separately.
+variables, output, or the backup ledger. In this custom-passphrase mode Scalvin
+does not generate an additional recovery-key file: test a restore and preserve
+the passphrase separately.
 
-Encrypted format v2 uses AES-256-GCM with a fresh random salt and nonce plus
-fixed, bounded scrypt parameters. Workspace ID, filenames, file sizes, hashes,
-and contents are inside the authenticated ciphertext. The artifact name and
-outer envelope still reveal creation time, a random backup ID, cipher/KDF
-parameters, ciphertext size, and checksums. Current hard limits are 100,000
-entries, 8 GiB per file, 16 GiB per archive, and a 16 MiB private manifest.
-Wrong passphrases, modified/truncated payloads, unsupported KDF parameters,
-symlinks, special files, and over-limit input fail closed. Decryption uses a
-private sibling stage that is removed on success or failure; filesystem
-snapshots, SSD behavior, and external backup tools can still retain old blocks.
+Encrypted format v3 uses AES-256-GCM with a fresh random salt and nonce plus the
+fixed scrypt profile `N=2^17, r=8, p=1`. Version-2 encrypted artifacts remain
+readable with their original bounded profile; new artifacts use v3. Workspace
+ID, filenames, file sizes, hashes, and contents are inside the authenticated
+ciphertext. The artifact name and outer envelope still reveal creation time, a
+random backup ID, cipher/KDF parameters, ciphertext size, and checksums. Current
+hard limits are 100,000 entries, 8 GiB per file, 16 GiB per archive, and a 16 MiB
+private manifest. Wrong passphrases, modified/truncated payloads, unknown or
+resource-escalated KDF parameters, symlinks, special files, and over-limit input
+fail closed. Decryption uses a private sibling stage that is removed on success
+or failure; filesystem snapshots, SSD behavior, and external backup tools can
+still retain old blocks.
+
+Plaintext backup remains available only as an explicit compatibility choice:
+
+```bash
+node bin/scalvin.js backup \
+  --workspace "~/scalvin-workspace" \
+  --output "<private-local-directory>" \
+  --allow-plaintext-backup
+```
+
+This flag confirms that confidentiality is not provided. Restrictive file
+permissions and integrity hashes do not encrypt the payload.
+
+Install replacement, update, and forced restore also create encrypted safety
+backups before mutation. Pass `--backup-passphrase-file` to protect one with an
+existing private key file. Otherwise Scalvin generates a separate recovery-key
+file and returns its path as `backupRecoveryKeyPath` or
+`displacedWorkspaceRecoveryKeyPath`. `--recovery-key-output` selects a private
+directory for generated key files; it must not overlap the workspace or backup
+artifact tree.
+
+Memory exports are currently integrity-checked plaintext directories. They are
+created only when the caller explicitly adds `--allow-plaintext-export`; use a
+private local destination and secure or remove the export after use.
 
 ## Updating
 
@@ -326,7 +418,7 @@ release provenance; the manifest does not make a recursive claim about the Git
 commit that contains it:
 
 ```bash
-scalvin update \
+node bin/scalvin.js update \
   --workspace "~/scalvin-workspace" \
   --manifest "<trusted-checkout>/manifest.json" \
   --manifest-sha256 "<exact-manifest-sha256>" \
@@ -350,8 +442,9 @@ open file descriptor atomic.
 
 If a command reports `MUTATION_LOCKED`, do not remove the lock merely because
 it is old or its recorded PID is not running. First confirm that no Scalvin
-operation is active, inspect the finding with `scalvin doctor --workspace
-"<workspace>" --json`, and only then follow the exact manual-recovery guidance.
+operation is active, inspect the finding from the retained checkout with
+`node bin/scalvin.js doctor --workspace "<workspace>" --json`, and only then
+follow the exact manual-recovery guidance.
 Scalvin never steals or auto-deletes an existing lock. A
 `PRIVATE_ROLLBACK_RETAINED` warning similarly means a private pre-activation
 copy still exists; follow the returned `nextAction` instead of assuming the old

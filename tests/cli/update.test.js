@@ -9,6 +9,38 @@ const { install, update, consent } = require('../../cli/operations');
 const { JOURNAL_RELATIVE } = require('../../cli/lib/operation-journal');
 const { ROOT, sandbox, incomingDistribution, readJson } = require('./helpers');
 
+// Captured from an a98dfba CLI install. The v2 state/consent/session key shape
+// matches the current v2 schema; the exact provenance and managed registry do
+// not. Keep the fixture data-only so the test never depends on Git at runtime.
+const A98DFBA_MANIFEST_SHA256 = '2e6d3b99399e7d36c96aeb419f3da8d44c6d721cfd20a954f4d1c0c7e7e4182f';
+const A98DFBA_CURRENT_ONLY_TARGETS = Object.freeze([
+  '.codex/config.toml',
+  '.therapy/hooks/emergency-resources.cjs',
+  '.therapy/hooks/emergency-resources.json',
+  '.therapy/library/adapters/workspace/CLAUDE-PERMISSIONS.template.json',
+  '.therapy/library/adapters/workspace/claude.mcp.template.json',
+  '.therapy/library/adapters/workspace/codex.config.template.toml',
+  'susan.md'
+]);
+const A98DFBA_RECORDS = Object.freeze({
+  '.therapy/commands.md': { sourcePath: 'commands.md', sourceHash: '77b213c0bc84a1b69a128d6ac7b86cd603d8465ba34bd11c11b3dca644da235b', installedHash: '77b213c0bc84a1b69a128d6ac7b86cd603d8465ba34bd11c11b3dca644da235b', version: '1.0.0', role: 'command-router', protection: 'framework' },
+  '.therapy/persona.md': { sourcePath: 'personas/scalvin.md', sourceHash: '5e51cfe0eacbbbe86c6885b73d4882b3d2b9e5b80b9fe5b04c47cebd798ab374', installedHash: '5e51cfe0eacbbbe86c6885b73d4882b3d2b9e5b80b9fe5b04c47cebd798ab374', version: '1.0.0', role: 'persona', protection: 'active' },
+  '.therapy/library/personas/scalvin.md': { sourcePath: 'personas/scalvin.md', sourceHash: '5e51cfe0eacbbbe86c6885b73d4882b3d2b9e5b80b9fe5b04c47cebd798ab374', installedHash: '5e51cfe0eacbbbe86c6885b73d4882b3d2b9e5b80b9fe5b04c47cebd798ab374', version: '1.0.0', role: 'persona', protection: 'framework' },
+  '.therapy/library/personas/susan.md': { sourcePath: 'personas/susan.md', sourceHash: '756dda05739e95549f51d434e3a33cea4552b2d741a71d05a9a7658c833f466a', installedHash: '756dda05739e95549f51d434e3a33cea4552b2d741a71d05a9a7658c833f466a', version: '3.0.0', role: 'persona', protection: 'framework' },
+  'SETUP-NOTES.md': { sourcePath: 'runtime/SETUP-NOTES.template.md', sourceHash: 'c8e487c8663e93786374986ce29ec0c2bb3c08e4418c337236049eb2f13a28ee', installedHash: '873b309aa3586c0ff9e6d2445e49db5fb5e429f7a7b7157e00bd148c0a4f476d', version: '2.0.0', role: 'living-template', protection: 'seed' },
+  'scalvin.md': { sourcePath: 'adapters/workspace/STARTER.template.md', sourceHash: '27520aa9deae07f81a3638acf444708e44f62e438d9e289b12dd3b86af996bd5', installedHash: '3cb77b0c7457ecb9871794be89d98e1a7bee3623c104a98c047c47a8aecce128', version: '1.0.0', role: 'client-adapter', protection: 'active' }
+});
+
+function shapeA98dfbaState(current) {
+  const state = structuredClone(current);
+  state.product.manifestSha256 = A98DFBA_MANIFEST_SHA256;
+  state.source = { locator: 'fixture:a98dfba/manifest.json', pin: A98DFBA_MANIFEST_SHA256, pinType: 'manifest-sha256' };
+  state.preferences = { companionName: 'Scalvin', companionSlug: 'scalvin', language: 'auto', persona: 'scalvin', structure: 'moderate', modalities: ['act', 'cft', 'motivational-interviewing'] };
+  for (const target of A98DFBA_CURRENT_ONLY_TARGETS) delete state.files[target];
+  for (const [target, record] of Object.entries(A98DFBA_RECORDS)) state.files[target] = structuredClone(record);
+  return state;
+}
+
 async function bundledUpdateOptions(target, extra = {}) {
   const manifestPath = path.join(ROOT, 'manifest.json');
   const bytes = await fsp.readFile(manifestPath);
@@ -40,6 +72,78 @@ test('pinned update verifies sources, snapshots, updates, and becomes a no-op', 
     assert.equal(state.product.version, '1.0.1');
     const noOp = await update({ target: box.workspace, manifest: incoming.manifestPath, 'manifest-sha256': incoming.manifestSha256, release: '1.0.1' });
     assert.equal(noOp.status, 'up-to-date');
+  } finally {
+    await box.cleanup();
+  }
+});
+
+test('a98dfba Scalvin defaults require fail-closed force confirmation and preserve unverified residues', async () => {
+  const box = await sandbox('update-legacy-scalvin-persona');
+  try {
+    await install({ target: box.workspace, consent: 'granted' });
+    const statePath = path.join(box.workspace, '.scalvin', 'state.json');
+    const legacy = shapeA98dfbaState(await readJson(statePath));
+    assert.equal(legacy.schemaVersion, 2);
+    assert.deepEqual(Object.keys(legacy).sort(), ['consent', 'createdAt', 'files', 'preferences', 'product', 'schemaVersion', 'sessionLifecycle', 'source', 'sourceLifecycle', 'updatedAt', 'workspaceId']);
+    assert.deepEqual(Object.keys(legacy.files['.therapy/persona.md']).sort(), ['installedHash', 'protection', 'role', 'sourceHash', 'sourcePath', 'version']);
+    assert.equal(Object.keys(legacy.files).length, 137);
+    await fsp.writeFile(statePath, `${JSON.stringify(legacy, null, 2)}\n`, { mode: 0o600 });
+    const legacyAdapterPath = path.join(box.workspace, 'scalvin.md');
+    const legacyAdapterBytes = Buffer.from('# Unverified legacy Scalvin adapter\n');
+    await fsp.writeFile(legacyAdapterPath, legacyAdapterBytes, { mode: 0o600 });
+    const legacyPersonaLibraryPath = path.join(box.workspace, '.therapy', 'library', 'personas', 'scalvin.md');
+    const legacyPersonaLibraryBytes = Buffer.from('# Unverified legacy Scalvin persona library copy\n');
+    await fsp.writeFile(legacyPersonaLibraryPath, legacyPersonaLibraryBytes, { mode: 0o600 });
+    const setupNotesPath = path.join(box.workspace, 'SETUP-NOTES.md');
+    const legacySetupNotes = (await fsp.readFile(setupNotesPath, 'utf8'))
+      .replace('- Companion name: Susan', '- Companion name: Scalvin')
+      .replace('- Persona: susan', '- Persona: scalvin');
+    await fsp.writeFile(setupNotesPath, legacySetupNotes, { mode: 0o600 });
+
+    const incoming = await incomingDistribution(box.base, '1.0.1', async ({ source }) => {
+      await fsp.appendFile(path.join(source, 'commands.md'), '\n<!-- post-a98dfba update -->\n');
+    });
+    const options = {
+      target: box.workspace,
+      manifest: incoming.manifestPath,
+      'manifest-sha256': incoming.manifestSha256,
+      release: '1.0.1'
+    };
+    const mismatchedPin = structuredClone(legacy);
+    mismatchedPin.source.pin = '0'.repeat(64);
+    await fsp.writeFile(statePath, `${JSON.stringify(mismatchedPin, null, 2)}\n`, { mode: 0o600 });
+    await assert.rejects(
+      update({ ...options, 'dry-run': true }),
+      { code: 'UNKNOWN_SELECTION' }
+    );
+    assert.deepEqual(await readJson(statePath), mismatchedPin);
+    await fsp.writeFile(statePath, `${JSON.stringify(legacy, null, 2)}\n`, { mode: 0o600 });
+
+    const dry = await update({ ...options, 'dry-run': true });
+    assert.equal(dry.status, 'dry-run');
+    assert.ok(dry.warnings.some((warning) => warning.code === 'LEGACY_SCALVIN_PERSONA_CANONICALIZED' &&
+      warning.companionNameChanged === true && warning.priorDistributionTrusted === false));
+    assert.ok(dry.warnings.some((warning) => warning.code === 'UNVERIFIED_PRIOR_TARGETS_PRESERVED'));
+    assert.ok(dry.conflicts.some((conflict) => conflict.target === '.therapy/commands.md' && conflict.priorHash === null));
+    assert.match(dry.confirmationRequired, /^update-replace:\d{13}:[a-f0-9]{64}$/);
+    await assert.rejects(update(options), { code: 'CUSTOMIZATIONS_DETECTED' });
+    assert.deepEqual(await readJson(statePath), legacy);
+
+    const result = await update({
+      ...options,
+      force: true,
+      confirm: dry.confirmationRequired
+    });
+    assert.equal(result.status, 'updated');
+    assert.ok(result.backupPath);
+    const migrated = await readJson(statePath);
+    assert.equal(migrated.preferences.persona, 'susan');
+    assert.equal(migrated.preferences.companionName, 'Susan');
+    assert.equal(migrated.preferences.companionSlug, 'susan');
+    assert.match(await fsp.readFile(path.join(box.workspace, '.therapy', 'persona.md'), 'utf8'), /^# Susan Persona$/m);
+    assert.deepEqual(await fsp.readFile(legacyAdapterPath), legacyAdapterBytes);
+    assert.deepEqual(await fsp.readFile(legacyPersonaLibraryPath), legacyPersonaLibraryBytes);
+    assert.equal(await fsp.readFile(setupNotesPath, 'utf8'), legacySetupNotes);
   } finally {
     await box.cleanup();
   }

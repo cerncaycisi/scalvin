@@ -18,7 +18,7 @@ test('language preference uses one canonical BCP-47 validator across install and
 
     const changed = await preferences({ target: box.workspace, language: 'ZH-hant' });
     assert.equal(changed.language, 'zh-Hant');
-    const renderedTargets = ['AGENTS.md', 'CLAUDE.md', 'scalvin.md'];
+    const renderedTargets = ['AGENTS.md', 'CLAUDE.md', 'susan.md'];
     assert.deepEqual(changed.refreshedManagedTargets, renderedTargets);
     state = await readJson(path.join(box.workspace, '.scalvin', 'state.json'));
     assert.equal(state.preferences.language, 'zh-Hant');
@@ -58,7 +58,7 @@ test('language changes refuse to overwrite customized rendered client targets', 
     await fsp.appendFile(agentsPath, '\nlocal adapter customization\n');
     const statePath = path.join(box.workspace, '.scalvin', 'state.json');
     const setupPath = path.join(box.workspace, 'SETUP-NOTES.md');
-    const preservedPaths = [agentsPath, path.join(box.workspace, 'CLAUDE.md'), path.join(box.workspace, 'scalvin.md'), setupPath];
+    const preservedPaths = [agentsPath, path.join(box.workspace, 'CLAUDE.md'), path.join(box.workspace, 'susan.md'), setupPath];
     const beforeState = await fsp.readFile(statePath, 'utf8');
     const beforeFiles = new Map(await Promise.all(preservedPaths.map(async (filename) => [filename, await fsp.readFile(filename)])));
     await assert.rejects(preferences({ target: box.workspace, language: 'zh-Hant' }), {
@@ -119,7 +119,7 @@ test('language changes reject manifest identity drift without touching the works
       statePath,
       path.join(box.workspace, 'AGENTS.md'),
       path.join(box.workspace, 'CLAUDE.md'),
-      path.join(box.workspace, 'scalvin.md'),
+      path.join(box.workspace, 'susan.md'),
       path.join(box.workspace, 'SETUP-NOTES.md')
     ];
     const before = new Map(await Promise.all(preservedPaths.map(async (filename) => [filename, await fsp.readFile(filename)])));

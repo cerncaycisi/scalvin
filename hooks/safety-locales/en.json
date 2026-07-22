@@ -20,7 +20,7 @@
     "self_harm": [
       "\\b(?:i\\s+(?:really\\s+)?(?:want|wanted)\\s+to|i\\s+wanna|i(?:'m| am)?\\s+(?:going|gonna|about)\\s+to|i(?:'m| am)\\s+planning\\s+to|i\\s+(?:plan|planned|planning)\\s+to)\\s+(?:die|kill\\s+myself|end\\s+my\\s+life|end\\s+it\\s+all)\\b",
       "\\b(?:i(?:'m| am)?\\s+suicidal|i\\s+feel\\s+suicidal|suicidal\\s+thoughts?\\s+(?:are|is)\\s+(?:back|worse)|kill(?:ing)?\\s+myself|hurt(?:ing)?\\s+myself|harm(?:ing)?\\s+myself|cut(?:ting)?\\s+myself)\\b",
-      "\\b(?:i\\s+(?:do\\s+not|don't)\\s+want\\s+to\\s+(?:live|be\\s+here)|i\\s+wish\\s+i\\s+(?:were|was)\\s+dead|everyone\\s+would\\s+be\\s+better\\s+off\\s+without\\s+me|no\\s+one\\s+would\\s+miss\\s+me)\\b"
+      "\\b(?:i\\s+(?:do\\s+not|don't|dont)\\s+want\\s+to\\s+(?:live|be\\s+here)|i\\s+wanna\\s+kms|i\\s+wish\\s+i\\s+(?:were|was)\\s+dead|everyone\\s+would\\s+be\\s+better\\s+off\\s+without\\s+me|no\\s+one\\s+would\\s+miss\\s+me)\\b"
     ],
     "overdose": [
       "\\b(?:i\\s+(?:took|swallowed)\\s+(?:too\\s+many|all\\s+(?:of\\s+)?|a\\s+bottle\\s+of)\\s+(?:pills|tablets)|i\\s+overdosed|i\\s+am\\s+overdosing)\\b"
