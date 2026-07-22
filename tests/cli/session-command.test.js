@@ -196,6 +196,7 @@ test('session close remains canonical but artifact-free when continuity is off o
           'turn-number': '1', now: '2026-07-14T11:01:00Z', liveThread: 'Existing checkpoint must not be backfilled.'
         });
         let state = await readJson(path.join(box.workspace, '.scalvin', 'state.json'));
+        const checkpointRelative = state.sessionLifecycle.checkpoint.path;
         const checkpointPath = path.join(box.workspace, state.sessionLifecycle.checkpoint.path);
         const checkpointBefore = await fsp.readFile(checkpointPath);
 
@@ -215,7 +216,7 @@ test('session close remains canonical but artifact-free when continuity is off o
         assert.equal(state.consent.currentSessionId, null);
         assert.equal(state.sessionLifecycle.state, 'closed');
         assert.equal(state.sessionLifecycle.sessionId, begun.sessionId);
-        assert.equal(state.sessionLifecycle.checkpoint.path, path.relative(box.workspace, checkpointPath));
+        assert.equal(state.sessionLifecycle.checkpoint.path, checkpointRelative);
 
         const next = await session({
           target: box.workspace, action: 'begin', now: '2026-07-14T11:11:00Z'

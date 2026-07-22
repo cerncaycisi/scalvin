@@ -121,3 +121,17 @@ when they establish a reusable engineering rule.
   complete security-heavy suite. Timeout/fail-open behavior keeps its own
   explicit short-deadline tests; do not conflate host scheduling delay with
   functional classification assertions.
+
+### Cross-platform path assertions
+
+- Finding: the first hardened CI run passed Linux and macOS but failed Windows
+  because two tests treated host-native path rendering as the persisted data
+  contract. A rendered TOML JSON string doubled Windows backslashes, while a
+  session assertion expected `path.relative()` backslashes even though Scalvin
+  intentionally stores manifest paths with `/` separators.
+- Result: product behavior was correct. Broker-entry assertions now accept one
+  or more serialized path separators, and the lifecycle test compares the
+  persisted path with its original canonical value.
+- Reuse rule: distinguish filesystem paths from serialized manifest paths and
+  escaped configuration strings. Assert canonical `/` paths in stored state;
+  make display/config assertions tolerate platform-specific escaping.

@@ -56,7 +56,7 @@ test('Codex broker-only profile denies every private continuity surface and requ
   assert.doesNotMatch(rendered, /\{\{[A-Z0-9_]+\}\}/);
   assert.match(rendered, /default_permissions = "scalvin-broker-only"/);
   assert.match(rendered, /command = "[^"]+"/);
-  assert.match(rendered, /bin[\\/]scalvin-mcp\.js/);
+  assert.match(rendered, /bin[\\/]+scalvin-mcp\.js/);
   assert.match(rendered, /required = true/);
   assert.match(rendered, /cwd = "\."/);
   assert.match(rendered, /request_permissions = false/);
@@ -182,7 +182,7 @@ test('Claude integration preserves unrelated settings but reports extra hooks an
   const mcp = JSON.parse(await fsp.readFile(path.join(root, '.mcp.json'), 'utf8'));
   assert.equal(mcp.mcpServers.userOwnedServer.command, 'preserve-me');
   assert.equal(mcp.mcpServers.scalvin.command, process.execPath);
-  assert.match(mcp.mcpServers.scalvin.args[0], /bin[\\/]scalvin-mcp\.js$/);
+  assert.match(mcp.mcpServers.scalvin.args[0], /bin[\\/]+scalvin-mcp\.js$/);
   assert.equal(mcp.mcpServers.scalvin.args[2], '${CLAUDE_PROJECT_DIR:-.}');
   assert.equal(await clientIntegrationsNeedChange(root, MANIFEST), false);
 
