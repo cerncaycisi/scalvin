@@ -170,3 +170,32 @@ when they establish a reusable engineering rule.
   `remote.origin.mirror=true`. Disable that local mirror-push setting before
   the reviewed ref push; do not replace the lease with an unrestricted mirror
   push.
+
+### Default-branch CodeQL baseline audit
+
+- Finding: a successful pull-request CodeQL check and a zero-result pull-
+  request merge-ref analysis do not prove that the default branch has no open
+  alerts. The repository API still reported 17 inherited alerts after an
+  earlier pull request whose merge-ref analysis had zero results.
+- Result: the baseline hardening replaced check-then-open reads with
+  descriptor-first no-follow reads plus device/inode and post-read checks,
+  replaced polynomial-risk regex parsing with linear scans, and removed
+  test-only dynamic JavaScript construction. Pull request 6 passed all nine
+  CI jobs plus the separate CodeQL check; its merge-ref analysis evaluated 103
+  rules with zero results. Final acceptance still requires a later
+  default-branch analysis with zero results and an empty open-alert API result.
+- Evidence: local validation completed 618 tests with zero failures, `npm run
+  check`, and an npm package dry run. Pull-request CI run `30083802393` passed
+  Linux Node 20/22/24, macOS Node 20/24, Windows Node 20/24, Python 3.12,
+  security-extended CodeQL, and Required CI.
+- Reuse rule: query the code-scanning analyses and open-alert endpoints after
+  the exact commit reaches the default branch. Never treat PR-only
+  `results_count: 0`, a successful SARIF upload, or a green "new alerts" check
+  as baseline closure.
+- Failed command: `node --test tests/safety` stopped with
+  `MODULE_NOT_FOUND` because Node did not expand the directory into this
+  repository's test set. Use `npm run test:safety`.
+- Failed command: a regular-expression `rg` scan containing an incorrectly
+  escaped newline stopped with `rg: the literal "\n" is not allowed in a
+  regex`. Use fixed-string `rg -F` expressions for literal source-pattern
+  inventory.
