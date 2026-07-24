@@ -159,15 +159,21 @@ function sha256Buffer(data) {
 }
 
 async function sha256File(filename) {
-  await rejectSymlinkPath(filename);
-  const before = await fsp.lstat(filename);
-  invariant(before.isFile(), 'Only regular files can be hashed.', 'UNSUPPORTED_FILE_TYPE', { path: filename });
   const hash = crypto.createHash('sha256');
-  const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0);
-  const handle = await fsp.open(filename, flags);
+  const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0) | (fs.constants.O_NONBLOCK || 0);
+  let handle;
+  try {
+    handle = await fsp.open(filename, flags);
+  } catch (error) {
+    await rejectSymlinkPath(filename);
+    throw error;
+  }
   try {
     const opened = await handle.stat();
-    invariant(opened.isFile() && opened.dev === before.dev && opened.ino === before.ino, 'File changed while it was being opened.', 'FILE_CHANGED_DURING_READ');
+    invariant(opened.isFile(), 'Only regular files can be hashed.', 'UNSUPPORTED_FILE_TYPE', { path: filename });
+    await rejectSymlinkPath(filename);
+    const named = await fsp.lstat(filename);
+    invariant(named.isFile() && opened.dev === named.dev && opened.ino === named.ino, 'File changed while it was being opened.', 'FILE_CHANGED_DURING_READ');
     const buffer = Buffer.allocUnsafe(64 * 1024);
     let position = 0;
     while (true) {
@@ -186,15 +192,21 @@ async function sha256File(filename) {
 
 async function readBoundedRegularFile(filename, maximumBytes, options = {}) {
   invariant(Number.isSafeInteger(maximumBytes) && maximumBytes >= 0, 'File byte limit is invalid.', 'INVALID_FILE_LIMIT');
-  await rejectSymlinkPath(filename);
-  const before = await fsp.lstat(filename);
-  invariant(before.isFile(), options.typeMessage || 'Expected a regular file.', options.typeCode || 'UNSUPPORTED_FILE_TYPE');
-  invariant(before.size <= maximumBytes, options.sizeMessage || 'File exceeds the configured size limit.', options.sizeCode || 'FILE_TOO_LARGE');
-  const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0);
-  const handle = await fsp.open(filename, flags);
+  const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0) | (fs.constants.O_NONBLOCK || 0);
+  let handle;
+  try {
+    handle = await fsp.open(filename, flags);
+  } catch (error) {
+    await rejectSymlinkPath(filename);
+    throw error;
+  }
   try {
     const opened = await handle.stat();
-    invariant(opened.isFile() && opened.dev === before.dev && opened.ino === before.ino, 'File changed while it was being opened.', options.changedCode || 'FILE_CHANGED_DURING_READ');
+    invariant(opened.isFile(), options.typeMessage || 'Expected a regular file.', options.typeCode || 'UNSUPPORTED_FILE_TYPE');
+    invariant(opened.size <= maximumBytes, options.sizeMessage || 'File exceeds the configured size limit.', options.sizeCode || 'FILE_TOO_LARGE');
+    await rejectSymlinkPath(filename);
+    const named = await fsp.lstat(filename);
+    invariant(named.isFile() && opened.dev === named.dev && opened.ino === named.ino, 'File changed while it was being opened.', options.changedCode || 'FILE_CHANGED_DURING_READ');
     const chunks = [];
     let total = 0;
     while (total <= maximumBytes) {

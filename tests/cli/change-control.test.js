@@ -234,7 +234,7 @@ test('rollback is confirmation-gated, no-clobber, reversible, and never erases r
   });
   await apply(box.workspace, rolledBack);
   const overlayPath = path.join(box.workspace, '.therapy', 'user-overrides', 'session-style.json');
-  await assert.rejects(fsp.access(overlayPath));
+  await assert.rejects(fsp.readFile(overlayPath), { code: 'ENOENT' });
   await fsp.access(path.join(box.workspace, '.therapy', 'change-control', 'history', `${approved.revisionId}.json`));
   await fsp.access(path.join(box.workspace, '.therapy', 'change-control', 'history', `${rolledBack.revisionId}.json`));
 

@@ -14,7 +14,8 @@ const {
   atomicWriteFile,
   fsyncDirectory,
   pathExists,
-  sha256Buffer
+  sha256Buffer,
+  readBoundedRegularFile
 } = require('./lib/fs-safe');
 const { renderPrimerSingleton, validatePrimerSingletonMarkdown } = require('./memory-data');
 
@@ -466,11 +467,14 @@ function frontmatter(raw, options = {}) {
 
 async function readRegularFile(filename) {
   if (await pathExists(`${filename}.incomplete`)) throw lifecycleError('Lifecycle artifact has an incomplete-write marker.', 'ARTIFACT_INCOMPLETE');
-  await rejectSymlinkPath(filename);
-  const stat = await fsp.lstat(filename);
-  invariant(stat.isFile(), 'Lifecycle artifact must be a regular file.', 'UNSUPPORTED_FILE_TYPE');
-  invariant(stat.size <= MAX_ARTIFACT_BYTES, 'Lifecycle artifact is too large.', 'ARTIFACT_TOO_LARGE');
-  return fsp.readFile(filename, 'utf8');
+  const bytes = await readBoundedRegularFile(filename, MAX_ARTIFACT_BYTES, {
+    typeMessage: 'Lifecycle artifact must be a regular file.',
+    typeCode: 'UNSUPPORTED_FILE_TYPE',
+    sizeMessage: 'Lifecycle artifact is too large.',
+    sizeCode: 'ARTIFACT_TOO_LARGE',
+    changedCode: 'ARTIFACT_CHANGED_DURING_READ'
+  });
+  return bytes.toString('utf8');
 }
 
 async function atomicExclusiveWrite(filename, data) {

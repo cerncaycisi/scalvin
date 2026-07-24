@@ -304,7 +304,7 @@
       "path": "cli/lib/backup-crypto.js",
       "source": "repo:cli/lib/backup-crypto.js",
       "version": "1.0.0",
-      "sha256": "e7b00272d8af5a50a3ea4dfafe5241cdd10d23951e7b185a395e827a0e2da454",
+      "sha256": "293ab12d9c9442025c4df3ff68080cc2dc445d63d6478ae10ced33f1c7671df0",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -340,7 +340,7 @@
       "path": "cli/lib/fs-safe.js",
       "source": "repo:cli/lib/fs-safe.js",
       "version": "1.0.0",
-      "sha256": "7ca364b7ed4eae645256cecca4011e4289efb38e312bf667947aeddbb98eed34",
+      "sha256": "142e953fa85a9e15fa1e3990d605a610bed0e5de310325504757fd9808a25a6b",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -421,7 +421,7 @@
       "path": "cli/review-due.js",
       "source": "repo:cli/review-due.js",
       "version": "1.0.0",
-      "sha256": "c7d9d4c1f7c902e757b0384791fa219ba8a71c7efa5f7e6592a83a38a34ddf92",
+      "sha256": "31057fd6705c2a4cc730435b92b285606018bb252ff6b8acedb0f4bf8f9442f5",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -430,7 +430,7 @@
       "path": "cli/session-lifecycle.js",
       "source": "repo:cli/session-lifecycle.js",
       "version": "1.0.0",
-      "sha256": "5fd1dfece39fc5b666d8bdb68b0ddcf60221b9dd4da7088ae9fb0f704fe68249",
+      "sha256": "402259774d4ae45d87d485404972ba35c58f63846678a5ff3f3c8befdb3ae6bb",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -457,7 +457,7 @@
       "path": "cli/source-lifecycle.js",
       "source": "repo:cli/source-lifecycle.js",
       "version": "1.0.0",
-      "sha256": "e91394c287e50afa7fffb0a9b7ca6bc66ceb57465469c803ad3dfd307a4b4773",
+      "sha256": "2b8dc2b739b08a6b08ab55d7945ae69457f9f9bc9639277e92f29d9847bf9f39",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -559,7 +559,7 @@
       "path": "hooks/safety-net.cjs",
       "source": "repo:hooks/safety-net.cjs",
       "version": "1.4.0",
-      "sha256": "c6273313be324ed3a220ce2743d000e34fdfecbba18fbb9bed8c12eaaef35df0",
+      "sha256": "29a39c2786e826fc8d98d118b0db4f96baa0f9aaaf484d60063ac7826aa1ddf5",
       "role": "client-hook:safety-net",
       "protection": "framework",
       "targets": [

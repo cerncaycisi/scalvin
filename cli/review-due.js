@@ -49,14 +49,21 @@ function startOfWeek(date) {
 }
 
 async function readFrontmatterOnly(filename, options = {}) {
-  await rejectSymlinkPath(filename);
-  const before = await fsp.lstat(filename);
-  invariant(before.isFile(), 'Review metadata source must be a regular file.', 'REVIEW_ARTIFACT_INVALID');
-  invariant(before.size <= MAX_REVIEW_ARTIFACT_BYTES, 'Review metadata source exceeds the safe artifact limit.', 'REVIEW_ARTIFACT_TOO_LARGE');
-  const handle = await fsp.open(filename, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0));
+  const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0) | (fs.constants.O_NONBLOCK || 0);
+  let handle;
+  try {
+    handle = await fsp.open(filename, flags);
+  } catch (error) {
+    await rejectSymlinkPath(filename);
+    throw error;
+  }
   try {
     const opened = await handle.stat();
-    invariant(opened.isFile() && opened.dev === before.dev && opened.ino === before.ino, 'Review metadata source changed while opening.', 'REVIEW_ARTIFACT_CHANGED');
+    invariant(opened.isFile(), 'Review metadata source must be a regular file.', 'REVIEW_ARTIFACT_INVALID');
+    invariant(opened.size <= MAX_REVIEW_ARTIFACT_BYTES, 'Review metadata source exceeds the safe artifact limit.', 'REVIEW_ARTIFACT_TOO_LARGE');
+    await rejectSymlinkPath(filename);
+    const named = await fsp.lstat(filename);
+    invariant(named.isFile() && opened.dev === named.dev && opened.ino === named.ino, 'Review metadata source changed while opening.', 'REVIEW_ARTIFACT_CHANGED');
     if (options.afterOpen) await options.afterOpen();
     const bytes = [];
     const byte = Buffer.allocUnsafe(1);
@@ -110,7 +117,31 @@ async function datedMatches(directory, patterns, label, options = {}) {
 }
 
 function completionMarkers(content) {
-  return [...content.matchAll(/^completion:\s*([^\r\n#]+?)\s*$/gim)].map((match) => match[1].trim().toLowerCase());
+  const markers = [];
+  for (const rawLine of content.split('\n')) {
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+    if (line.slice(0, 11).toLowerCase() !== 'completion:' || line.length === 11 || line.includes('#')) continue;
+    markers.push(line.slice(11).trim().toLowerCase());
+  }
+  return markers;
+}
+
+function extractFrontmatter(content) {
+  const openingEnd = content.indexOf('\n');
+  if (openingEnd === -1) return null;
+  const opening = content.slice(0, openingEnd).replace(/\r$/, '');
+  if (!opening.startsWith('---') || [...opening.slice(3)].some((character) => character !== ' ' && character !== '\t')) return null;
+  const bodyStart = openingEnd + 1;
+  let lineStart = bodyStart;
+  while (lineStart <= content.length) {
+    const newline = content.indexOf('\n', lineStart);
+    const lineEnd = newline === -1 ? content.length : newline;
+    const line = content.slice(lineStart, lineEnd).replace(/\r$/, '');
+    if (line === '---') return content.slice(bodyStart, lineStart);
+    if (newline === -1) break;
+    lineStart = newline + 1;
+  }
+  return null;
 }
 
 function isCompletedArtifact(content, format) {
@@ -118,9 +149,9 @@ function isCompletedArtifact(content, format) {
   const markers = completionMarkers(content);
   if (markers.length > 1) return false;
   if (format === 'legacy') return markers.length === 0 || markers[0] === 'complete';
-  const frontmatter = content.match(/^---\s*\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
-  if (!frontmatter) return false;
-  const frontmatterMarkers = completionMarkers(frontmatter[1]);
+  const frontmatter = extractFrontmatter(content);
+  if (frontmatter === null) return false;
+  const frontmatterMarkers = completionMarkers(frontmatter);
   return frontmatterMarkers.length === 1 && markers.length === 1 && frontmatterMarkers[0] === 'complete';
 }
 

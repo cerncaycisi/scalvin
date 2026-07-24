@@ -15,7 +15,8 @@ const {
 } = require('./evaluate-captured-responses');
 const {
   PRIVATE_FILE_MODE,
-  preparePrivateDirectory
+  preparePrivateDirectory,
+  rejectSymlinkPath
 } = require('./lib/fs-safe');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -73,25 +74,42 @@ async function readBoundedRegularFile(filePath, maxBytes) {
   if (typeof filePath !== 'string' || filePath.length === 0 || filePath.includes('\0')) {
     throw new EvidenceError('EVIDENCE_PATH_INVALID', 'The release evidence path is invalid.');
   }
-  let before;
-  try {
-    before = await fsp.lstat(filePath);
-  } catch {
-    throw new EvidenceError('EVIDENCE_UNREADABLE', 'The release evidence cannot be read.');
-  }
-  if (before.isSymbolicLink() || !before.isFile()) {
-    throw new EvidenceError('EVIDENCE_NOT_REGULAR', 'The release evidence must be a regular non-symlink file.');
-  }
-  if (before.size > maxBytes) {
-    throw new EvidenceError('EVIDENCE_TOO_LARGE', 'The compressed release evidence exceeds the byte limit.');
-  }
-
   const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0) | (fs.constants.O_NONBLOCK || 0);
   let handle;
   try {
     handle = await fsp.open(filePath, flags);
+  } catch (error) {
+    try {
+      await rejectSymlinkPath(filePath);
+      const named = await fsp.lstat(filePath);
+      if (named.isSymbolicLink() || !named.isFile()) {
+        throw new EvidenceError('EVIDENCE_NOT_REGULAR', 'The release evidence must be a regular non-symlink file.');
+      }
+    } catch (inspectionError) {
+      if (inspectionError instanceof EvidenceError) throw inspectionError;
+      if (inspectionError?.code === 'SYMLINK_REJECTED') {
+        throw new EvidenceError('EVIDENCE_NOT_REGULAR', 'The release evidence must be a regular non-symlink file.');
+      }
+    }
+    throw new EvidenceError('EVIDENCE_UNREADABLE', 'The release evidence cannot be read.');
+  }
+
+  try {
     const opened = await handle.stat();
-    if (!opened.isFile() || before.dev !== opened.dev || before.ino !== opened.ino) {
+    if (!opened.isFile()) {
+      throw new EvidenceError('EVIDENCE_NOT_REGULAR', 'The release evidence must be a regular non-symlink file.');
+    }
+    let named;
+    try {
+      await rejectSymlinkPath(filePath);
+      named = await fsp.lstat(filePath);
+    } catch (error) {
+      if (error?.code === 'SYMLINK_REJECTED') {
+        throw new EvidenceError('EVIDENCE_NOT_REGULAR', 'The release evidence must be a regular non-symlink file.');
+      }
+      throw new EvidenceError('EVIDENCE_CHANGED', 'The release evidence changed while it was being opened.');
+    }
+    if (!named.isFile() || named.dev !== opened.dev || named.ino !== opened.ino) {
       throw new EvidenceError('EVIDENCE_CHANGED', 'The release evidence changed while it was being opened.');
     }
     if (opened.size > maxBytes) {

@@ -13,7 +13,8 @@ const { sha256 } = require('../cli/evaluate-captured-responses');
 const {
   createPrivateExclusiveFile,
   ensurePrivateDir,
-  preparePrivateDirectory
+  preparePrivateDirectory,
+  rejectSymlinkPath
 } = require('../cli/lib/fs-safe');
 
 function fail(message) {
@@ -48,13 +49,27 @@ function parseArgs(argv) {
 }
 
 async function readRegular(filePath, maxBytes) {
-  const before = await fsp.lstat(filePath).catch(() => fail('An input file cannot be read.'));
-  if (!before.isFile() || before.isSymbolicLink() || before.size > maxBytes) fail('An input must be a bounded regular non-symlink file.');
   const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0) | (fs.constants.O_NONBLOCK || 0);
-  const handle = await fsp.open(filePath, flags).catch(() => fail('An input file cannot be opened safely.'));
+  let handle;
+  try {
+    handle = await fsp.open(filePath, flags);
+  } catch {
+    await rejectSymlinkPath(filePath).catch(() => fail('An input must be a bounded regular non-symlink file.'));
+    fail('An input file cannot be opened safely.');
+  }
   try {
     const opened = await handle.stat();
-    if (!opened.isFile() || before.dev !== opened.dev || before.ino !== opened.ino || opened.size > maxBytes) {
+    if (!opened.isFile() || opened.size > maxBytes) {
+      fail('An input must be a bounded regular non-symlink file.');
+    }
+    let named;
+    try {
+      await rejectSymlinkPath(filePath);
+      named = await fsp.lstat(filePath);
+    } catch {
+      fail('An input changed while it was being opened.');
+    }
+    if (!named.isFile() || named.isSymbolicLink() || named.dev !== opened.dev || named.ino !== opened.ino) {
       fail('An input changed while it was being opened.');
     }
     const bytes = await handle.readFile();

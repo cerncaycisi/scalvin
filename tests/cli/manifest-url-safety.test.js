@@ -38,13 +38,8 @@ test('CLI JSON stderr never echoes a signed remote manifest URL token', async ()
   try {
     await fsp.mkdir(box.workspace, { recursive: true });
     await fsp.writeFile(path.join(box.workspace, 'marker.txt'), 'non-empty\n');
-    const script = [
-      `global.fetch = async () => { throw new Error(${JSON.stringify(`transport echoed ${REMOTE}`)}); };`,
-      `const { main } = require(${JSON.stringify(path.join(ROOT, 'cli', 'index.js'))});`,
-      '(async () => { await main(process.argv.slice(1)); })();'
-    ].join('\n');
     const result = spawnSync(process.execPath, [
-      '-e', script,
+      path.join(ROOT, 'tests', 'fixtures', 'manifest-url-cli-fixture.cjs'),
       'update', '--workspace', box.workspace,
       '--manifest', REMOTE,
       '--manifest-sha256', 'a'.repeat(64),

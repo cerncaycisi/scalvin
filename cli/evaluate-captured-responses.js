@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { TextDecoder } = require('node:util');
+const { rejectSymlinkPath } = require('./lib/fs-safe');
 
 const ROOT = path.resolve(__dirname, '..');
 const CORPUS_PATH = path.join(ROOT, 'evals', 'behavioral-release-corpus.json');
@@ -59,32 +60,46 @@ async function readBoundedRegularFile(filePath, maxBytes, prefix) {
     throw new GateError(`${prefix}_PATH_INVALID`, 'The selected file path is invalid.');
   }
 
-  let before;
-  try {
-    before = await fsp.lstat(filePath);
-  } catch {
-    throw new GateError(`${prefix}_UNREADABLE`, 'The selected file cannot be read.');
-  }
-  if (before.isSymbolicLink() || !before.isFile()) {
-    throw new GateError(`${prefix}_NOT_REGULAR`, 'The selected file must be a regular non-symlink file.');
-  }
-  if (before.size > maxBytes) {
-    throw new GateError(`${prefix}_TOO_LARGE`, 'The selected file exceeds the byte limit.');
-  }
-
   const constants = fs.constants;
   const flags = constants.O_RDONLY | (constants.O_NOFOLLOW || 0) | (constants.O_NONBLOCK || 0);
   let handle;
   try {
     handle = await fsp.open(filePath, flags);
-    const after = await handle.stat();
-    if (!after.isFile()) {
+  } catch (error) {
+    try {
+      await rejectSymlinkPath(filePath);
+      const named = await fsp.lstat(filePath);
+      if (named.isSymbolicLink() || !named.isFile()) {
+        throw new GateError(`${prefix}_NOT_REGULAR`, 'The selected file must be a regular non-symlink file.');
+      }
+    } catch (inspectionError) {
+      if (inspectionError instanceof GateError) throw inspectionError;
+      if (inspectionError?.code === 'SYMLINK_REJECTED') {
+        throw new GateError(`${prefix}_NOT_REGULAR`, 'The selected file must be a regular non-symlink file.');
+      }
+    }
+    throw new GateError(`${prefix}_UNREADABLE`, 'The selected file cannot be read.');
+  }
+
+  try {
+    const opened = await handle.stat();
+    if (!opened.isFile()) {
       throw new GateError(`${prefix}_NOT_REGULAR`, 'The selected file must be a regular non-symlink file.');
     }
-    if (before.dev !== after.dev || before.ino !== after.ino) {
+    let named;
+    try {
+      await rejectSymlinkPath(filePath);
+      named = await fsp.lstat(filePath);
+    } catch (error) {
+      if (error?.code === 'SYMLINK_REJECTED') {
+        throw new GateError(`${prefix}_NOT_REGULAR`, 'The selected file must be a regular non-symlink file.');
+      }
       throw new GateError(`${prefix}_CHANGED`, 'The selected file changed while it was being opened.');
     }
-    if (after.size > maxBytes) {
+    if (!named.isFile() || named.dev !== opened.dev || named.ino !== opened.ino) {
+      throw new GateError(`${prefix}_CHANGED`, 'The selected file changed while it was being opened.');
+    }
+    if (opened.size > maxBytes) {
       throw new GateError(`${prefix}_TOO_LARGE`, 'The selected file exceeds the byte limit.');
     }
 
@@ -101,7 +116,7 @@ async function readBoundedRegularFile(filePath, maxBytes, prefix) {
       throw new GateError(`${prefix}_TOO_LARGE`, 'The selected file exceeds the byte limit.');
     }
     const finalState = await handle.stat();
-    if (finalState.size !== after.size || finalState.mtimeMs !== after.mtimeMs) {
+    if (finalState.size !== opened.size || finalState.mtimeMs !== opened.mtimeMs) {
       throw new GateError(`${prefix}_CHANGED`, 'The selected file changed while it was being read.');
     }
     return Buffer.concat(chunks, total);

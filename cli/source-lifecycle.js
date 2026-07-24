@@ -50,6 +50,12 @@ function compareCodePoint(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+function trimTrailingLineFeeds(value) {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 10) end -= 1;
+  return value.slice(0, end);
+}
+
 function sourceError(message, code, details) {
   return new ScalvinError(message, code, details);
 }
@@ -224,7 +230,7 @@ function renderLedger(markdown, records) {
   invariant(separator !== -1 && lines[separator - 1] === LEDGER_HEADER, 'Source ledger schema is invalid.', 'SOURCE_LEDGER_INVALID');
   const rows = [...records].sort((a, b) => compareCodePoint(a.sourceId, b.sourceId) || a.revision - b.revision).map(renderLedgerRow);
   lines.splice(separator + 1, 0, ...rows);
-  return `${lines.join('\n').replace(/\n+$/, '')}\n`;
+  return `${trimTrailingLineFeeds(lines.join('\n'))}\n`;
 }
 
 function upsertRecord(records, next) {
@@ -553,7 +559,7 @@ function sourceRecordMarkdown(record, paths, provenance = {}) {
     validateImportedSourceRecord(markdown);
   }
   invariant(Buffer.byteLength(markdown) <= MAX_RECORD_BYTES, 'Source provenance record is too large.', 'SOURCE_RECORD_TOO_LARGE');
-  return `${markdown.replace(/\n+$/, '')}\n`;
+  return `${trimTrailingLineFeeds(markdown)}\n`;
 }
 
 function replaceRecordFields(markdown, changes) {
