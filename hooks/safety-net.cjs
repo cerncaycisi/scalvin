@@ -116,17 +116,28 @@ function loadLocalePacks(directory = path.join(__dirname, 'safety-locales')) {
   return names.map((name) => {
     if (!/^[A-Za-z0-9-]+\.json$/.test(name)) throw new Error('Safety locale pack filename is invalid');
     const target = path.join(directory, name);
-    const preflight = fs.lstatSync(target);
-    if (!preflight.isFile() || preflight.isSymbolicLink()) throw new Error('Safety locale pack file is invalid');
     const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0);
-    const descriptor = fs.openSync(target, flags);
+    let descriptor;
+    try {
+      descriptor = fs.openSync(target, flags);
+    } catch {
+      throw new Error('Safety locale pack file is invalid');
+    }
     let bytes;
     try {
       const opened = fs.fstatSync(descriptor);
       if (!opened.isFile() || opened.size <= 0 || opened.size > MAX_PACK_BYTES) {
         throw new Error('Safety locale pack file is invalid');
       }
+      const named = fs.lstatSync(target);
+      if (!named.isFile() || named.isSymbolicLink() || named.dev !== opened.dev || named.ino !== opened.ino) {
+        throw new Error('Safety locale pack file is invalid');
+      }
       bytes = fs.readFileSync(descriptor, 'utf8');
+      const after = fs.fstatSync(descriptor);
+      if (after.size !== opened.size || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs) {
+        throw new Error('Safety locale pack file changed while it was being read');
+      }
     } finally {
       fs.closeSync(descriptor);
     }

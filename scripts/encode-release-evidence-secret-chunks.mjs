@@ -9,7 +9,8 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const {
   PRIVATE_FILE_MODE,
-  createPrivateStage
+  createPrivateStage,
+  rejectSymlinkPath
 } = require('../cli/lib/fs-safe');
 
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
@@ -35,15 +36,27 @@ function parseArgs(argv) {
 }
 
 async function readRegular(filePath) {
-  const before = await fsp.lstat(filePath).catch(() => fail('The evidence file cannot be read.'));
-  if (!before.isFile() || before.isSymbolicLink() || before.size > MAX_INPUT_BYTES) {
-    fail('The evidence input must be a bounded regular non-symlink file.');
-  }
   const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0) | (fs.constants.O_NONBLOCK || 0);
-  const handle = await fsp.open(filePath, flags).catch(() => fail('The evidence file cannot be opened safely.'));
+  let handle;
+  try {
+    handle = await fsp.open(filePath, flags);
+  } catch {
+    await rejectSymlinkPath(filePath).catch(() => fail('The evidence input must be a bounded regular non-symlink file.'));
+    fail('The evidence file cannot be opened safely.');
+  }
   try {
     const opened = await handle.stat();
-    if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino || opened.size > MAX_INPUT_BYTES) {
+    if (!opened.isFile() || opened.size > MAX_INPUT_BYTES) {
+      fail('The evidence input must be a bounded regular non-symlink file.');
+    }
+    let named;
+    try {
+      await rejectSymlinkPath(filePath);
+      named = await fsp.lstat(filePath);
+    } catch {
+      fail('The evidence file changed while it was being opened.');
+    }
+    if (!named.isFile() || named.isSymbolicLink() || named.dev !== opened.dev || named.ino !== opened.ino) {
       fail('The evidence file changed while it was being opened.');
     }
     const bytes = await handle.readFile();

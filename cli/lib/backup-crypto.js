@@ -80,24 +80,21 @@ async function openBoundedRegularFile(filename, options = {}) {
   const code = options.code || 'BACKUP_FILE_INVALID';
   const message = options.message || 'Backup component must be a bounded regular non-symlink file.';
   invariant(Number.isSafeInteger(maxBytes) && maxBytes >= 0, 'Internal backup byte limit is invalid.', 'BACKUP_LIMIT_INVALID');
-  await rejectSymlinkPath(filename).catch((error) => {
-    if (error instanceof ScalvinError && error.code === 'SYMLINK_REJECTED') throw new ScalvinError(message, code);
-    throw error;
-  });
-  let before;
-  try {
-    before = await fsp.lstat(filename);
-  } catch {
-    throw new ScalvinError(message, code);
-  }
-  invariant(before.isFile() && before.size >= minBytes && before.size <= maxBytes, message, code);
   const flags = fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0) | (fs.constants.O_NONBLOCK || 0);
   let handle;
   try {
     handle = await fsp.open(filename, flags);
     const opened = await handle.stat();
     invariant(opened.isFile() && opened.size >= minBytes && opened.size <= maxBytes, message, code);
-    invariant(before.dev === opened.dev && before.ino === opened.ino, 'Backup component changed while it was opened.', 'BACKUP_FILE_CHANGED');
+    let named;
+    try {
+      await rejectSymlinkPath(filename);
+      named = await fsp.lstat(filename);
+    } catch (error) {
+      if (error instanceof ScalvinError && error.code === 'SYMLINK_REJECTED') throw new ScalvinError(message, code);
+      throw new ScalvinError('Backup component changed while it was opened.', 'BACKUP_FILE_CHANGED');
+    }
+    invariant(named.isFile() && named.dev === opened.dev && named.ino === opened.ino, 'Backup component changed while it was opened.', 'BACKUP_FILE_CHANGED');
     return { handle, stat: opened };
   } catch (error) {
     await handle?.close().catch(() => {});
