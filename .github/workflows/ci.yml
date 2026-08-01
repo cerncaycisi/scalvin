@@ -247,12 +247,12 @@ jobs:
             --expected-commit "$GITHUB_SHA"
       - name: Attest complete release artifact-set provenance
         id: attest-release-provenance
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-checksums: ${{ runner.temp }}/scalvin-release-artifacts/scalvin-${{ inputs.stable_version }}.release-set.sha256
       - name: Attest release archive SBOM
         id: attest-release-sbom
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-checksums: ${{ runner.temp }}/scalvin-release-artifacts/scalvin-${{ inputs.stable_version }}.tgz.sha256
           sbom-path: ${{ runner.temp }}/scalvin-release-artifacts/scalvin-${{ inputs.stable_version }}.spdx.json
