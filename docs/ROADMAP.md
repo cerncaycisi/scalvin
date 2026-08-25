@@ -51,12 +51,12 @@ test asserts a doctor run with zero warnings.
 
 Work items:
 
-1. **Blocked — needs a human or an egress allowance.** Re-verify every
-   `officialSource` for CA, TR, and US against the live official page, then
-   update `verifiedAt` and the derived `expiresAt`. The checker performs no
-   network fetch by design, so this step is manual and cannot be delegated to
-   CI. Do not advance the dates without re-verifying; the dates are the
-   assertion, not a formality.
+1. **Blocked — needs a human or an egress allowance.** Tracked as issue #12,
+   which carries the per-source checklist. Re-verify every `officialSource` for
+   CA, TR, and US against the live official page, then update `verifiedAt` and
+   the derived `expiresAt`. The checker performs no network fetch by design, so
+   this step is manual and cannot be delegated to CI. Do not advance the dates
+   without re-verifying; the dates are the assertion, not a formality.
 
    All five sources are currently unreachable from the agent session that
    raised this item, because the egress policy denies `www.canada.ca`,
