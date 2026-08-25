@@ -51,25 +51,51 @@ test asserts a doctor run with zero warnings.
 
 Work items:
 
-1. Re-verify every `officialSource` for CA, TR, and US against the live
-   official page, then update `verifiedAt` and the derived `expiresAt`. The
-   checker performs no network fetch by design, so this step is manual and
-   cannot be delegated to CI. Do not advance the dates without re-verifying;
-   the dates are the assertion.
-2. Re-run `npm run check` and `npm test` and confirm the count returns to
-   610 pass / 0 fail / 8 skipped.
-3. Decide the ownership and cadence for the 30-day TTL. Today `main` turns red
-   on a calendar date with no code change and no maintainer signal beforehand.
-   A scheduled reminder ahead of expiry would convert a surprise failure into
-   planned work. The fail-closed behavior itself is correct and should stay.
-4. Decide the reason-code precedence question this exposed. A stale registry
-   currently supersedes the reason code that a test is exercising, so an
-   expiry masks unrelated capability-state assertions instead of only failing
-   the freshness gate. This will recur at every expiry regardless of item 1.
-   Whether the runtime notice should carry one reason or several is a design
-   decision, not a defect to patch silently.
+1. **Blocked — needs a human or an egress allowance.** Re-verify every
+   `officialSource` for CA, TR, and US against the live official page, then
+   update `verifiedAt` and the derived `expiresAt`. The checker performs no
+   network fetch by design, so this step is manual and cannot be delegated to
+   CI. Do not advance the dates without re-verifying; the dates are the
+   assertion, not a formality.
 
-Items 3 and 4 are the durable fix; item 1 alone buys 30 days.
+   All five sources are currently unreachable from the agent session that
+   raised this item, because the egress policy denies `www.canada.ca`,
+   `www.112.gov.tr`, and `www.911.gov`. Either a maintainer performs the
+   verification, or those three hosts are allowed for the session that does.
+
+   Refreshing the dates also requires updating the exact `verifiedAt` and
+   `expiresAt` values asserted in `tests/safety/emergency-resources.test.cjs`,
+   so this is not a pure data edit.
+
+2. Re-run `npm run check` and `npm test` after item 1 and confirm the suite
+   returns to 0 failures.
+
+3. **Done.** Ownership and cadence for the 30-day TTL. The checker now emits a
+   lead-time notice while the registry is still current, and a scheduled
+   `Emergency resource freshness` workflow runs it weekly with
+   `--fail-expiring`, so an approaching lapse surfaces before the expiry date
+   instead of on it. The fail-closed stale behavior is unchanged, and the
+   notice is deliberately not a runtime capability state.
+
+   This job is red today, which is correct: it is reporting item 1.
+
+Item 3 stops the recurrence; item 1 still has to be done by a person.
+
+### Reason-code precedence: resolved as not-a-defect
+
+An earlier revision of this roadmap listed the reason-code overlap as an open
+design question, on the grounds that a stale registry supersedes the reason
+code a test is exercising. On review it should stay as it is.
+
+When the registry is stale the mechanical backstop genuinely is degraded, and
+a workspace built on it genuinely does warrant a doctor warning. Tests that
+assert a clean doctor run or a specific hook reason code are therefore failing
+honestly, and relaxing them — by pinning time, injecting a fresh fixture
+registry, or reordering the reason codes — would make the suite green while a
+real degradation persisted. Freshness is the fix; the coupling is the feature.
+The one narrow exception was the checker reporting a usage error as
+`EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED`, which is now a distinct usage
+message.
 
 ## P1 — Architecture gate
 

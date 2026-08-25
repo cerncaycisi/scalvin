@@ -21,6 +21,25 @@ degraded capability state.
 
     node scripts/check-emergency-resources.mjs
 
+Because the TTL is short, the checker also reports a lead-time notice while the
+registry is still current, so an approaching lapse becomes scheduled work
+instead of a build that turns red on the expiry date:
+
+    node scripts/check-emergency-resources.mjs --lead-days 14
+    node scripts/check-emergency-resources.mjs --fail-expiring
+
+`--lead-days` sets the notice window and defaults to 14. `--fail-expiring`
+turns the notice into a non-zero exit and is what the scheduled
+`Emergency resource freshness` workflow runs. Neither option relaxes the stale
+check, and neither is a runtime capability state: the installed safety hook
+continues to report only `current` or `stale`.
+
+Re-verification stays manual. `verifiedAt` records that a maintainer opened
+every `officialSource` and confirmed the contacts against the live official
+page, so the dates must never be advanced to clear a red check. Refreshing them
+also requires updating the exact dates asserted in
+`tests/safety/emergency-resources.test.cjs`.
+
 ## Stable-release evidence
 
 The release-evidence tools are invoked with Node and never print private keys,
