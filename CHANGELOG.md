@@ -130,6 +130,10 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
 - `review_due_check.py` crashed when the review path was a file
 - the emergency-resource checker reported an invalid command line as
   `EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED`; usage errors now report distinctly
+- the CodeQL workflow test pinned literal action commit SHAs, so every
+  legitimate dependency bump failed `Required CI`; it now asserts full-SHA
+  pinning, matching `init`/`analyze` commits, and no drift between the
+  scheduled and `Required CI` analyses, across every workflow
 - cleanup script was non-executable and did not enforce its tracked-file safety
   claim
 - freeform/weekly-review and structured/homework precedence conflicts

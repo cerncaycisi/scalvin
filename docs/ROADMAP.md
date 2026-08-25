@@ -171,6 +171,22 @@ Five open Dependabot pull requests, all GitHub Actions version bumps: #7
 that matter for release, because `Required CI` includes the pinned extended
 JavaScript CodeQL analysis and none of it may be skipped.
 
+All five were red, and not because the bumps were wrong.
+`tests/repository/codeql-workflow.test.mjs` asserted the literal
+`actions/checkout` and `github/codeql-action` commit SHAs, so every legitimate
+bump failed `Required CI` by construction. PR #11's run on 2026-08-01 — while
+the registry was still current — failed only that assertion.
+
+The test now asserts the property that carries the security value: every action
+in every workflow resolves to a full 40-hex commit SHA, CodeQL `init` and
+`analyze` run the same pinned commit, the scheduled and `Required CI` analyses
+do not drift apart, and no step uses a floating `@vN` tag. Pinning a literal
+SHA in a test that lives beside the workflow never gated an unauthorized
+change — an edit would touch both files — so nothing was given up.
+
+These pull requests still need item P0-1 before they can go green, because
+`npm run check` fails for every branch while the registry is stale.
+
 ## Not on this roadmap
 
 Deliberate non-goals, restated so they are not mistaken for gaps. Scalvin does
