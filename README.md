@@ -282,6 +282,7 @@ and [Security](SECURITY.md).
 ### Contributors and maintainers
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Roadmap](docs/ROADMAP.md)
 - [Engineering Experiment Log](docs/ENGINEERING-EXPERIMENT-LOG.md)
 - [Contributing](CONTRIBUTING.md)
 - [Clinical and Safety Review Gate](docs/CLINICAL-SAFETY-REVIEW.md)

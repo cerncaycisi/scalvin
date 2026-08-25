@@ -62,6 +62,7 @@
     "docs/LOCALIZATION.md",
     "docs/PRIVACY.md",
     "docs/RELEASE-EVIDENCE.md",
+    "docs/ROADMAP.md",
     "docs/SCOPE-AND-EVIDENCE.md",
     "hooks/current-time.cjs",
     "hooks/emergency-resources.cjs",
