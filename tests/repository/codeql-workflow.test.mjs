@@ -17,8 +17,15 @@ const REQUIRED_WORKFLOW = readFileSync(path.join(WORKFLOW_DIR, 'ci.yml'), 'utf8'
 // shape.
 const COMMIT_PIN = /^[0-9a-f]{40}$/;
 
+// Escape every regular-expression metacharacter, not just the separator. A
+// partial escape silently builds a different pattern than the caller wrote.
+// `/` needs no escape inside a RegExp constructor.
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function pinsFor(workflow, action) {
-  const pattern = new RegExp(`${action.replace(/[/]/g, '\\/')}@([^\\s#]+)`, 'g');
+  const pattern = new RegExp(`${escapeRegExp(action)}@([^\\s#]+)`, 'g');
   return [...workflow.matchAll(pattern)].map((match) => match[1]);
 }
 
