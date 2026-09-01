@@ -77,7 +77,12 @@ Work items:
    instead of on it. The fail-closed stale behavior is unchanged, and the
    notice is deliberately not a runtime capability state.
 
-   This job is red today, which is correct: it is reporting item 1.
+   That job is not running yet. GitHub runs `schedule` triggers only from the
+   default branch's copy of a workflow file, and both the notice and the
+   workflow are still on the branch in #13. The early warning starts protecting
+   the next expiry once that branch merges, which waits on item 1. Clearing
+   item 1 is therefore what both fixes the current red and switches the future
+   warning on.
 
 Item 3 stops the recurrence; item 1 still has to be done by a person.
 
