@@ -120,3 +120,53 @@ test('static checker passes current data and fails stale data without leaking a 
   assert.match(stale.stderr, /EMERGENCY_RESOURCE_REGISTRY_STALE \(CA,TR,US\)/);
   assert.doesNotMatch(stale.stderr, /\/Users\/|\/Volumes\/|[A-Za-z]:\\/);
 });
+
+test('static checker warns inside the lead window without weakening the freshness state', () => {
+  // Eight days before the 2026-08-13 expiry, so inside the default 14-day lead
+  // window but still current.
+  const soon = spawnSync(process.execPath, [CHECKER, '--now', '2026-08-05'], {
+    cwd: ROOT,
+    encoding: 'utf8'
+  });
+  assert.equal(soon.status, 0, 'a lead-time notice must not fail an otherwise current registry');
+  assert.match(soon.stdout, /3 jurisdictions; earliest expiry 2026-08-13/);
+  assert.match(soon.stderr, /EMERGENCY_RESOURCE_REGISTRY_EXPIRING_SOON/);
+  assert.match(soon.stderr, /8 day\(s\) left/);
+  assert.doesNotMatch(soon.stderr, /\/Users\/|\/Volumes\/|[A-Za-z]:\\/);
+
+  const outside = spawnSync(process.execPath, [CHECKER, '--now', '2026-08-05', '--lead-days', '3'], {
+    cwd: ROOT,
+    encoding: 'utf8'
+  });
+  assert.equal(outside.status, 0);
+  assert.equal(outside.stderr, '', 'no notice is due outside the configured lead window');
+});
+
+test('static checker can fail early inside the lead window and rejects unknown arguments', () => {
+  const failing = spawnSync(process.execPath, [CHECKER, '--now', '2026-08-05', '--fail-expiring'], {
+    cwd: ROOT,
+    encoding: 'utf8'
+  });
+  assert.equal(failing.status, 1, 'the scheduled job must surface a lapse before the expiry date');
+  assert.match(failing.stderr, /EMERGENCY_RESOURCE_REGISTRY_EXPIRING_SOON/);
+
+  // --fail-expiring only escalates the lead-time notice; a registry with time
+  // left still passes.
+  const early = spawnSync(process.execPath, [CHECKER, '--now', '2026-07-17', '--fail-expiring'], {
+    cwd: ROOT,
+    encoding: 'utf8'
+  });
+  assert.equal(early.status, 0);
+  assert.equal(early.stderr, '');
+
+  for (const badArguments of [['--bogus'], ['--lead-days'], ['--lead-days', '91'], ['--lead-days', 'x'], ['--now']]) {
+    const rejected = spawnSync(process.execPath, [CHECKER, ...badArguments], { cwd: ROOT, encoding: 'utf8' });
+    assert.equal(rejected.status, 1);
+    assert.match(rejected.stderr, /^usage: check-emergency-resources\.mjs/);
+    assert.doesNotMatch(
+      rejected.stderr,
+      /EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED/,
+      'a usage error must not be reported as a registry load failure'
+    );
+  }
+});

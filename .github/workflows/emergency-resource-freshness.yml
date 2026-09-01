@@ -1,0 +1,38 @@
+name: Emergency resource freshness
+
+# The bundled jurisdiction registry carries a 30-day TTL. Without a scheduled
+# check, the first signal that it lapsed is `main` turning red on the expiry
+# date, with no lead time to re-verify the official sources. This job fails
+# while the registry is still current so the re-verification is planned work.
+#
+# Re-verification is deliberately manual: the checker performs no network
+# request, so `verifiedAt` records that a maintainer opened every
+# `officialSource` and confirmed the contacts. Do not advance the dates to
+# clear this job.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: emergency-resource-freshness
+  cancel-in-progress: false
+
+jobs:
+  freshness:
+    name: Registry freshness and lead time
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "20"
+      # No install step: the checker uses only Node built-ins and reads the
+      # registry from the working tree.
+      - name: Check registry freshness with lead time
+        run: node scripts/check-emergency-resources.mjs --fail-expiring

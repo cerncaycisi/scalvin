@@ -47,6 +47,12 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
 - machine-readable, country-scoped emergency-resource registry with official
   source provenance, a bounded TTL, startup degradation, and static/release
   staleness gates
+- emergency-resource lead-time notice and a scheduled freshness workflow, so an
+  approaching registry lapse becomes planned re-verification instead of a build
+  that turns red on the expiry date; the notice never relaxes the stale check
+  and is not a runtime capability state
+- `docs/ROADMAP.md`, recording the measured gate baseline and the order in
+  which stable-release blockers unblock each other
 - public-repository private-data/secret scan, Markdown link check, syntax and
   manifest gates, cross-platform CI, issue forms, CODEOWNERS, governance,
   support, accessibility, localization, architecture, privacy, migration, and
@@ -122,6 +128,12 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
 - crisis flow lacked clear risk-class branching and capability truth
 - transcript, session, deep-dive, and backup filename collision risk
 - `review_due_check.py` crashed when the review path was a file
+- the emergency-resource checker reported an invalid command line as
+  `EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED`; usage errors now report distinctly
+- the CodeQL workflow test pinned literal action commit SHAs, so every
+  legitimate dependency bump failed `Required CI`; it now asserts full-SHA
+  pinning, matching `init`/`analyze` commits, and no drift between the
+  scheduled and `Required CI` analyses, across every workflow
 - cleanup script was non-executable and did not enforce its tracked-file safety
   claim
 - freeform/weekly-review and structured/homework precedence conflicts
