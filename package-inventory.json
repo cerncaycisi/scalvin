@@ -63,6 +63,7 @@
     "docs/PRIVACY.md",
     "docs/RELEASE-EVIDENCE.md",
     "docs/SCOPE-AND-EVIDENCE.md",
+    "docs/reviews/2026-09-04-full-repo-project-review.tr.md",
     "hooks/current-time.cjs",
     "hooks/emergency-resources.cjs",
     "hooks/emergency-resources.json",

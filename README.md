@@ -283,6 +283,7 @@ and [Security](SECURITY.md).
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Engineering Experiment Log](docs/ENGINEERING-EXPERIMENT-LOG.md)
+- [Full Repository and Project Review — 2026-09-04 (Türkçe)](docs/reviews/2026-09-04-full-repo-project-review.tr.md)
 - [Contributing](CONTRIBUTING.md)
 - [Clinical and Safety Review Gate](docs/CLINICAL-SAFETY-REVIEW.md)
 - [Stable Release Evidence](docs/RELEASE-EVIDENCE.md)
