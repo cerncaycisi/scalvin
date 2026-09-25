@@ -9,15 +9,16 @@ const { spawn, execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { ScalvinError, invariant } = require('./lib/errors');
 const { PRIVATE_DIR_MODE, rejectSymlinkPath } = require('./lib/fs-safe');
+const { interactiveEnvironment, terminateChild } = require('./lib/child-process');
 const operations = require('./operations');
 
 const execFileAsync = promisify(execFile);
 const MAX_SIGNAL_BYTES = 2048;
 
+// The interactive client is the user's own tool: keep the user's environment
+// minus Scalvin-internal and interpreter-injection variables.
 function cleanEnvironment() {
-  const env = {};
-  for (const [key, value] of Object.entries(process.env)) if (!key.startsWith('SCALVIN_')) env[key] = value;
-  return env;
+  return interactiveEnvironment();
 }
 
 async function resolveInteractiveClient(client, explicit) {
@@ -120,16 +121,7 @@ function interactiveClientCommand(client, executable, workspace) {
 }
 
 async function terminateClient(child) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  child.kill('SIGTERM');
-  await new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
-      resolve();
-    }, 2_000);
-    timer.unref();
-    child.once('close', () => { clearTimeout(timer); resolve(); });
-  });
+  await terminateChild(child, { graceMs: 2_000, confirmMs: 2_000 });
 }
 
 async function launchSupervisedClient(options = {}) {

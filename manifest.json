@@ -259,7 +259,7 @@
       "path": "cli/client-launcher.js",
       "source": "repo:cli/client-launcher.js",
       "version": "1.0.0",
-      "sha256": "03af177d00eac962af825738bdbe3e221490176d6e26be02d4911f5c0d706c15",
+      "sha256": "ac61acd1f29f1b71dffc17d596a5f6c84d9d4ea042ee708f6ac7a68e365c1e33",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -323,6 +323,15 @@
       "source": "repo:cli/lib/backup.js",
       "version": "1.0.0",
       "sha256": "7ddfa10de0be914c312492ecfab367eea9418fe7a607d91f29aace6ad435721f",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/lib/child-process.js",
+      "source": "repo:cli/lib/child-process.js",
+      "version": "1.0.0",
+      "sha256": "04c039cfeab1f47ef228e14a58346054011ffe198792f8746e0bd5dc7e3633a3",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -439,7 +448,7 @@
       "path": "cli/session-supervisor.js",
       "source": "repo:cli/session-supervisor.js",
       "version": "1.0.0",
-      "sha256": "f71480acfc216a416fff9d791cb5979c8c6daa54eb38f8d7f94946f1c6e39bad",
+      "sha256": "8e78ac009091a3468d23750f3d3ff11d751fb914949ad6a5700d62f0555d3280",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
