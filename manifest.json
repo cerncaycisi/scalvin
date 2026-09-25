@@ -475,7 +475,7 @@
       "path": "cli/source-worker.js",
       "source": "repo:cli/source-worker.js",
       "version": "1.0.0",
-      "sha256": "c4892ddb8152d26fa6e91679435e82e1048bf9731b54983a7f43155ec2be01c9",
+      "sha256": "03780f676a50cd86feb6c1ffce6827465da1e2c77d49b777136002eadab99bb1",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []

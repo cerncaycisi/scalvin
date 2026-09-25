@@ -226,7 +226,18 @@ uses a temporary private working directory, and registers only the isolated
 source-worker MCP. The worker reads source bytes from the deterministic
 lifecycle rather than a caller path and emits at most twenty schema-bounded
 candidates. Server-generated IDs and an HMAC bind the proposal to source,
-revision, hash, worker version, client, and client version.
+revision, hash, worker version, client, and client version. The worker refuses
+a non-empty proposal until it has served every chunk of the assigned source as
+one contiguous read from offset 0. That proves read coverage only; it does not
+prove that a candidate is semantically grounded in the source.
+
+Launcher child processes use explicit environment policies. The source worker
+receives an allowlist of operating-system, locale, proxy/CA, and the selected
+client's provider variables; the interactive client keeps the user's
+environment minus `SCALVIN_*` and interpreter-injection variables such as
+`NODE_OPTIONS`. Worker timeout and output overflow share one bounded
+termination path (SIGTERM, grace period, SIGKILL of the worker's process group)
+that reports failure only after the exit is observed.
 
 The main broker can list those bounded candidates and record an exact selected
 set after a one-time confirmation challenge. It cannot reopen raw source bytes,

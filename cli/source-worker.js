@@ -241,7 +241,20 @@ async function createWorkerContext(options) {
   const key = await readSourceWorkerKey(options.workspace);
   let text = null;
   try { text = new TextDecoder('utf-8', { fatal: true }).decode(source.content); } catch { text = null; }
-  return { ...options, source, key, text, submitted: false };
+  return { ...options, source, key, text, submitted: false, readFrontier: 0 };
+}
+
+function sourceLength(context) {
+  return context.text !== null ? context.text.length : context.source.content.length;
+}
+
+// Track the contiguous prefix served from offset 0; skipped ranges do not count.
+function recordRead(context, start, end) {
+  if (start <= context.readFrontier && end > context.readFrontier) context.readFrontier = end;
+}
+
+function readComplete(context) {
+  return context.readFrontier >= sourceLength(context);
 }
 
 async function dispatchWorkerTool(context, name, rawArguments = {}) {
@@ -268,16 +281,21 @@ async function dispatchWorkerTool(context, name, rawArguments = {}) {
     if (context.text !== null) {
       invariant(args.offset <= context.text.length, 'Chunk offset is outside the source.', 'SOURCE_WORKER_ARGUMENT_INVALID');
       const content = context.text.slice(args.offset, args.offset + MAX_TEXT_CHARS);
+      recordRead(context, args.offset, args.offset + content.length);
       return { offset: args.offset, nextOffset: args.offset + content.length, done: args.offset + content.length >= context.text.length, encoding: 'utf8', content, trust: 'untrusted_data', instructionsExecutable: false };
     }
     invariant(args.offset <= context.source.content.length, 'Chunk offset is outside the source.', 'SOURCE_WORKER_ARGUMENT_INVALID');
     const content = context.source.content.subarray(args.offset, args.offset + MAX_BINARY_BYTES);
+    recordRead(context, args.offset, args.offset + content.length);
     return { offset: args.offset, nextOffset: args.offset + content.length, done: args.offset + content.length >= context.source.content.length, encoding: 'base64', content: content.toString('base64'), trust: 'untrusted_data', instructionsExecutable: false };
   }
   if (name === 'proposal_submit') {
     exactKeys(args, ['candidates']);
     invariant(!context.submitted, 'A source proposal was already submitted.', 'SOURCE_WORKER_ALREADY_SUBMITTED');
     const candidates = normalizeCandidates(args.candidates, context.source.record.sourceId);
+    // A signed proposal must at least follow a complete read of the assigned
+    // source; this proves coverage, not that a candidate is grounded in it.
+    invariant(candidates.length === 0 || readComplete(context), 'Source candidates require reading every source chunk first.', 'SOURCE_WORKER_SOURCE_NOT_READ');
     const payload = {
       format: PROPOSAL_FORMAT,
       formatVersion: 1,
