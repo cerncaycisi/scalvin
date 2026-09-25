@@ -787,7 +787,7 @@ function setMemoryField(body, name, value, { remove = false } = {}) {
   if (expression.test(body)) return body.replace(expression, () => `- ${name}: ${value}\n`);
   const history = body.search(/^#### Revision history[ \t]*$/mi);
   const line = `- ${name}: ${value}\n`;
-  return history === -1 ? `${body.replace(/\s*$/, '')}\n${line}` : `${body.slice(0, history)}${line}\n${body.slice(history)}`;
+  return history === -1 ? `${body.trimEnd()}\n${line}` : `${body.slice(0, history)}${line}\n${body.slice(history)}`;
 }
 
 // A user correction is also a live confirmation of the new wording: the text,
