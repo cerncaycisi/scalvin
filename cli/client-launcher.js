@@ -206,11 +206,25 @@ async function runBoundedClient(command, timeoutMs = SOURCE_WORKER_TIMEOUT_MS, o
     detached: group
   });
   const termination = { graceMs: options.graceMs ?? 2_000, confirmMs: options.confirmMs ?? 2_000, group };
-  // If the parent exits first, do not leave the worker group behind.
-  const onParentExit = () => {
+  // The detached worker no longer receives terminal signals with the parent,
+  // so forward cancellation: kill the worker group, then re-raise the signal
+  // with its default behavior. An uncatchable parent SIGKILL can still orphan
+  // the group.
+  const killWorker = () => {
     try { if (group && Number.isSafeInteger(child.pid)) process.kill(-child.pid, 'SIGKILL'); else child.kill('SIGKILL'); } catch (_) { /* gone */ }
   };
-  process.once('exit', onParentExit);
+  const forwardedSignals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+  const onParentSignal = (signal) => {
+    killWorker();
+    removeParentHandlers();
+    if (process.listenerCount(signal) === 0) process.kill(process.pid, signal);
+  };
+  const removeParentHandlers = () => {
+    process.removeListener('exit', killWorker);
+    for (const signal of forwardedSignals) process.removeListener(signal, onParentSignal);
+  };
+  process.once('exit', killWorker);
+  if (process.platform !== 'win32') for (const signal of forwardedSignals) process.once(signal, onParentSignal);
   try {
     await new Promise((resolve, reject) => {
       let bytes = 0;
@@ -252,7 +266,7 @@ async function runBoundedClient(command, timeoutMs = SOURCE_WORKER_TIMEOUT_MS, o
       });
     });
   } finally {
-    process.removeListener('exit', onParentExit);
+    removeParentHandlers();
     // Sweep helpers left in the worker's process group after a normal exit.
     if (group && Number.isSafeInteger(child.pid)) {
       try { process.kill(-child.pid, 'SIGKILL'); } catch (_) { /* group already empty */ }

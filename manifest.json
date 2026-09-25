@@ -259,7 +259,7 @@
       "path": "cli/client-launcher.js",
       "source": "repo:cli/client-launcher.js",
       "version": "1.0.0",
-      "sha256": "ac61acd1f29f1b71dffc17d596a5f6c84d9d4ea042ee708f6ac7a68e365c1e33",
+      "sha256": "1d6cd43de3c90b11f1aeb474f2b019d8805dfa5940e60d47ee5005f56d35a90c",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -331,7 +331,7 @@
       "path": "cli/lib/child-process.js",
       "source": "repo:cli/lib/child-process.js",
       "version": "1.0.0",
-      "sha256": "04c039cfeab1f47ef228e14a58346054011ffe198792f8746e0bd5dc7e3633a3",
+      "sha256": "020b5731b3cef2e859aaf3272097926160a4cef4efeab2e89b12b92725e6f059",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []

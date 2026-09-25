@@ -12,7 +12,7 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
 
 ### Added
 
-- deterministic Node 20+ CLI for install, doctor, review-due, pinned update,
+- deterministic Node 22+ CLI for install, doctor, review-due, pinned update,
   integrity-checked backup, and traversal-safe restore
 - manifest schema v2 with per-file version, SHA-256, source, role, target, and
   protection metadata
@@ -100,6 +100,25 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
   to `NOTICE.md`
 
 ### Fixed
+
+- a stale or missing emergency-resource registry no longer switches off the
+  mechanical safety scan; registry freshness is reported as a separate
+  `emergencyResources` state (hook self-test schema 2) and doctor warns with
+  `EMERGENCY_RESOURCES_NOT_CURRENT`
+- the CA, TR, and US emergency-resource entries were re-verified against their
+  official sources on 2026-09-25
+- a memory correction now records a live confirmation of the new wording
+  (confirmation time, confirming session or `null`, and `Review state:
+  current`), so corrected items are not re-offered as stale
+- source-worker timeout and output overflow share one bounded termination path
+  that kills the worker's process group and reports only after exit is observed
+- the source worker refuses non-empty proposals until it has served the whole
+  source as one contiguous read
+- the source worker receives an explicit environment allowlist; the interactive
+  client drops `SCALVIN_*` and interpreter-injection variables such as
+  `NODE_OPTIONS`
+- the supported runtime floor is Node 22 (Node 20 is end of life); CI tests
+  Node 22 and 24 on Linux, macOS, and Windows
 
 - first-session safety protocol could previously be skipped
 - selected modalities, structure, and command behavior could be disconnected

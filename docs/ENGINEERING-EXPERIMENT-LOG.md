@@ -199,3 +199,39 @@ when they establish a reusable engineering rule.
   escaped newline stopped with `rg: the literal "\n" is not allowed in a
   regex`. Use fixed-string `rg -F` expressions for literal source-pattern
   inventory.
+
+### Review F1–F11 remediation pass (2026-09-25)
+
+- Context: Linux, Node 24.21.0, branch `claude/perfect-pass` from main
+  `f3502c0`, addressing the 2026-09-04 review findings F1, F4, F5, F6, F7, and
+  F11.
+- Finding: when the registry was stale, a direct crisis statement produced
+  only `EMERGENCY_RESOURCE_REGISTRY_STALE`; classification never ran. After the
+  change the same synthetic prompt with a stale fixture registry yields
+  `urgent-review` / `self_harm` plus the non-current-contact guidance.
+- Finding: a `SIGTERM`-ignoring synthetic child with a grandchild survived an
+  output-overflow error. With process-group termination both exit within the
+  grace period on overflow, timeout, and normal exit (Linux). A killed
+  grandchild may briefly remain a zombie until init reaps it; liveness checks
+  must treat state `Z` as exited.
+- Evidence: `npm run check` passed; `npm test` completed 628 tests with 620
+  passed, 0 failed, 8 skipped (about 11.5 minutes on a 2-CPU host).
+- Registry re-verification: the four official source pages were fetched on
+  2026-09-25 and still listed 9-1-1 and 9-8-8 (call/text) for Canada, 911 and
+  988 (call/text) for the United States, and 112 for Türkiye. The fetch was
+  agent-performed; a maintainer should confirm before merge.
+- Reuse rule: do not edit shipped files while a full test run is in progress;
+  the suite hashes the distribution and mid-run edits produce spurious
+  manifest failures. Tests that depend on registry freshness must derive the
+  expectation from the registry, not from literal dates.
+- Failed command: `codex exec review --base main "<prompt>"` stops with
+  `the argument '--base <BRANCH>' cannot be used with '[PROMPT]'`. Use
+  `codex exec -s read-only "<prompt naming git diff main...HEAD>"` for a
+  focused peer review.
+- Peer review (Codex `gpt-6-astra`, read-only) found two medium issues, both
+  fixed with regression tests: a detached worker group was orphaned when the
+  parent received SIGINT/SIGTERM (the `exit` listener does not run on default
+  signal termination), and the Claude allowlist dropped
+  `CLAUDE_CODE_OAUTH_TOKEN` and `AWS_BEARER_TOKEN_BEDROCK`. An uncatchable
+  parent SIGKILL can still orphan the worker group.
+

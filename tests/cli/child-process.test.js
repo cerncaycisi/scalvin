@@ -28,6 +28,10 @@ test('source-worker environment is an explicit per-client allowlist', () => {
   assert.deepEqual(Object.keys(codex).sort(), ['HOME', 'HTTPS_PROXY', 'LANG', 'LC_ALL', 'OPENAI_API_KEY', 'PATH']);
   const claude = workerEnvironment('claude', SYNTHETIC);
   assert.deepEqual(Object.keys(claude).sort(), ['ANTHROPIC_API_KEY', 'HOME', 'HTTPS_PROXY', 'LANG', 'LC_ALL', 'PATH']);
+  // Documented Claude authentication methods survive the allowlist.
+  const claudeAuth = workerEnvironment('claude', { CLAUDE_CODE_OAUTH_TOKEN: 'synthetic', AWS_BEARER_TOKEN_BEDROCK: 'synthetic', CLAUDE_CODE_USE_BEDROCK: '1' });
+  assert.deepEqual(Object.keys(claudeAuth).sort(), ['AWS_BEARER_TOKEN_BEDROCK', 'CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CODE_USE_BEDROCK']);
+  assert.equal('CLAUDE_CODE_OAUTH_TOKEN' in workerEnvironment('codex', { CLAUDE_CODE_OAUTH_TOKEN: 'synthetic' }), false);
   assert.throws(() => workerEnvironment('generic', SYNTHETIC), /Unknown client/);
   // Windows environment names are case-insensitive.
   assert.deepEqual(workerEnvironment('codex', { Path: 'C:\\Windows', SystemRoot: 'C:\\Windows', node_options: '--x' }), {
@@ -129,4 +133,23 @@ test('a successful worker leaves no helper processes behind', { skip: process.pl
   await runBoundedClient({ command: process.execPath, args: [child.script], cwd: child.cwd, env: { PATH: process.env.PATH } }, 10_000);
   const pids = await waitForFile(child.pidFile);
   await assertAllExited(pids);
+});
+
+test('cancelling the parent terminates the detached worker group', { skip: process.platform === 'win32' }, async (t) => {
+  const { spawn } = require('node:child_process');
+  const child = await stubbornChild(t, 'setInterval(() => {}, 1000);');
+  const launcher = path.resolve(__dirname, '..', '..', 'cli', 'client-launcher.js');
+  const parentScript = [
+    `const { runBoundedClient } = require(${JSON.stringify(launcher)});`,
+    `runBoundedClient({ command: process.execPath, args: [${JSON.stringify(child.script)}], cwd: ${JSON.stringify(child.cwd)}, env: { PATH: process.env.PATH } }, 60000).catch(() => {});`
+  ].join('\n');
+  for (const signal of ['SIGTERM', 'SIGINT']) {
+    await fsp.rm(child.pidFile, { force: true });
+    const parent = spawn(process.execPath, ['-e', parentScript], { stdio: 'ignore', env: { PATH: process.env.PATH } });
+    const exited = new Promise((resolve) => parent.once('exit', (code, received) => resolve(received)));
+    const pids = await waitForFile(child.pidFile);
+    parent.kill(signal);
+    assert.equal(await exited, signal);
+    await assertAllExited(pids);
+  }
 });
