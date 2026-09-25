@@ -277,7 +277,7 @@
       "path": "cli/doctor.js",
       "source": "repo:cli/doctor.js",
       "version": "1.0.0",
-      "sha256": "a2897a5109af8164cdf29b95ddaa03f9d44a40a47be5d989e4f7f10e3841b90e",
+      "sha256": "a6e788b2b5e113014e0093b7b40cf4c71f1a12ea4ca25b259b99bbe6d7a75033",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -517,7 +517,7 @@
       "path": "hooks/emergency-resources.json",
       "source": "repo:hooks/emergency-resources.json",
       "version": "1.0.0",
-      "sha256": "7dba36cceabfb02ca5436a3168e9c3512072107bbfc6eeeeff16aaeb70b30f74",
+      "sha256": "11ff9b76e5d9e1b376c09805d3cdeb1982ada84d89665f165fca81a807bcc678",
       "role": "client-hook-data:emergency-resources",
       "protection": "framework",
       "targets": [
@@ -558,8 +558,8 @@
     {
       "path": "hooks/safety-net.cjs",
       "source": "repo:hooks/safety-net.cjs",
-      "version": "1.4.0",
-      "sha256": "29a39c2786e826fc8d98d118b0db4f96baa0f9aaaf484d60063ac7826aa1ddf5",
+      "version": "1.5.0",
+      "sha256": "00f5c6bdfaad09810730dd803c4b49e5995e248c98f1aeab0f564d89ce70c5d4",
       "role": "client-hook:safety-net",
       "protection": "framework",
       "targets": [
@@ -1420,8 +1420,8 @@
     {
       "path": "runtime/START-SESSION.md",
       "source": "repo:runtime/START-SESSION.md",
-      "version": "5.0.0",
-      "sha256": "b76f4d5ba077e4faa06483c2cea466cdb7eac46d180e4bf39e349944677f0e32",
+      "version": "5.0.1",
+      "sha256": "8107ef8c9648bdf69ed446d624ea7e3b7aa3d941e32efcd6f10e4f48ac50ff20",
       "role": "session-entrypoint",
       "protection": "framework",
       "targets": [
@@ -1497,8 +1497,8 @@
     {
       "path": "safety-protocol.md",
       "source": "repo:safety-protocol.md",
-      "version": "2.1.0",
-      "sha256": "385b61baff891ab64d3fe88649c6e6fdef3b9f586c5d1909c040ba0f925321b9",
+      "version": "2.1.1",
+      "sha256": "85c0aa4ef98c0a8cfec9181267b277b82f568819134a551d57fcc08816eee441",
       "role": "safety-protocol",
       "protection": "framework",
       "targets": [

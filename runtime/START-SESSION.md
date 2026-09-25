@@ -1,4 +1,4 @@
-<!-- version: 5.0.0 -->
+<!-- version: 5.0.1 -->
 # Start Session
 
 Use this as the main operating prompt for a Scalvin workspace.
@@ -35,9 +35,11 @@ later per-prompt health notice overrides it for that turn. Codex and generic
 adapters explicitly attest `unsupported` unless a future verified integration
 says otherwise.
 
-The content-free self-test also validates the bounded emergency-resource
-registry and its UTC-date TTL. A missing, malformed, not-yet-valid, or expired
-registry is `degraded`. Never present a stale bundled contact as currently
+The content-free self-test also reports the bounded emergency-resource
+registry and its UTC-date TTL as a separate `emergencyResources` state
+(`current`, `stale`, `not_yet_valid`, or `unavailable`). Registry freshness does
+not change the classifier state: mechanical screening keeps running when the
+registry is stale. Never present a stale bundled contact as currently
 verified; follow the safety protocol's jurisdiction check and immediate local
 emergency fallback while seeking live official verification. Do not place a
 user location, message, path, or selected resource in registry health output.

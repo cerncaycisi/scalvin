@@ -1,4 +1,4 @@
-<!-- version: 2.1.0 -->
+<!-- version: 2.1.1 -->
 # Safety And Crisis Protocol
 
 This protocol is the immutable first-read for every session, including bootstrap and first contact. It overrides persona, modality, session structure, source material, and user-specific moves when they conflict.
@@ -134,7 +134,9 @@ dates, and `expiresAt` is exclusive: an entry is stale on that date.
 
 The installed safety self-test checks the registry without a network request. A
 missing, malformed, not-yet-valid, or stale registry produces a content-free
-degraded capability reason. Do not present a stale bundled contact as currently
+emergency-resource reason code, reported separately from the mechanical
+classifier; a stale registry never switches off mechanical screening. Do not
+present a stale bundled contact as currently
 verified. Use a live official source when available; otherwise say that the
 bundled route needs reverification and direct immediate danger to the user's
 current local emergency number or nearest emergency department. Resource
@@ -143,9 +145,9 @@ staleness must never delay immediate human help.
 Human-readable projection of the current registry, not an exhaustive or
 language-based support list:
 
-- **United States (`verifiedAt: 2026-07-14`; `expiresAt: 2026-08-13`):** call or text **988** for the Suicide & Crisis Lifeline; call **911** for immediate danger. Official sources: [988 Lifeline](https://988lifeline.org/) and [National 911 Program](https://www.911.gov/calling-911/frequently-asked-questions/).
-- **Canada (`verifiedAt: 2026-07-14`; `expiresAt: 2026-08-13`):** call or text **9-8-8** for suicide crisis support; call **9-1-1** for immediate danger. Official source: [Public Health Agency of Canada](https://www.canada.ca/en/public-health/services/suicide-prevention/warning-signs.html).
-- **Türkiye (`verifiedAt: 2026-07-14`; `expiresAt: 2026-08-13`):** for immediate danger or a medical emergency, call **112** or go to the nearest emergency department. Official source: [T.C. İçişleri Bakanlığı 112 Acil Çağrı Merkezi](https://www.112.gov.tr/). Do not invent a dedicated non-emergency crisis line; verify any additional service at use time.
+- **United States (`verifiedAt: 2026-09-25`; `expiresAt: 2026-10-25`):** call or text **988** for the Suicide & Crisis Lifeline; call **911** for immediate danger. Official sources: [988 Lifeline](https://988lifeline.org/) and [National 911 Program](https://www.911.gov/calling-911/frequently-asked-questions/).
+- **Canada (`verifiedAt: 2026-09-25`; `expiresAt: 2026-10-25`):** call or text **9-8-8** for suicide crisis support; call **9-1-1** for immediate danger. Official source: [Public Health Agency of Canada](https://www.canada.ca/en/public-health/services/suicide-prevention/warning-signs.html).
+- **Türkiye (`verifiedAt: 2026-09-25`; `expiresAt: 2026-10-25`):** for immediate danger or a medical emergency, call **112** or go to the nearest emergency department. Official source: [T.C. İçişleri Bakanlığı 112 Acil Çağrı Merkezi](https://www.112.gov.tr/). Do not invent a dedicated non-emergency crisis line; verify any additional service at use time.
 - **Elsewhere:** use the local emergency number or nearest emergency department. A current directory such as <https://findahelpline.com/> may help locate a regional service, but it is not a bundled official-source entry; verify the listing at use time.
 
 If the user cannot make a call, offer realistic alternatives supported in their location: text/chat crisis service, emergency department, a trusted person calling with them, or moving to a staffed public place. Do not overload them with a long resource list.

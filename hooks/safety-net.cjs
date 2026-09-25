@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// <!-- version: 1.4.0 -->
+// <!-- version: 1.5.0 -->
 // Locale-pack-driven mechanical safety backstop for UserPromptSubmit-compatible
 // clients. It is deliberately bounded and fail-open. It does not assess risk,
 // replace safety-protocol.md, or prove that an unflagged message is safe.
@@ -23,7 +23,7 @@ const MAX_PACKS = 64;
 const MAX_PACK_BYTES = 64 * 1024;
 const MAX_PATTERNS_PER_LIST = 128;
 const MAX_PATTERN_CHARS = 1200;
-const HEALTH_SCHEMA_VERSION = 1;
+const HEALTH_SCHEMA_VERSION = 2;
 const HEALTH_CAPABILITY = 'mechanical_safety_backstop';
 const SELF_TEST_PROMPT = 'I want to die.';
 const HEALTH_REASON_CODES = new Set([
@@ -161,8 +161,12 @@ try {
   LOCALE_PACK_HEALTH = { state: 'degraded', reasonCode: 'LOCALE_PACK_LOAD_FAILED' };
 }
 
+// Emergency-contact freshness and classifier health are separate states. A
+// stale or missing registry means bundled contacts must not be presented as
+// current; it must never switch off the mechanical signal scan itself.
+const EMERGENCY_RESOURCE_STATES = new Set(['current', 'stale', 'not_yet_valid', 'unavailable']);
 let EMERGENCY_RESOURCE_HEALTH = {
-  state: 'degraded',
+  state: 'unavailable',
   reasonCode: 'EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED'
 };
 if (emergencyResourceTools) {
@@ -170,11 +174,11 @@ if (emergencyResourceTools) {
     const registry = emergencyResourceTools.loadRegistry();
     const assessment = emergencyResourceTools.assessRegistry(registry);
     EMERGENCY_RESOURCE_HEALTH = assessment.state === 'current'
-      ? { state: 'available', reasonCode: null }
-      : { state: 'degraded', reasonCode: assessment.reasonCode };
+      ? { state: 'current', reasonCode: null }
+      : { state: assessment.state, reasonCode: assessment.reasonCode };
   } catch (_) {
     EMERGENCY_RESOURCE_HEALTH = {
-      state: 'degraded',
+      state: 'unavailable',
       reasonCode: 'EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED'
     };
   }
@@ -187,7 +191,22 @@ function installedSafetyHealth() {
       reasonCode: LOCALE_PACK_HEALTH.reasonCode || 'LOCALE_PACK_UNAVAILABLE'
     };
   }
-  return EMERGENCY_RESOURCE_HEALTH;
+  return { state: 'available', reasonCode: null };
+}
+
+function emergencyResourceHealth() {
+  return { ...EMERGENCY_RESOURCE_HEALTH };
+}
+
+function resourceGuidanceLines(resourceHealth) {
+  if (!resourceHealth || resourceHealth.state === 'current') return [];
+  const safeReason = HEALTH_REASON_CODES.has(resourceHealth.reasonCode)
+    ? resourceHealth.reasonCode
+    : 'EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED';
+  return [
+    `Bundled emergency-resource registry state: ${resourceHealth.state}; reason code: ${safeReason}.`,
+    'Do not present bundled contacts as current without live official verification; do not delay immediate local emergency help.'
+  ];
 }
 
 function normalize(input) {
@@ -278,7 +297,7 @@ function classify(prompt) {
   return { fire: false, level: null, domains: [], matchedLocales: [], reason: 'no-pattern' };
 }
 
-function buildNotice(result) {
+function buildNotice(result, resourceHealth = EMERGENCY_RESOURCE_HEALTH) {
   const domainList = result.domains.join(', ');
   return {
     hookSpecificOutput: {
@@ -289,13 +308,41 @@ function buildNotice(result) {
         `Classifier level: ${result.level}; domains: ${domainList}.`,
         'This is not a risk assessment and can both miss crises and over-fire. Never treat silence as proof of safety.',
         'Re-read .therapy/safety-protocol.md before replying. Use the user\'s current meaning and context; distinguish passive thoughts, active/imminent self-harm, harm to others, abuse/safeguarding, psychosis, and medical emergency.',
-        'State capability truth: you cannot call services, locate the user, contact anyone, or monitor them. Ask only the minimum questions needed. Ask for location only when necessary, use only non-expired registry-backed or live-verified jurisdiction-appropriate resources, and phrase them in the user\'s current language.'
+        'State capability truth: you cannot call services, locate the user, contact anyone, or monitor them. Ask only the minimum questions needed. Ask for location only when necessary, use only non-expired registry-backed or live-verified jurisdiction-appropriate resources, and phrase them in the user\'s current language.',
+        ...resourceGuidanceLines(resourceHealth)
       ].join('\n')
     }
   };
 }
 
-function healthState(state, reasonCode = null) {
+// Emitted when the scan ran without a match but bundled contacts are not
+// current, so the model does not later present them as verified.
+function buildResourceNotice(resourceHealth = EMERGENCY_RESOURCE_HEALTH) {
+  const lines = resourceGuidanceLines(resourceHealth);
+  if (lines.length === 0) return null;
+  return {
+    hookSpecificOutput: {
+      hookEventName: 'UserPromptSubmit',
+      additionalContext: [
+        'SCALVIN SAFETY BACKSTOP HEALTH: Mechanical screening ran for this prompt; emergency-resource freshness is degraded.',
+        'Mechanical safety backstop capability state: available. No match is not proof of safety.',
+        'This notice contains no prompt content.',
+        ...lines
+      ].join('\n')
+    }
+  };
+}
+
+function safeResourceHealth(resourceHealth) {
+  const state = EMERGENCY_RESOURCE_STATES.has(resourceHealth?.state) ? resourceHealth.state : 'unavailable';
+  if (state === 'current') return { state, reasonCode: null };
+  const reasonCode = HEALTH_REASON_CODES.has(resourceHealth?.reasonCode) && resourceHealth.reasonCode.startsWith('EMERGENCY_RESOURCE_')
+    ? resourceHealth.reasonCode
+    : 'EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED';
+  return { state, reasonCode };
+}
+
+function healthState(state, reasonCode = null, resourceHealth = EMERGENCY_RESOURCE_HEALTH) {
   const safeState = ['available', 'degraded', 'unsupported'].includes(state) ? state : 'degraded';
   const safeReason = safeState === 'available'
     ? null
@@ -304,15 +351,13 @@ function healthState(state, reasonCode = null) {
     schemaVersion: HEALTH_SCHEMA_VERSION,
     capability: HEALTH_CAPABILITY,
     state: safeState,
-    reasonCode: safeReason
+    reasonCode: safeReason,
+    emergencyResources: safeResourceHealth(resourceHealth)
   };
 }
 
-function buildHealthNotice(reasonCode) {
+function buildHealthNotice(reasonCode, resourceHealth = EMERGENCY_RESOURCE_HEALTH) {
   const safeReason = HEALTH_REASON_CODES.has(reasonCode) ? reasonCode : 'HOOK_PROCESSING_FAILED';
-  const resourceGuidance = safeReason.startsWith('EMERGENCY_RESOURCE_')
-    ? 'Bundled emergency-resource verification is unavailable or stale. Do not present bundled contacts as current without live official verification; do not delay immediate local emergency help.'
-    : null;
   return {
     hookSpecificOutput: {
       hookEventName: 'UserPromptSubmit',
@@ -320,9 +365,9 @@ function buildHealthNotice(reasonCode) {
         'SCALVIN SAFETY BACKSTOP HEALTH: The mechanical safety backstop is degraded for this prompt.',
         `Capability state: degraded; reason code: ${safeReason}.`,
         'The prompt was not blocked, and this notice contains no prompt content.',
-        resourceGuidance,
+        ...resourceGuidanceLines(resourceHealth),
         'Do not claim that mechanical screening ran. Re-read .therapy/safety-protocol.md before replying and use the full prose safety protocol as the authority.'
-      ].filter(Boolean).join('\n')
+      ].join('\n')
     }
   };
 }
@@ -423,7 +468,7 @@ function runFromStdin() {
         finish(buildHealthNotice('CLASSIFIER_UNAVAILABLE'));
         return;
       }
-      finish(result.fire ? buildNotice(result) : null);
+      finish(result.fire ? buildNotice(result) : buildResourceNotice());
     } catch (_) {
       // Fail open: report a content-free degraded state without blocking.
       finish(buildHealthNotice('HOOK_PROCESSING_FAILED'));
@@ -436,9 +481,11 @@ module.exports = {
   normalize,
   classify,
   buildNotice,
+  buildResourceNotice,
   buildHealthNotice,
   healthState,
   installedSafetyHealth,
+  emergencyResourceHealth,
   loadLocalePacks,
   classifyIsolated,
   runSelfTest

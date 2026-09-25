@@ -51,4 +51,19 @@ async function readJson(filename) {
   return JSON.parse(await fsp.readFile(filename, 'utf8'));
 }
 
-module.exports = { ROOT, sandbox, incomingDistribution, readJson };
+// Registry freshness depends on the real date and has its own gate
+// (npm run check:emergency-resources); doctor tests derive it instead.
+function installedEmergencyResourceHealth() {
+  const { loadRegistry, assessRegistry } = require('../../hooks/emergency-resources.cjs');
+  const assessment = assessRegistry(loadRegistry());
+  return assessment.state === 'current'
+    ? { state: 'current', reasonCode: null }
+    : { state: assessment.state, reasonCode: assessment.reasonCode };
+}
+
+// A non-current bundled registry adds exactly one doctor warning.
+function healthyDoctorStatus() {
+  return installedEmergencyResourceHealth().state === 'current' ? 'healthy' : 'warnings';
+}
+
+module.exports = { ROOT, sandbox, incomingDistribution, readJson, installedEmergencyResourceHealth, healthyDoctorStatus };

@@ -6,8 +6,8 @@
       "countryCode": "CA",
       "countryName": "Canada",
       "scope": "national",
-      "verifiedAt": "2026-07-14",
-      "expiresAt": "2026-08-13",
+      "verifiedAt": "2026-09-25",
+      "expiresAt": "2026-10-25",
       "resources": [
         {
           "purpose": "emergency",
@@ -38,8 +38,8 @@
       "countryCode": "TR",
       "countryName": "Türkiye",
       "scope": "national",
-      "verifiedAt": "2026-07-14",
-      "expiresAt": "2026-08-13",
+      "verifiedAt": "2026-09-25",
+      "expiresAt": "2026-10-25",
       "resources": [
         {
           "purpose": "emergency",
@@ -58,8 +58,8 @@
       "countryCode": "US",
       "countryName": "United States",
       "scope": "national",
-      "verifiedAt": "2026-07-14",
-      "expiresAt": "2026-08-13",
+      "verifiedAt": "2026-09-25",
+      "expiresAt": "2026-10-25",
       "resources": [
         {
           "purpose": "emergency",

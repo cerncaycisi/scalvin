@@ -32,7 +32,7 @@ test('stable release gate independently blocks an expired emergency-resource reg
   const result = spawnSync(process.execPath, [
     path.join(ROOT, 'scripts', 'verify-stable-readiness.mjs'),
     '--now',
-    '2026-08-13'
+    '2999-01-01'
   ], {
     cwd: ROOT,
     encoding: 'utf8',
