@@ -235,3 +235,21 @@ when they establish a reusable engineering rule.
   `CLAUDE_CODE_OAUTH_TOKEN` and `AWS_BEARER_TOKEN_BEDROCK`. An uncatchable
   parent SIGKILL can still orphan the worker group.
 
+### Repository rulesets for main and stable tags (2026-09-25)
+
+- Context: user-owned public repository; applies RELEASING.md section 5.
+- Result: `main-pr-required-ci` (pull request required, strict `Required CI`
+  from GitHub Actions App ID `15368`, no deletion or non-fast-forward, no
+  bypass) and `stable-tag-immutable` (`v*` update and deletion blocked, no
+  bypass) were created and are active.
+- Failed command: creating `stable-tag-created-by-release-workflow` with the
+  GitHub Actions integration as the only creation bypass returned HTTP 422
+  `Actor GitHub Actions integration must be part of the ruleset source or owner
+  organization`. On a user-owned repository this rule cannot be expressed as
+  specified; a creation rule without that bypass would also block the release
+  workflow.
+- Reuse rule: move the repository to an organization before relying on the
+  stable-tag creation restriction, or record an explicit alternative in
+  RELEASING.md. Verify with a deliberately failing pull request that
+  `Required CI` actually blocks merging.
+
