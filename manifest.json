@@ -4,7 +4,7 @@
   "product": {
     "name": "scalvin",
     "version": "1.0.0",
-    "minimumNode": ">=20.0.0",
+    "minimumNode": ">=22.0.0",
     "repository": "https://github.com/cerncaycisi/scalvin"
   },
   "release": {
@@ -223,7 +223,7 @@
       "path": "bin/scalvin-mcp.js",
       "source": "repo:bin/scalvin-mcp.js",
       "version": "1.0.0",
-      "sha256": "8f74f090e97ac3f229182b0fc681f738ea8d7d6f408040455e860d83220c1068",
+      "sha256": "f2d005e593a54dc032f3fd8a19ad65ec90a0114eb3414f093ee3eecce0e05e41",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -232,7 +232,7 @@
       "path": "bin/scalvin-source-worker.js",
       "source": "repo:bin/scalvin-source-worker.js",
       "version": "1.0.0",
-      "sha256": "31546dfe0a038aa1293ca774a195fd6b9f4cf8a60d68c0b3f9f53e1d30130bc4",
+      "sha256": "6f738dafcd114e1fe57c8373d9128b24c7cdb3a5fc7980a8cda0fc4bff365b86",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -241,7 +241,7 @@
       "path": "bin/scalvin.js",
       "source": "repo:bin/scalvin.js",
       "version": "1.0.0",
-      "sha256": "e62bbaf569f95cf017e534c372d47d09b092590e0bf4478fd934d5ace9e5cf2f",
+      "sha256": "be16cbdea90539380c36072d4f8cd55ae4248004ca8d7f99ec21ba77c61f96a2",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []

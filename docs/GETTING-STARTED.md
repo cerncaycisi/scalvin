@@ -6,7 +6,7 @@ restore do not depend on an AI model improvising shell commands.
 
 ## Requirements
 
-- Node.js 20 or newer;
+- Node.js 22 or newer (an active or maintenance LTS line: 22 or 24);
 - Git;
 - a repo-aware AI client such as Codex or Claude Code, or another client that
   can follow `START-SESSION.md`;

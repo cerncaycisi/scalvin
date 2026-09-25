@@ -2,8 +2,8 @@
 'use strict';
 
 const nodeMajor = Number(process.versions.node.split('.')[0]);
-if (!Number.isInteger(nodeMajor) || nodeMajor < 20) {
-  process.stderr.write('error [NODE_VERSION_UNSUPPORTED]: Scalvin source worker requires Node 20 or newer.\n');
+if (!Number.isInteger(nodeMajor) || nodeMajor < 22) {
+  process.stderr.write('error [NODE_VERSION_UNSUPPORTED]: Scalvin source worker requires Node 22 or newer.\n');
   process.exitCode = 1;
 } else {
   (async () => {
