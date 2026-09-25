@@ -55,7 +55,9 @@ test('launcher worker environment drops unrelated parent variables', () => {
   try {
     const env = cleanEnvironment('codex');
     assert.equal('UNRELATED_MARKER_FOR_WORKER_TEST' in env, false);
-    assert.equal(env.PATH, process.env.PATH);
+    // Windows stores the variable as `Path`; plain objects are case-sensitive.
+    const pathKey = Object.keys(env).find((key) => key.toUpperCase() === 'PATH');
+    assert.equal(env[pathKey], process.env.PATH);
   } finally {
     delete process.env.UNRELATED_MARKER_FOR_WORKER_TEST;
     if (previous !== undefined) process.env.SCALVIN_TEST_UNRELATED_MARKER = previous;
