@@ -160,3 +160,51 @@ test('memory deletion requires exactly one active record for every selected ID',
   assert.match(await fsp.readFile(path.join(root, 'profile.md'), 'utf8'), new RegExp(MEMORY_ID));
   assert.match(await fsp.readFile(path.join(root, 'sources', 'client-told-memories.md'), 'utf8'), new RegExp(MEMORY_ID));
 });
+
+test('a correction is a live confirmation: stale review metadata moves with the new wording', async (t) => {
+  const { dueState } = require('../../cli/memory-review');
+  const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'scalvin-correction-review-'));
+  t.after(() => fsp.rm(root, { recursive: true, force: true }));
+  const oldSession = 's-523e4567-e89b-42d3-a456-426614174000';
+  await fsp.writeFile(path.join(root, 'profile.md'), [
+    '# Profile',
+    '',
+    `### ${MEMORY_ID} — Preference`,
+    '',
+    '- Statement: I prefer morning check-ins.',
+    '- Kind: preference',
+    '- Status: user_confirmed',
+    '- First observed: 2026-01-01T09:00:00.000Z',
+    `- First session: ${oldSession}`,
+    '- Imported at: null',
+    '- Last live confirmed: 2026-01-01T09:00:00.000Z',
+    `- Last confirmed session: ${oldSession}`,
+    '- Review state: due',
+    '- Current revision: 1',
+    ''
+  ].join('\n'));
+  const sessions = ['2026-03-01', '2026-04-01', '2026-05-01'].map((day, index) => ({
+    sessionId: `s-${index}23e4567-e89b-42d3-a456-426614174111`,
+    closedAt: Date.parse(`${day}T12:00:00.000Z`)
+  }));
+  const now = { value: '2026-09-04T12:00:00.000Z', milliseconds: Date.parse('2026-09-04T12:00:00.000Z') };
+  const [before] = memoryBlocks(await fsp.readFile(path.join(root, 'profile.md'), 'utf8'));
+  assert.equal(dueState(before, sessions, now).due, true);
+
+  const plan = await planCorrection(root, MEMORY_ID, 'I prefer evening check-ins.', now.value, { sessionId: SESSION_ID });
+  const corrected = plan.writes.get('profile.md');
+  const [after] = memoryBlocks(corrected);
+  assert.equal(after.statement, 'I prefer evening check-ins.');
+  assert.equal(after.lastLiveConfirmed, now.value);
+  assert.equal(after.lastConfirmedSession, SESSION_ID);
+  assert.equal(after.reviewState, 'current');
+  assert.doesNotMatch(corrected, /Review declined/);
+  assert.match(corrected, new RegExp(`r2 — ${now.value} — user correction in ${SESSION_ID}; prior wording retired`));
+  assert.equal(dueState(after, sessions, now).due, false);
+
+  const offSession = await planCorrection(root, MEMORY_ID, 'I prefer evening check-ins.', now.value);
+  const [unbound] = memoryBlocks(offSession.writes.get('profile.md'));
+  assert.equal(unbound.lastConfirmedSession, 'null');
+  assert.equal(unbound.lastLiveConfirmed, now.value);
+  await assert.rejects(planCorrection(root, MEMORY_ID, 'x', now.value, { sessionId: 'not-a-session' }), { code: 'SESSION_ID_REQUIRED' });
+});

@@ -4044,11 +4044,12 @@ async function memory(options = {}) {
     }
     if (action === 'correct') {
       invariant(context.state.consent.continuityMemory === 'on' && context.state.consent.memoryPause.state === 'none', 'Memory correction requires continuity memory on and unpaused.', 'MEMORY_PERSISTENCE_DISABLED');
-      const plan = await planCorrection(context.target, options.id, options.statement);
+      const now = new Date().toISOString();
+      const currentSessionId = context.state.consent.currentSessionId || null;
+      const plan = await planCorrection(context.target, options.id, options.statement, now, { sessionId: currentSessionId });
       assertSupportedRetentionClasses(context.state, [plan.retentionClass]);
       invariant(context.state.consent.retention?.[plan.retentionClass] === 'until_deleted', 'Memory correction is disabled by retention policy.', 'RETENTION_DO_NOT_STORE');
       if (options['dry-run']) return { status: 'dry-run', workspacePath: context.target, workspaceId: context.state.workspaceId, memoryId: plan.id, affectedFiles: plan.affectedPaths.length, nextAction: 'run-memory-correction' };
-      const now = new Date().toISOString();
       context.state.consent.lastOperationalEvent = controlEvent('memory_correction', plan.id, plan.id, now);
       context.state.updatedAt = now;
       const transaction = await applyContentTransaction(context, 'memory-correct', plan, null);
