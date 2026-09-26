@@ -12,6 +12,11 @@ import path from 'node:path';
 import process from 'node:process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+// Hosts without the Claude Code sandbox dependencies add one host-only warning.
+const { missingClaudeSandboxDependencies } = require('../cli/lib/child-process.js');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TEST_ROOT = process.env.SCALVIN_TEST_ROOT || path.join(ROOT, '.test-tmp');
@@ -108,7 +113,7 @@ test('release builder emits checksum-bound SPDX artifacts and the packed clean i
       version: VERSION,
       archiveSha256: built.archiveSha256,
       metadataSha256: sha256File(metadataPath),
-      doctorStatus: 'healthy'
+      doctorStatus: missingClaudeSandboxDependencies().length ? 'warnings' : 'healthy'
     });
 
     const missingMetadata = spawnSync(process.execPath, [
