@@ -101,13 +101,25 @@ Installation ends the bootstrap session. Next:
 
 1. keep this checkout in place during the development preview;
 2. close the source-repository session;
-3. open `~/scalvin-workspace` as a new client project;
-4. approve the local Scalvin connection if the client asks; and
-5. start a fresh session there.
+3. start the companion in the new workspace with the supervised launcher:
 
-Opening the generated workspace as a new project is required for its client
-policy and local tool configuration to take effect. Continuing from the source
-repository would bypass those project settings.
+   ```bash
+   node bin/scalvin.js client launch \
+     --workspace "~/scalvin-workspace" --client claude   # or --client codex
+   ```
+
+4. approve the local Scalvin connection if the client asks.
+
+The launcher runs doctor first and loads only the workspace's own tools and
+settings. You can also open `~/scalvin-workspace` directly as a new client
+project, but then the client also loads your own MCP servers and connectors
+(the companion is instructed never to use them). Codex applies the workspace
+policy only when the project is trusted. Claude Code on Linux needs the
+`bubblewrap` and `socat` packages for its required sandbox; doctor tells you
+if they are missing.
+
+Continuing from the source repository would bypass the workspace's client
+policy and tool configuration.
 
 Verify from this checkout when needed:
 
@@ -150,7 +162,15 @@ transcript controls; context mutations; preferences; backup/restore/update;
 behavior changes; source add/process/reject/delete
 ```
 
-Use `node bin/scalvin.js help` from the retained checkout for those commands.
+For a plain-language overview of what is stored, what leaves your computer,
+and the exact commands to pause, correct, export, or delete, run:
+
+```bash
+node bin/scalvin.js privacy --workspace "~/scalvin-workspace"
+```
+
+It shows counts only, never memory content. Use `node bin/scalvin.js help`
+from the retained checkout for the full command list.
 Memory and transcript consent are separate. A paused interval is not silently
 backfilled. A prepared source proposal remains untrusted, requires explicit
 candidate-ID selection, and never writes live memory automatically.
