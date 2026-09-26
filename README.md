@@ -282,6 +282,7 @@ and [Security](SECURITY.md).
 ### Contributors and maintainers
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Roadmap](docs/ROADMAP.md)
 - [Engineering Experiment Log](docs/ENGINEERING-EXPERIMENT-LOG.md)
 - [Full Repository and Project Review — 2026-09-04 (Türkçe)](docs/reviews/2026-09-04-full-repo-project-review.tr.md)
 - [Contributing](CONTRIBUTING.md)
