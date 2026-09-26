@@ -367,7 +367,7 @@
       "path": "cli/lib/operation-journal.js",
       "source": "repo:cli/lib/operation-journal.js",
       "version": "1.0.0",
-      "sha256": "4b7d73bc9151a447b21f293c5b4e3c44774bbf1d897efc5d10dc83d67e410ca1",
+      "sha256": "1d33623d5b760ce5dc80aadbde0ff080789c349bdbef479d9c33701a048e5f1d",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
