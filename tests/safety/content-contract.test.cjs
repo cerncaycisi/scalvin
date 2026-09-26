@@ -68,6 +68,11 @@ test('START keeps safety first and loads active runtime contracts before first-s
   assert.match(start, /never directly read or write[\s\S]*sessions, context, archive, sources, transcripts/i);
   assert.match(start, /Weekly review[\s\S]*remain unavailable or\s+terminal-only; never open their private files directly/i);
   assert.match(start, /shipped base is immutable/i);
+  // Conditional contracts must load before the first action they govern,
+  // including context-graph forget/deletion that works with consent off.
+  assert.match(start, /CONTEXT-GRAPH\.md` before any context-graph read, write, backfill, correction, merge, forget, or deletion/);
+  assert.match(start, /whenever `control_status` reports `context_graph` on/);
+  assert.match(start, /SELF-MODIFICATION\.md` before proposing, approving, rejecting, or rolling back any durable behavior change/);
   assert.match(start, /Before the fast re-entry pass[\s\S]*continuity is consented[\s\S]*continue\s+ephemerally/i);
   assert.match(start, /Transcript authority is the canonical control state exposed through the local\s+broker\/CLI/i);
   assert.match(start, /`off`, `recording`, `paused`, and `stopped`/i);

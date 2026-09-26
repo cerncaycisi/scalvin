@@ -1429,8 +1429,8 @@
     {
       "path": "runtime/START-SESSION.md",
       "source": "repo:runtime/START-SESSION.md",
-      "version": "5.0.1",
-      "sha256": "8107ef8c9648bdf69ed446d624ea7e3b7aa3d941e32efcd6f10e4f48ac50ff20",
+      "version": "5.1.0",
+      "sha256": "9d870ac9bd28af1f805a13e738c27cb614f9ad9b5d6c912ed26a43c1ef095131",
       "role": "session-entrypoint",
       "protection": "framework",
       "targets": [
