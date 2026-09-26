@@ -448,7 +448,7 @@
       "path": "cli/session-supervisor.js",
       "source": "repo:cli/session-supervisor.js",
       "version": "1.0.0",
-      "sha256": "b16d40eb6d8f08542a189dcd51540b1410b85052b4feba92e4067fcb8cb132fe",
+      "sha256": "3a51da3e3b639c02b2f501bc62ee9619dedb11425ec13b120dabe1a21b87fd6f",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
