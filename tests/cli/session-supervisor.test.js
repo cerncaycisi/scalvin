@@ -41,3 +41,19 @@ test('supervised Codex launch disables local history and Claude launch pins proj
   assert.equal(claude.args[claude.args.indexOf('--permission-mode') + 1], 'default');
   assert.ok(claude.args.includes('--no-chrome'));
 });
+
+test('client launch resolves a quoted ~/ workspace like every other command', async (t) => {
+  const os = require('node:os');
+  const path = require('node:path');
+  const operations = require('../../cli/operations');
+  const { launchSupervisedClient } = require('../../cli/session-supervisor');
+  const original = operations.doctor;
+  t.after(() => { operations.doctor = original; });
+  let received = null;
+  operations.doctor = async (options) => {
+    received = options.target;
+    throw Object.assign(new Error('stop after resolution'), { code: 'TEST_STOP' });
+  };
+  await assert.rejects(launchSupervisedClient({ workspace: '~/scalvin-launch-probe', client: 'codex' }), { code: 'TEST_STOP' });
+  assert.equal(received, path.join(os.homedir(), 'scalvin-launch-probe'));
+});

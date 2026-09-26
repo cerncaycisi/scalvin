@@ -24,7 +24,8 @@ const COMMAND_OPTIONS = {
   client: [...COMMON, 'workspace', 'target', 'client', 'client-bin'],
   preferences: [...COMMON, 'workspace', 'target', 'language', 'timezone', 'preferred-user-name', 'clear-preferred-user-name', 'show-preferred-user-name', 'response-load', 'one-question-at-a-time', 'plain-language-summaries', 'reduced-metaphor', 'extra-processing-time', 'body-prompts', 'sensory-grounding', 'between-session-experiments', 'stale-memory-offers', 'dry-run'],
   source: [...COMMON, 'workspace', 'target', 'path', 'kind', 'locale', 'source-id', 'revision', 'provenance-file', 'proposed-memory-id', 'proposed-memory-file', 'import-consent-event', 'import-retention', 'external-care-consent-event', 'external-care-retention', 'client', 'client-bin', 'confirm', 'dry-run'],
-  'review-due': [...COMMON, 'workspace', 'target', 'date', 'timezone']
+  'review-due': [...COMMON, 'workspace', 'target', 'date', 'timezone'],
+  privacy: [...COMMON, 'workspace', 'target']
 };
 
 function parseArgs(argv) {

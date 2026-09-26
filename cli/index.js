@@ -4,6 +4,7 @@ const packageJson = require('../package.json');
 const { parseArgs } = require('./lib/args');
 const { ScalvinError } = require('./lib/errors');
 const operations = require('./operations');
+const { privacySummary, renderPrivacySummary } = require('./privacy-summary');
 const { reviewDue } = require('./review-due');
 const { inspectSource } = require('./source-inspect');
 
@@ -29,6 +30,7 @@ Usage:
   scalvin preferences --workspace PATH [--language auto|BCP-47] [--timezone IANA] [--preferred-user-name NAME | --clear-preferred-user-name] [accessibility flags] [--dry-run] [--json]
   scalvin source inspect --path FILE [--json]
   scalvin source add|status|process|proposals|integrate|reject|delete --workspace PATH [source options] [--json]
+  scalvin privacy --workspace PATH [--json]
   scalvin review-due --workspace PATH [--date YYYY-MM-DD] [--timezone IANA] [--json]
   scalvin help
   scalvin version
@@ -215,7 +217,8 @@ async function main(argv) {
       context: operations.contextGraph,
       changes: operations.changes,
       preferences: operations.preferences,
-      'review-due': reviewDue
+      'review-due': reviewDue,
+      privacy: privacySummary
     };
     let command = commands[parsed.command];
     if (parsed.command === 'source') {
@@ -270,7 +273,8 @@ async function main(argv) {
     if (!command) throw new ScalvinError(`Unknown command: ${parsed.command}`, 'UNKNOWN_COMMAND', undefined, 2);
     if (parsed.positionals.length) throw new ScalvinError('Unexpected positional arguments.', 'INVALID_ARGUMENT', { positionals: parsed.positionals }, 2);
     const result = await command(parsed.options);
-    process.stdout.write(parsed.options.json ? `${JSON.stringify(result)}\n` : human(result));
+    const render = parsed.command === 'privacy' ? renderPrivacySummary : human;
+    process.stdout.write(parsed.options.json ? `${JSON.stringify(result)}\n` : render(result));
     if (result.errors > 0) process.exitCode = 1;
   } catch (error) {
     const normalized = error instanceof ScalvinError
