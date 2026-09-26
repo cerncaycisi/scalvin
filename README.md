@@ -162,7 +162,15 @@ transcript controls; context mutations; preferences; backup/restore/update;
 behavior changes; source add/process/reject/delete
 ```
 
-Use `node bin/scalvin.js help` from the retained checkout for those commands.
+For a plain-language overview of what is stored, what leaves your computer,
+and the exact commands to pause, correct, export, or delete, run:
+
+```bash
+node bin/scalvin.js privacy --workspace "~/scalvin-workspace"
+```
+
+It shows counts only, never memory content. Use `node bin/scalvin.js help`
+from the retained checkout for the full command list.
 Memory and transcript consent are separate. A paused interval is not silently
 backfilled. A prepared source proposal remains untrusted, requires explicit
 candidate-ID selection, and never writes live memory automatically.

@@ -47,6 +47,7 @@
     "cli/memory-data.js",
     "cli/memory-review.js",
     "cli/operations.js",
+    "cli/privacy-summary.js",
     "cli/review-due.js",
     "cli/session-lifecycle.js",
     "cli/session-supervisor.js",

@@ -286,7 +286,7 @@
       "path": "cli/index.js",
       "source": "repo:cli/index.js",
       "version": "1.0.0",
-      "sha256": "b711af350c406b56f9ea5192331731446d1316236f76704cfebfc7d76650e96c",
+      "sha256": "f379d3f6f1de35b32cfe5d8daf6c9212eac6ad1784a7d6a2445ff8d170b0b13a",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -295,7 +295,7 @@
       "path": "cli/lib/args.js",
       "source": "repo:cli/lib/args.js",
       "version": "1.0.0",
-      "sha256": "99972ce31a1983ccdff16596f004b75e072ba84d3a9761a41b04ba2acd275f94",
+      "sha256": "e2f8f02f6215db7a8fd045acfc4bdab62d615cf153c8694caa07124f5bbeebaa",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -422,6 +422,15 @@
       "source": "repo:cli/operations.js",
       "version": "1.0.0",
       "sha256": "13eda683d26804a7a29ed5d9aa78932a0b0c18c02f2d3b91b6615d396d19b5ed",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
+      "path": "cli/privacy-summary.js",
+      "source": "repo:cli/privacy-summary.js",
+      "version": "1.0.0",
+      "sha256": "a8244810da0540360ff8c184221772bb77c11c84a71cc128a08fe32dbb80b37f",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []

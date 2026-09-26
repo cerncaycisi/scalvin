@@ -12,6 +12,11 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
 
 ### Added
 
+- `scalvin privacy --workspace PATH`: a plain-language, content-free summary of
+  what is stored (counts per data class), whether saving is paused or sealed,
+  known backup copies, what the AI client sends to its provider, and the exact
+  commands to view, correct, pause, export, forget, or delete
+
 - deterministic Node 22+ CLI for install, doctor, review-due, pinned update,
   integrity-checked backup, and traversal-safe restore
 - manifest schema v2 with per-file version, SHA-256, source, role, target, and
