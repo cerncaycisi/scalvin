@@ -138,19 +138,20 @@ test('static checker passes current data and fails stale data without leaking a 
 });
 
 test('static checker warns inside the lead window without weakening the freshness state', () => {
-  // Eight days before the 2026-08-13 expiry, so inside the default 14-day lead
+  // Eight days before the earliest expiry, so inside the default 14-day lead
   // window but still current.
-  const soon = spawnSync(process.execPath, [CHECKER, '--now', '2026-08-05'], {
+  const soonDay = shiftDay(REGISTRY_DATES.earliestExpiresAt, -8);
+  const soon = spawnSync(process.execPath, [CHECKER, '--now', soonDay], {
     cwd: ROOT,
     encoding: 'utf8'
   });
   assert.equal(soon.status, 0, 'a lead-time notice must not fail an otherwise current registry');
-  assert.match(soon.stdout, /3 jurisdictions; earliest expiry 2026-08-13/);
+  assert.match(soon.stdout, new RegExp(`3 jurisdictions; earliest expiry ${REGISTRY_DATES.earliestExpiresAt}`));
   assert.match(soon.stderr, /EMERGENCY_RESOURCE_REGISTRY_EXPIRING_SOON/);
   assert.match(soon.stderr, /8 day\(s\) left/);
   assert.doesNotMatch(soon.stderr, /\/Users\/|\/Volumes\/|[A-Za-z]:\\/);
 
-  const outside = spawnSync(process.execPath, [CHECKER, '--now', '2026-08-05', '--lead-days', '3'], {
+  const outside = spawnSync(process.execPath, [CHECKER, '--now', soonDay, '--lead-days', '3'], {
     cwd: ROOT,
     encoding: 'utf8'
   });
@@ -159,7 +160,7 @@ test('static checker warns inside the lead window without weakening the freshnes
 });
 
 test('static checker can fail early inside the lead window and rejects unknown arguments', () => {
-  const failing = spawnSync(process.execPath, [CHECKER, '--now', '2026-08-05', '--fail-expiring'], {
+  const failing = spawnSync(process.execPath, [CHECKER, '--now', shiftDay(REGISTRY_DATES.earliestExpiresAt, -8), '--fail-expiring'], {
     cwd: ROOT,
     encoding: 'utf8'
   });
@@ -168,7 +169,7 @@ test('static checker can fail early inside the lead window and rejects unknown a
 
   // --fail-expiring only escalates the lead-time notice; a registry with time
   // left still passes.
-  const early = spawnSync(process.execPath, [CHECKER, '--now', '2026-07-17', '--fail-expiring'], {
+  const early = spawnSync(process.execPath, [CHECKER, '--now', shiftDay(REGISTRY_DATES.latestVerifiedAt, 3), '--fail-expiring'], {
     cwd: ROOT,
     encoding: 'utf8'
   });

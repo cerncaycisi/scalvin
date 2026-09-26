@@ -32,13 +32,13 @@ instead of a build that turns red on the expiry date:
 turns the notice into a non-zero exit and is what the scheduled
 `Emergency resource freshness` workflow runs. Neither option relaxes the stale
 check, and neither is a runtime capability state: the installed safety hook
-continues to report only `current` or `stale`.
+reports only the registry states `current`, `stale`, `not_yet_valid`, or
+`unavailable`.
 
 Re-verification stays manual. `verifiedAt` records that a maintainer opened
 every `officialSource` and confirmed the contacts against the live official
-page, so the dates must never be advanced to clear a red check. Refreshing them
-also requires updating the exact dates asserted in
-`tests/safety/emergency-resources.test.cjs`.
+page, so the dates must never be advanced to clear a red check. Tests derive
+their expectations from the registry, so re-verification is a pure data edit.
 
 ## Stable-release evidence
 
