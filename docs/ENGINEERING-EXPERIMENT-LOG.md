@@ -270,6 +270,12 @@ when they establish a reusable engineering rule.
   narrow exception fixed here was a usage error reported as
   `EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED`, which was genuinely misleading once
   the script accepted options.
+- Superseded premise (2026-09-25): after the F1 fix a stale registry no longer
+  degrades the classifier; registry freshness is its own reported state. Tests
+  now derive the expected state from the registry and still assert the doctor
+  warning whenever it is not current, so the degradation remains visible;
+  freshness itself is gated by `check:emergency-resources`, the weekly
+  workflow, and the release gate. The reuse rule above still applies.
 
 ### Literal commit pins asserted in tests
 

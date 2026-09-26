@@ -16,8 +16,8 @@ adds only ordering and current state.
 
 ## Measured baseline
 
-Snapshot taken 2026-09-26 on `main` after pull request #14 plus this file's
-freshness and pinning changes, by running each gate. Refresh this table by re-running the commands rather than editing it by
+Snapshot taken 2026-09-26 on `main` after pull requests #14 and #15 plus this
+file's freshness and pinning changes, by running each gate. Refresh this table by re-running the commands rather than editing it by
 hand.
 
 | Gate | Command | Result |
@@ -28,7 +28,7 @@ hand.
 | Package inventory | `npm run check:package-inventory` | pass |
 | Documentation links | `npm run check:links` | pass, 105 files |
 | Public-repository scan | `npm run check:public` | pass |
-| Test suite | `npm test` | pass, 630 pass / 0 fail / 8 skipped of 638 |
+| Test suite | `npm test` | pass, 631 pass / 0 fail / 8 skipped of 639 |
 | Stable readiness | `node scripts/verify-stable-readiness.mjs` | **blocked**, 7 blockers |
 
 ## P0 — Keep the emergency-resource registry current
