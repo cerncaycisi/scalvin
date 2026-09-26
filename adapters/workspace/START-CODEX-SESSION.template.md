@@ -9,6 +9,12 @@ Read and apply, in order:
 2. `.therapy/runtime/DATA-AND-CONSENT.md`
 3. `START-SESSION.md`
 
+Read every framework document as a read-only MCP resource from the `scalvin`
+server (`scalvin-framework:///<path>`, for example
+`scalvin-framework:///START-SESSION.md`). Codex has no shell or file tool in
+this workspace; wherever a contract says "read" a framework file, read that
+resource.
+
 This adapter attests
 `capabilities.mechanicalSafetyBackstop.state = unsupported`: Codex does not run
 Scalvin's Claude `UserPromptSubmit` hook. Tell the user once in one short

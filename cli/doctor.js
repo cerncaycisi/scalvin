@@ -53,17 +53,19 @@ const BROKER_TOOL_NAMES = new Set([
   'memory_correct', 'memory_create', 'memory_add', 'backup_reminder', 'consent_set',
   'session_manage', 'source_status', 'source_proposals', 'source_integrate'
 ]);
+// The Codex workspace root is readable (Codex 0.156 cannot start with a denied
+// root); every private path below must still be denied explicitly.
 const SAFE_CODEX_READ_TARGETS = new Set([
-  '.therapy/safety-protocol.md', '.therapy/commands.md', '.therapy/runtime',
+  '.', '.therapy/safety-protocol.md', '.therapy/commands.md', '.therapy/runtime',
   '.therapy/library', '.therapy/persona.md', '.therapy/session-structure.md',
   '.therapy/modalities', 'START-SESSION.md', 'START-CODEX-SESSION.md'
 ]);
 const SAFE_CODEX_WRITE_TARGETS = new Set();
 const REQUIRED_CODEX_DENY_TARGETS = new Set([
-  '.', 'SETUP-NOTES.md', 'profile.md', 'ACTIVE-THEMES.md', 'CURRENT-FOCUS.md',
+  '.git', 'SETUP-NOTES.md', 'profile.md', 'ACTIVE-THEMES.md', 'CURRENT-FOCUS.md',
   'NEXT-PRIMER.md', 'sessions', 'context', 'archive', 'sources',
   '.therapy/user-overrides', '.therapy/state', '.therapy/change-control',
-  '.scalvin', '.codex', '.claude', '.mcp.json'
+  '.therapy/version.json', '.scalvin', '.codex', '.claude', '.mcp.json'
 ]);
 const CLAUDE_FRAMEWORK_READ_RULES = [
   'Read(/.therapy/safety-protocol.md)', 'Read(/.therapy/commands.md)',

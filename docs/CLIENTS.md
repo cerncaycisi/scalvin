@@ -69,6 +69,23 @@ adapter rendered from `adapters/workspace/AGENTS.template.md`.
 Codex exposes the current date/time context directly. Scalvin uses that
 verified value and does not install a shell hook for it.
 
+The generated `.codex/config.toml` gives the companion no shell or file tool.
+It reads the immutable framework documents (safety protocol, session
+contracts, persona, structure, and modalities) as read-only MCP resources from
+the local broker, at `scalvin-framework:///<path>`, and uses typed broker
+operations for all private data. The broker lists and serves only framework
+Markdown; it never lists or serves private files.
+
+Codex's own filesystem rules keep the workspace root readable and deny every
+private path explicitly (`profile.md`, themes, focus, primer, setup notes,
+`sessions/`, `context/`, `archive/`, `sources/`, private `.therapy/`
+subtrees, `.scalvin/`, client configuration, `.mcp.json`, and `.git`). With
+Codex 0.156.0 on Linux, a deny-by-default root stopped Codex at startup, and
+direct sandbox probes under the current rules returned `Permission denied` for
+the private paths while framework files stayed readable. Codex applies the
+project profile only in a trusted project; an untrusted directory ignores it,
+including the broker registration.
+
 ## Claude Code
 
 The source repo uses `CLAUDE.md`. A generated workspace receives:

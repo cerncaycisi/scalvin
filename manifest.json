@@ -81,7 +81,7 @@
       "path": "adapters/workspace/AGENTS.template.md",
       "source": "repo:adapters/workspace/AGENTS.template.md",
       "version": "1.0.0",
-      "sha256": "6aa7e11e7994a4cbf1d19c0b4a0631db44ff80f154f06e83a8bd9106879c0372",
+      "sha256": "33c0c548a28b1467adf5f30c80ca18d29c057360c2997c79f8e7ab39e6fa56e3",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -152,7 +152,7 @@
       "path": "adapters/workspace/START-CODEX-SESSION.template.md",
       "source": "repo:adapters/workspace/START-CODEX-SESSION.template.md",
       "version": "1.0.0",
-      "sha256": "8a3bb062ed5dc81709a4a8a57fe52412c61842139364c7ee9129059c01338ddf",
+      "sha256": "7a3def001e36cd00c070c45f983cab1e0e601c08399f9ec8bb0af9efa205d4f9",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -203,8 +203,8 @@
     {
       "path": "adapters/workspace/codex.config.template.toml",
       "source": "repo:adapters/workspace/codex.config.template.toml",
-      "version": "2.0.0",
-      "sha256": "1457a3e7e9bc5e59d2e648d9cc466779ab7d6ad71570e7947355f951b68a36cd",
+      "version": "3.0.0",
+      "sha256": "20d84db711f2799c85cdc3905331de0a9e78ee6508dd6adc649891dfb11eb055",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -277,7 +277,7 @@
       "path": "cli/doctor.js",
       "source": "repo:cli/doctor.js",
       "version": "1.0.0",
-      "sha256": "77ba89162468b82932947a7e9cb91cd0f4f499c3fac348e3498b1cd6d6bdf4d8",
+      "sha256": "0e5c2de574e7ff8d296e708a0018b6bb780792cdb92bef9b5dd901c69fa3e2f2",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -394,7 +394,7 @@
       "path": "cli/mcp-server.js",
       "source": "repo:cli/mcp-server.js",
       "version": "1.0.0",
-      "sha256": "b9057fa3c4514ed14fdd1684adbdf0d6d37993b9951f129461bbc5f5ce59f0e3",
+      "sha256": "a041f7fb9c991dd9e4e66d59a750d23d99bf11e50511dd8047f6fdcfc81a7803",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []

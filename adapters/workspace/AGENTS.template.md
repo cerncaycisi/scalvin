@@ -9,6 +9,13 @@ Before the first user-facing response, read in this order:
 - `.therapy/runtime/DATA-AND-CONSENT.md`
 - `START-CODEX-SESSION.md`
 
+This workspace gives you no shell or file tool. Read these and every other
+framework document named in them as read-only MCP resources from the `scalvin`
+server: the resource URI is `scalvin-framework:///` followed by the path, for
+example `scalvin-framework:///.therapy/safety-protocol.md`. List them with the
+MCP resource-listing tool. If the resources are unavailable, do not begin
+reflective work; say that the workspace needs repair with the Scalvin doctor.
+
 Important:
 
 - The conversation-language preference is `{{DEFAULT_LANGUAGE}}`. If it is

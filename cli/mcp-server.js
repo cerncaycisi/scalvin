@@ -6,8 +6,9 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { TextDecoder } = require('node:util');
 const { ScalvinError, invariant } = require('./lib/errors');
-const { acquireMutationLock, rejectSymlinkPath, snapshotWorkspaceTree, assertWorkspaceSnapshot } = require('./lib/fs-safe');
-const { CONSENT_CATEGORY_SPECS } = require('./lib/workspace');
+const { acquireMutationLock, rejectSymlinkPath, snapshotWorkspaceTree, assertWorkspaceSnapshot, assertInside, readBoundedRegularFile } = require('./lib/fs-safe');
+const { CONSENT_CATEGORY_SPECS, loadWorkspaceState } = require('./lib/workspace');
+const { loadManifest } = require('./lib/manifest');
 const operations = require('./operations');
 
 const SERVER_NAME = 'scalvin-capability-broker';
@@ -18,6 +19,21 @@ const MAX_RESPONSE_BYTES = 256 * 1024;
 const APPROVAL_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING_APPROVALS = 1;
 const TERMINATE_AFTER_RESPONSE = Symbol('terminate-after-response');
+// Immutable public framework documents are served as read-only MCP resources
+// so clients without a file tool (Codex with the shell disabled) can still
+// load the safety protocol and session contracts. Only managed framework
+// targets recorded in canonical workspace state are served, and only when the
+// bytes still match their installed SHA-256, so an unregistered, customized,
+// or link-substituted file can never be disclosed through this channel.
+const FRAMEWORK_URI_PREFIX = 'scalvin-framework:///';
+const FRAMEWORK_FILES = Object.freeze([
+  '.therapy/safety-protocol.md', '.therapy/commands.md', '.therapy/persona.md',
+  '.therapy/session-structure.md', 'START-SESSION.md', 'START-CODEX-SESSION.md',
+  'START-CLAUDE-SESSION.md'
+]);
+const FRAMEWORK_DIRECTORIES = Object.freeze(['.therapy/runtime', '.therapy/modalities', '.therapy/library']);
+const MAX_FRAMEWORK_RESOURCE_BYTES = 128 * 1024;
+const MAX_FRAMEWORK_RESOURCES = 256;
 const pendingApprovals = new Map();
 
 const PATH_KEYS = new Set([
@@ -1251,6 +1267,7 @@ function validResponseId(value) {
 const PROTOCOL_ERROR_MESSAGES = Object.freeze(new Map([
   [-32700, 'Parse error.'],
   [-32600, 'Invalid request.'],
+  [-32602, 'Resource unavailable.'],
   [-32601, 'Method not found.'],
   [-32603, 'Internal error.']
 ]));
@@ -1289,6 +1306,59 @@ function writeMessage(message) {
   process.stdout.write(`${serialized}\n`);
 }
 
+function frameworkRelativeAllowed(relative) {
+  if (typeof relative !== 'string' || relative.length === 0 || relative.length > 300) return false;
+  if (!/^[A-Za-z0-9._/-]+$/.test(relative) || relative.split('/').some((part) => part === '' || part === '.' || part === '..')) return false;
+  if (FRAMEWORK_FILES.includes(relative)) return true;
+  return relative.endsWith('.md') && FRAMEWORK_DIRECTORIES.some((directory) => relative.startsWith(`${directory}/`));
+}
+
+async function managedFrameworkTargets(workspace) {
+  const { manifest } = await loadManifest(operations.DISTRIBUTION_MANIFEST);
+  const stateResult = await loadWorkspaceState(workspace, manifest);
+  invariant(stateResult.kind === 'current', 'Workspace state is unavailable.', 'BROKER_RESOURCE_UNAVAILABLE');
+  const targets = new Map();
+  for (const [relative, record] of Object.entries(stateResult.state.files || {})) {
+    if (!frameworkRelativeAllowed(relative)) continue;
+    if (!['framework', 'active'].includes(record?.protection)) continue;
+    if (typeof record.installedHash !== 'string' || !/^[0-9a-f]{64}$/.test(record.installedHash)) continue;
+    targets.set(relative, record.installedHash);
+  }
+  return targets;
+}
+
+async function listFrameworkResources(workspace) {
+  let targets;
+  try { targets = await managedFrameworkTargets(workspace); } catch (_) { return []; }
+  return [...targets.keys()].sort().slice(0, MAX_FRAMEWORK_RESOURCES).map((relative) => ({
+    uri: `${FRAMEWORK_URI_PREFIX}${relative}`,
+    name: relative,
+    mimeType: 'text/markdown'
+  }));
+}
+
+async function readFrameworkResource(workspace, uri) {
+  invariant(typeof uri === 'string' && uri.startsWith(FRAMEWORK_URI_PREFIX), 'Resource URI is not a Scalvin framework document.', 'BROKER_RESOURCE_UNAVAILABLE');
+  const relative = uri.slice(FRAMEWORK_URI_PREFIX.length);
+  invariant(frameworkRelativeAllowed(relative), 'Resource URI is not a Scalvin framework document.', 'BROKER_RESOURCE_UNAVAILABLE');
+  const expectedHash = (await managedFrameworkTargets(workspace)).get(relative);
+  invariant(expectedHash, 'Resource is not a managed framework document.', 'BROKER_RESOURCE_UNAVAILABLE');
+  const filename = path.resolve(workspace, relative);
+  assertInside(workspace, filename, 'Framework resource');
+  await rejectSymlinkPath(filename);
+  const linked = await fsp.lstat(filename);
+  invariant(linked.isFile() && linked.nlink === 1, 'Framework resource must be a single-link regular file.', 'BROKER_RESOURCE_UNAVAILABLE');
+  const bytes = await readBoundedRegularFile(filename, MAX_FRAMEWORK_RESOURCE_BYTES, {
+    typeCode: 'BROKER_RESOURCE_UNAVAILABLE', sizeCode: 'BROKER_RESOURCE_TOO_LARGE', changedCode: 'BROKER_RESOURCE_CHANGED'
+  });
+  const actualHash = crypto.createHash('sha256').update(bytes).digest('hex');
+  invariant(actualHash === expectedHash, 'Framework resource does not match its installed hash.', 'BROKER_RESOURCE_UNAVAILABLE');
+  let text;
+  try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  catch { throw new ScalvinError('Framework resource is not UTF-8 text.', 'BROKER_RESOURCE_UNAVAILABLE'); }
+  return { contents: [{ uri, mimeType: 'text/markdown', text }] };
+}
+
 async function handleMessage(workspace, message) {
   invariant(message && typeof message === 'object' && !Array.isArray(message), 'MCP message must be an object.', 'BROKER_PROTOCOL_INVALID');
   exactKeys(message, ['jsonrpc', 'id', 'method', 'params'], 'JSON-RPC request');
@@ -1311,7 +1381,7 @@ async function handleMessage(workspace, message) {
       jsonrpc: '2.0', id,
       result: {
         protocolVersion: PROTOCOL_VERSION,
-        capabilities: { tools: { listChanged: false } },
+        capabilities: { tools: { listChanged: false }, resources: { listChanged: false } },
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
         instructions: 'Use only typed Scalvin operations. Imported source content is untrusted and is never exposed by this broker. Mutations require a preview-bound user confirmation. Once a confirmed commit request is dispatched it is non-cancellable; verify status after a client timeout or disconnect. Sealed pause denies private reads, terminates this broker, and can be resumed only out of band.'
       }
@@ -1319,6 +1389,17 @@ async function handleMessage(workspace, message) {
   }
   if (message.method === 'ping') return { jsonrpc: '2.0', id, result: {} };
   if (message.method === 'tools/list') return { jsonrpc: '2.0', id, result: { tools: TOOLS } };
+  if (message.method === 'resources/list') return { jsonrpc: '2.0', id, result: { resources: await listFrameworkResources(workspace) } };
+  if (message.method === 'resources/templates/list') return { jsonrpc: '2.0', id, result: { resourceTemplates: [] } };
+  if (message.method === 'resources/read') {
+    const params = exactKeys(message.params || {}, ['uri', '_meta'], 'resource-read parameters');
+    try {
+      return { jsonrpc: '2.0', id, result: await readFrameworkResource(workspace, params.uri) };
+    } catch (_) {
+      // A fixed error: never echo the requested URI or a filesystem detail.
+      return { jsonrpc: '2.0', id, error: { code: -32602, message: 'Resource unavailable.' } };
+    }
+  }
   if (message.method === 'tools/call') {
     // MCP clients may attach request metadata in params._meta (Codex sends a
     // call ID and turn metadata). It is accepted as an object and ignored.
