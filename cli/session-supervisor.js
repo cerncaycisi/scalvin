@@ -8,7 +8,7 @@ const path = require('node:path');
 const { spawn, execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { ScalvinError, invariant } = require('./lib/errors');
-const { PRIVATE_DIR_MODE, rejectSymlinkPath } = require('./lib/fs-safe');
+const { PRIVATE_DIR_MODE, rejectSymlinkPath, resolvePortablePath } = require('./lib/fs-safe');
 const { interactiveEnvironment, terminateChild, missingClaudeSandboxDependencies } = require('./lib/child-process');
 const operations = require('./operations');
 
@@ -125,7 +125,8 @@ async function terminateClient(child) {
 }
 
 async function launchSupervisedClient(options = {}) {
-  const workspace = operations.assertSafeWorkspaceTarget(path.resolve(options.workspace));
+  // Resolve `~/...` the same way as every other workspace command.
+  const workspace = operations.assertSafeWorkspaceTarget(resolvePortablePath(options.workspace));
   const client = options.client || 'codex';
   const doctor = await operations.doctor({ target: workspace });
   invariant(doctor.errors === 0, 'Workspace doctor must pass before client launch.', 'CLIENT_LAUNCH_DOCTOR_FAILED');
