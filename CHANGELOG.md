@@ -131,6 +131,10 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
   the broker rejected each call with an ID-less error, so every Scalvin tool
   call from Codex timed out. Invalid-request errors now echo a validated
   string/integer request ID, and the worker no longer answers notifications
+- the isolated Codex source worker launches on Codex 0.156: it no longer passes
+  the removed `exec -a` flag, sends filesystem rules as one TOML inline table,
+  and lets Codex read its empty private working directory to load
+  instructions; `source process` and `source proposals` accept `--json`
 - Claude Code launches on Linux hosts without `bubblewrap`/`socat` now get a
   clear doctor warning (`CLAUDE_SANDBOX_DEPENDENCY_MISSING`) and a pre-spawn
   refusal instead of the client's raw sandbox error

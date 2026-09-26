@@ -33,7 +33,13 @@ const SOURCE_WORKER_PROMPT = [
   'Do not quote or summarize source content in your final response.'
 ].join(' ');
 
+// Codex parses -c values as TOML. JSON strings, numbers, booleans, and arrays
+// are valid TOML; objects need TOML inline-table syntax.
 function jsonConfig(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return `{${Object.entries(value).map(([key, item]) => `${JSON.stringify(key)}=${jsonConfig(item)}`).join(',')}}`;
+  }
+  if (Array.isArray(value)) return `[${value.map(jsonConfig).join(',')}]`;
   return JSON.stringify(value);
 }
 
@@ -52,11 +58,16 @@ function workerServerArgs(input) {
 function buildCodexSourceWorkerCommand(input) {
   const serverArgs = workerServerArgs({ ...input, client: 'codex' });
   const configs = [
+    // Codex 0.156 moved -a/--ask-for-approval off `exec`; the config key works
+    // on every supported version.
+    ['approval_policy', 'never'],
     ['web_search', 'disabled'],
     ['allow_login_shell', false],
     ['default_permissions', 'scalvin-source-worker'],
-    ['permissions.scalvin-source-worker.filesystem.":minimal"', 'read'],
-    ['permissions.scalvin-source-worker.filesystem.":workspace_roots"."."', 'deny'],
+    // Codex 0.156 rejects dotted -c keys for filesystem rules and must read
+    // its working directory to load instructions. The working directory is
+    // the empty private output root; the worker has no shell or file tool.
+    ['permissions.scalvin-source-worker.filesystem', { ':minimal': 'read', ':workspace_roots': { '.': 'read' } }],
     ['permissions.scalvin-source-worker.network.enabled', false],
     ['features.apps', false],
     ['features.browser_use', false],
@@ -87,7 +98,7 @@ function buildCodexSourceWorkerCommand(input) {
   ];
   const args = [
     'exec', '--ephemeral', '--ignore-user-config', '--ignore-rules', '--strict-config',
-    '--skip-git-repo-check', '--json', '-a', 'never', '-C', input.outputRoot
+    '--skip-git-repo-check', '--json', '-C', input.outputRoot
   ];
   for (const [key, value] of configs) args.push('-c', `${key}=${jsonConfig(value)}`);
   args.push(SOURCE_WORKER_PROMPT);

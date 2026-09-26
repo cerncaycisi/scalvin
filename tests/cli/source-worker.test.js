@@ -46,6 +46,12 @@ test('source-worker client commands are ephemeral, exact-MCP, no-user-config lau
     assert.ok(codex.args.includes(flag), flag);
   }
   assert.equal(codex.args.includes('--search'), false);
+  // Codex 0.156: -a is not an exec flag, and filesystem rules must be one
+  // TOML inline table (dotted -c keys fail to parse).
+  assert.equal(codex.args.includes('-a'), false);
+  assert.ok(codex.args.includes('approval_policy="never"'));
+  assert.ok(codex.args.includes('permissions.scalvin-source-worker.filesystem={":minimal"="read",":workspace_roots"={"."="read"}}'));
+  assert.equal(codex.args.some((item) => item.includes('filesystem.":')), false);
   assert.ok(codex.args.some((item) => item === 'features.shell_tool=false'));
   assert.ok(codex.args.some((item) => item === 'features.unified_exec=false'));
   assert.ok(codex.args.some((item) => item === 'features.hooks=false'));

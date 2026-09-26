@@ -259,7 +259,7 @@
       "path": "cli/client-launcher.js",
       "source": "repo:cli/client-launcher.js",
       "version": "1.0.0",
-      "sha256": "2d68fefba7e7ad37cccf8a98c57c0f85aa4e2c61d6e327cc0143d55f4a2e88a2",
+      "sha256": "2353db5cc1f5f8b72d63fdf1913cd726981da56e5eaddc553ee64c29997ecce4",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -421,7 +421,7 @@
       "path": "cli/operations.js",
       "source": "repo:cli/operations.js",
       "version": "1.0.0",
-      "sha256": "159d6440ee38f9d344da3a5f147b7761a8709992372891048ee3f19875f33cb2",
+      "sha256": "13eda683d26804a7a29ed5d9aa78932a0b0c18c02f2d3b91b6615d396d19b5ed",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []

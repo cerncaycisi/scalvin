@@ -2355,7 +2355,7 @@ async function source(options = {}) {
   }
 
   if (action === 'proposals') {
-    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision']);
+    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision', 'json']);
     const unsupported = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
     invariant(unsupported.length === 0, 'Source proposal inspection received unsupported authority fields.', 'INVALID_ARGUMENT', { options: unsupported.sort() });
     invariant(options['source-id'] !== undefined, 'source proposals requires --source-id.', 'INVALID_SOURCE_ID');
@@ -2399,7 +2399,7 @@ async function source(options = {}) {
   }
 
   if (action === 'process') {
-    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision', 'client', 'client-bin']);
+    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision', 'client', 'client-bin', 'json']);
     const unsupported = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
     invariant(unsupported.length === 0, 'Source processing received unsupported authority fields.', 'INVALID_ARGUMENT', { options: unsupported.sort() });
     invariant(options['source-id'] !== undefined, 'source process requires --source-id.', 'INVALID_SOURCE_ID');
