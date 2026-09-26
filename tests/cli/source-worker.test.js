@@ -227,3 +227,34 @@ test('non-empty proposals require a complete contiguous read of the assigned sou
   const none = await dispatchWorkerTool(empty, 'proposal_submit', { candidates: [] });
   assert.equal(none.candidateCount, 0);
 });
+
+test('worker ignores notifications and accepts MCP params._meta on tool calls', async (t) => {
+  const { handleWorkerMessage } = require('../../cli/source-worker');
+  const box = await sandbox('isolated-source-worker-meta');
+  t.after(box.cleanup);
+  await install({ target: box.workspace, consent: 'granted' });
+  await consent({ target: box.workspace, category: 'imported_sources', value: 'on', retention: 'until_deleted' });
+  const sourcePath = path.join(box.base, 'meta-source.txt');
+  await fsp.writeFile(sourcePath, 'Synthetic note.');
+  const added = await source({ target: box.workspace, action: 'add', path: sourcePath });
+  await ensureSourceWorkerKey(box.workspace);
+  const outputRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'scalvin-worker-meta-'));
+  if (process.platform !== 'win32') await fsp.chmod(outputRoot, 0o700);
+  t.after(() => fsp.rm(outputRoot, { recursive: true, force: true }));
+  const context = await createWorkerContext({
+    workspace: box.workspace, sourceId: added.sourceId, revision: added.revision,
+    outputRoot, output: path.join(outputRoot, 'proposal.json'), client: 'codex', clientVersion: 'codex-test 1.0.0'
+  });
+  assert.equal(await handleWorkerMessage(context, { jsonrpc: '2.0', method: 'notifications/initialized' }), null);
+  const metadata = await handleWorkerMessage(context, {
+    jsonrpc: '2.0', id: 7, method: 'tools/call',
+    params: { _meta: { callId: 'exec-synthetic' }, name: 'source_metadata', arguments: {} }
+  });
+  assert.equal(metadata.id, 7);
+  assert.equal(metadata.result.isError, false);
+  const rejected = await handleWorkerMessage(context, {
+    jsonrpc: '2.0', id: 8, method: 'tools/call',
+    params: { _meta: 'not-an-object', name: 'source_metadata', arguments: {} }
+  });
+  assert.equal(rejected.result.isError, true);
+});

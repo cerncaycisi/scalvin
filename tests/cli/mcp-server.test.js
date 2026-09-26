@@ -1138,3 +1138,56 @@ test('broker startup strips SCALVIN overrides and never prints the rejected abso
   assert.match(stderr.join(''), /^error \[WORKSPACE_SOURCE_OVERLAP\]: Capability broker could not start\.\n$/);
   assert.equal(stderr.join('').includes(workspace), false);
 });
+
+// Recorded request shape from Codex 0.156.0: tools/list and tools/call carry
+// params._meta. The broker previously rejected it with an id-less error, so the
+// client waited for its tool timeout.
+test('broker accepts MCP params._meta over stdio and echoes only validated IDs on invalid requests', async (t) => {
+  const box = await sandbox('broker-meta');
+  t.after(box.cleanup);
+  // The broker refuses workspaces inside the source checkout.
+  const outside = await fsp.mkdtemp(path.join(os.tmpdir(), 'scalvin-broker-meta-'));
+  t.after(() => fsp.rm(outside, { recursive: true, force: true }));
+  const workspace = path.join(outside, 'workspace');
+  await operations.install({ target: workspace, consent: 'granted' });
+  const child = spawn(process.execPath, [path.join(ROOT, 'bin', 'scalvin-mcp.js'), '--workspace', workspace], {
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, SCALVIN_DISABLE_LOCAL_POINTER: '1' }
+  });
+  t.after(() => child.kill('SIGKILL'));
+  let stderr = '';
+  child.stderr.on('data', (chunk) => { stderr += chunk; });
+  const responses = [];
+  let buffered = '';
+  child.stdout.on('data', (chunk) => {
+    buffered += chunk;
+    let index;
+    while ((index = buffered.indexOf('\n')) !== -1) {
+      responses.push(JSON.parse(buffered.slice(0, index)));
+      buffered = buffered.slice(index + 1);
+    }
+  });
+  const send = (message) => child.stdin.write(`${JSON.stringify(message)}\n`);
+  const waitFor = async (count) => {
+    for (let attempt = 0; attempt < 400 && responses.length < count; attempt += 1) await new Promise((resolve) => setTimeout(resolve, 25));
+    assert.ok(responses.length >= count, `expected ${count} responses, got ${responses.length}: ${stderr.slice(0, 300)}`);
+  };
+  send({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'codex-mcp-client', version: '0.156.0' } } });
+  send({ jsonrpc: '2.0', method: 'notifications/initialized' });
+  send({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: { _meta: { progressToken: 0 } } });
+  send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { _meta: { callId: 'exec-synthetic', 'x-codex-turn-metadata': { turn_trigger: 'exec' } }, name: 'capability_status', arguments: {} } });
+  send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'capability_status', arguments: {}, unexpected: true } });
+  send({ jsonrpc: '2.0', id: { smuggled: 'PRIVATE_ID_CONTENT' }, method: 'tools/call', params: { name: 'capability_status', arguments: {} } });
+  send({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { _meta: ['not', 'an', 'object'], name: 'capability_status', arguments: {} } });
+  await waitFor(6);
+  const byId = new Map(responses.filter((item) => item.id !== null).map((item) => [item.id, item]));
+  assert.equal(byId.get(1).result.tools.length > 0, true);
+  const status = JSON.parse(byId.get(2).result.content[0].text);
+  assert.notEqual(byId.get(2).result.isError, true);
+  assert.equal(status.status, 'broker_available_broker_only_unattested');
+  assert.deepEqual(byId.get(3).error, { code: -32600, message: 'Invalid request.' });
+  assert.deepEqual(byId.get(4).error, { code: -32600, message: 'Invalid request.' });
+  const nullIdErrors = responses.filter((item) => item.id === null);
+  assert.equal(nullIdErrors.length, 1);
+  assert.equal(JSON.stringify(responses).includes('PRIVATE_ID_CONTENT'), false);
+});

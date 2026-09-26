@@ -394,7 +394,7 @@
       "path": "cli/mcp-server.js",
       "source": "repo:cli/mcp-server.js",
       "version": "1.0.0",
-      "sha256": "d1db295e97ce73a39cc56642f4d3579cab8aa497b9c7f91cf85a67ca4561a29c",
+      "sha256": "b9057fa3c4514ed14fdd1684adbdf0d6d37993b9951f129461bbc5f5ce59f0e3",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -475,7 +475,7 @@
       "path": "cli/source-worker.js",
       "source": "repo:cli/source-worker.js",
       "version": "1.0.0",
-      "sha256": "03780f676a50cd86feb6c1ffce6827465da1e2c77d49b777136002eadab99bb1",
+      "sha256": "56e9d8c026baf705837627091bf17a2e960de5a28be5b71f8799278068660050",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []

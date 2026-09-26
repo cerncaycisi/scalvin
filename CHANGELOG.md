@@ -126,6 +126,11 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
   only before the first action they govern (or when `context_graph` is on),
   removing about 15 KB of the ~107 KB default startup instructions; the effect
   on real conversation quality has not been measured
+- the capability broker and isolated source worker accept the standard MCP
+  `params._meta` request field; Codex 0.156 sends it on every tool call, and
+  the broker rejected each call with an ID-less error, so every Scalvin tool
+  call from Codex timed out. Invalid-request errors now echo a validated
+  string/integer request ID, and the worker no longer answers notifications
 - Claude Code launches on Linux hosts without `bubblewrap`/`socat` now get a
   clear doctor warning (`CLAUDE_SANDBOX_DEPENDENCY_MISSING`) and a pre-spawn
   refusal instead of the client's raw sandbox error
