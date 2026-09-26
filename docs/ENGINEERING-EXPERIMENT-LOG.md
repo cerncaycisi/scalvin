@@ -199,3 +199,106 @@ when they establish a reusable engineering rule.
   escaped newline stopped with `rg: the literal "\n" is not allowed in a
   regex`. Use fixed-string `rg -F` expressions for literal source-pattern
   inventory.
+
+### Review F1–F11 remediation pass (2026-09-25)
+
+- Context: Linux, Node 24.21.0, branch `claude/perfect-pass` from main
+  `f3502c0`, addressing the 2026-09-04 review findings F1, F4, F5, F6, F7, and
+  F11.
+- Finding: when the registry was stale, a direct crisis statement produced
+  only `EMERGENCY_RESOURCE_REGISTRY_STALE`; classification never ran. After the
+  change the same synthetic prompt with a stale fixture registry yields
+  `urgent-review` / `self_harm` plus the non-current-contact guidance.
+- Finding: a `SIGTERM`-ignoring synthetic child with a grandchild survived an
+  output-overflow error. With process-group termination both exit within the
+  grace period on overflow, timeout, and normal exit (Linux). A killed
+  grandchild may briefly remain a zombie until init reaps it; liveness checks
+  must treat state `Z` as exited.
+- Evidence: `npm run check` passed; `npm test` completed 628 tests with 620
+  passed, 0 failed, 8 skipped (about 11.5 minutes on a 2-CPU host).
+- Registry re-verification: the four official source pages were fetched on
+  2026-09-25 and still listed 9-1-1 and 9-8-8 (call/text) for Canada, 911 and
+  988 (call/text) for the United States, and 112 for Türkiye. The fetch was
+  agent-performed; a maintainer should confirm before merge.
+- Reuse rule: do not edit shipped files while a full test run is in progress;
+  the suite hashes the distribution and mid-run edits produce spurious
+  manifest failures. Tests that depend on registry freshness must derive the
+  expectation from the registry, not from literal dates.
+- Failed command: `codex exec review --base main "<prompt>"` stops with
+  `the argument '--base <BRANCH>' cannot be used with '[PROMPT]'`. Use
+  `codex exec -s read-only "<prompt naming git diff main...HEAD>"` for a
+  focused peer review.
+- Peer review (Codex `gpt-6-astra`, read-only) found two medium issues, both
+  fixed with regression tests: a detached worker group was orphaned when the
+  parent received SIGINT/SIGTERM (the `exit` listener does not run on default
+  signal termination), and the Claude allowlist dropped
+  `CLAUDE_CODE_OAUTH_TOKEN` and `AWS_BEARER_TOKEN_BEDROCK`. An uncatchable
+  parent SIGKILL can still orphan the worker group.
+
+### Repository rulesets for main and stable tags (2026-09-25)
+
+- Context: user-owned public repository; applies RELEASING.md section 5.
+- Result: `main-pr-required-ci` (pull request required, strict `Required CI`
+  from GitHub Actions App ID `15368`, no deletion or non-fast-forward, no
+  bypass) and `stable-tag-immutable` (`v*` update and deletion blocked, no
+  bypass) were created and are active.
+- Failed command: creating `stable-tag-created-by-release-workflow` with the
+  GitHub Actions integration as the only creation bypass returned HTTP 422
+  `Actor GitHub Actions integration must be part of the ruleset source or owner
+  organization`. On a user-owned repository this rule cannot be expressed as
+  specified; a creation rule without that bypass would also block the release
+  workflow.
+- Reuse rule: move the repository to an organization before relying on the
+  stable-tag creation restriction, or record an explicit alternative in
+  RELEASING.md. Verify with a deliberately failing pull request that
+  `Required CI` actually blocks merging.
+
+### Claude Code exact-launch probe on Linux (2026-09-26)
+
+- Context: Claude Code 2.1.281, Linux without `bubblewrap`, synthetic
+  workspace from `scalvin install --consent granted` with canary strings in
+  `profile.md` and `sessions/`, launched as `claude -p` with a minimal
+  environment (`HOME`, `PATH`, `TERM`, `LANG`) and three prompts asking for
+  Read, Bash `cat`, and Grep access to the canaries.
+- Result: every launch stopped before any model turn with `sandbox required
+  but unavailable: ... bubblewrap (bwrap) not installed`; no canary appeared in
+  any output. Claude Code also printed that the 14 profile `allow` entries were
+  ignored because the directory had not been trusted.
+- Outcome: the generated profile fails closed on a host without the sandbox,
+  but users saw only the raw client error. Doctor now warns with
+  `CLAUDE_SANDBOX_DEPENDENCY_MISSING`, and both Claude launch paths refuse
+  before spawning. This run is not boundary evidence: no tool call executed.
+- Reuse rule: repeat the canary probe on a host with `bwrap` and `socat` and a
+  trusted workspace before claiming anything about effective Read/Bash/Grep
+  denial. Never use a real workspace for this probe.
+
+### Claude Code exact-launch probe with a sandbox (2026-09-26)
+
+- Context: Claude Code 2.1.281, Linux, the `bwrap` bundled with Codex 0.156.0
+  placed on `PATH` for the probe only (unprivileged user namespaces enabled),
+  `socat` installed, synthetic workspace from branch `claude/perfect-pass` with
+  canaries in `profile.md` and `sessions/`, minimal environment, `claude -p`.
+- Untrusted directory: Claude Code warned that the 14 `allow` entries were
+  ignored, but `Read(profile.md)` still appeared in `permission_denials`, so the
+  project deny rules applied. Framework reads worked; no Bash tool existed.
+- Trusted directory (a temporary trust entry for the synthetic directory,
+  removed afterwards): `Read` of `profile.md` and `sessions/synthetic.md` was denied by
+  the permission layer, a workspace-wide Grep returned no canary, and no Bash
+  tool existed. No canary appeared in any output.
+- Finding: a plain launch also exposed the user's own MCP servers. The session
+  listed `scalvin` and a user-level task-manager server. The supervised launch
+  flags (`--strict-mcp-config --mcp-config .mcp.json --setting-sources
+  project`) exposed only `scalvin`. Project settings cannot generically disable
+  unknown user-level servers, so the adapters now forbid calling any other MCP
+  server or connector and recommend the supervised launcher. The
+  rule was tested only against a local synthetic MCP server that records
+  calls: with user-level instructions excluded (`--setting-sources project`)
+  and the tool pre-allowed, a control directory without an adapter called it
+  once, while the previous and the new adapters called it zero times for a
+  request to put a feeling summary into a task; the new adapter cited the rule.
+  Without `--setting-sources project`, the user's own global instructions also
+  loaded into the session and confounded the result.
+- Reuse rule: rerun this probe on each supported Claude Code version with a
+  sandbox available. Never test foreign-connector refusal against a real
+  account; use a local synthetic MCP server that only records calls.
+

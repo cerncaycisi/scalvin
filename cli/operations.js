@@ -1864,12 +1864,19 @@ function activationDisclosure(activation, destructive = false, existingCopies = 
     : common;
 }
 
-async function currentWorkspaceContext(options, label) {
+// The hashed whole-tree snapshot binds a later transaction activation to exactly
+// what was read, so only mutating actions pay for hashing every byte. Read-only
+// contexts still walk the tree to reject symlinks, hard links, and special
+// files, carry no snapshot, and fail closed with ACTIVATION_SNAPSHOT_REQUIRED
+// if they ever reach a transaction.
+async function currentWorkspaceContext(options, label, { snapshot = true } = {}) {
   invariant(options.target || options.workspace, `${label} requires --workspace (or --target).`, 'INVALID_ARGUMENT');
   const target = assertSafeWorkspaceTarget(resolvePortablePath(options.target || options.workspace));
   await rejectSymlinkPath(target);
   invariant(await isNonEmptyDirectory(target), 'Workspace does not exist or is empty.', 'WORKSPACE_NOT_FOUND', { target });
-  const expectedTargetSnapshot = await snapshotWorkspaceTree(target);
+  let expectedTargetSnapshot = null;
+  if (snapshot) expectedTargetSnapshot = await snapshotWorkspaceTree(target);
+  else await walkTree(target);
   const loaded = await loadManifest(DISTRIBUTION_MANIFEST);
   const stateResult = await loadWorkspaceState(target, loaded.manifest);
   invariant(stateResult.kind === 'current', `${label} requires a valid schema v2 workspace; run a pinned update first.`, 'WORKSPACE_STATE_MIGRATION_REQUIRED', { kind: stateResult.kind });
@@ -2106,7 +2113,7 @@ async function changes(options = {}) {
   const action = options.action;
   invariant(['propose', 'approve', 'reject', 'history', 'rollback'].includes(action), 'changes action must be propose, approve, reject, history, or rollback.', 'INVALID_ARGUMENT');
   await requireUnsealedPrivateAccess(options, 'changes');
-  const context = await currentWorkspaceContext(options, 'changes');
+  const context = await currentWorkspaceContext(options, 'changes', { snapshot: action !== 'history' });
   assertSupportedRetentionClasses(context.state, ['behavior_customization']);
 
   if (action === 'history') {
@@ -2339,7 +2346,7 @@ async function source(options = {}) {
     const preflight = await contentFreeWorkspaceContext(options, 'source worker key');
     await ensureSourceWorkerKey(preflight.target);
   }
-  const context = await currentWorkspaceContext(options, 'source');
+  const context = await currentWorkspaceContext(options, 'source', { snapshot: !['status', 'proposals'].includes(action) });
   if (!['status', 'delete'].includes(action)) assertSupportedRetentionClasses(context.state, ['imported_sources', 'external_care_records']);
   if (action === 'status') {
     invariant(options.path === undefined && options.confirm === undefined && !options['dry-run'], 'Source status is read-only and does not accept --path, --confirm, or --dry-run.', 'INVALID_ARGUMENT');
@@ -2348,7 +2355,7 @@ async function source(options = {}) {
   }
 
   if (action === 'proposals') {
-    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision']);
+    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision', 'json']);
     const unsupported = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
     invariant(unsupported.length === 0, 'Source proposal inspection received unsupported authority fields.', 'INVALID_ARGUMENT', { options: unsupported.sort() });
     invariant(options['source-id'] !== undefined, 'source proposals requires --source-id.', 'INVALID_SOURCE_ID');
@@ -2392,7 +2399,7 @@ async function source(options = {}) {
   }
 
   if (action === 'process') {
-    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision', 'client', 'client-bin']);
+    const allowed = new Set(['action', 'target', 'workspace', 'source-id', 'revision', 'client', 'client-bin', 'json']);
     const unsupported = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
     invariant(unsupported.length === 0, 'Source processing received unsupported authority fields.', 'INVALID_ARGUMENT', { options: unsupported.sort() });
     invariant(options['source-id'] !== undefined, 'source process requires --source-id.', 'INVALID_SOURCE_ID');
@@ -2887,7 +2894,7 @@ async function session(options = {}) {
       };
     }
   }
-  const context = await currentWorkspaceContext(options, 'session');
+  const context = await currentWorkspaceContext(options, 'session', { snapshot: options.action !== 'status' });
   const recoveryAction = options.action === 'recover' ? String(options['recovery-action'] || '').replaceAll('-', '_') : null;
   if (!(options.action === 'recover' && recoveryAction === 'delete')) {
     assertSupportedRetentionClasses(context.state, ['session_notes', 'primers_and_checkpoints', 'raw_transcripts']);
@@ -3385,7 +3392,7 @@ async function contextGraph(options = {}) {
   const ignored = Object.keys(options).filter((key) => options[key] !== undefined && !allowed.has(key));
   invariant(ignored.length === 0, `Context ${action} received options that do not apply to this action.`, 'INVALID_ARGUMENT', { options: ignored.sort() });
   if (action !== 'forget') await requireUnsealedPrivateAccess(options, 'context');
-  const context = await currentWorkspaceContext(options, 'context');
+  const context = await currentWorkspaceContext(options, 'context', { snapshot: !['status', 'show'].includes(action) });
   if (action !== 'forget') assertSupportedRetentionClasses(context.state, ['context_graph']);
   if (action !== 'forget') graphAccess(context.state);
   if (action === 'status') {
@@ -3674,7 +3681,7 @@ async function memory(options = {}) {
       };
     }
     invariant(!sealed, 'Retention mutation is unavailable while sealed pause is active.', 'MEMORY_SEALED');
-    const context = await currentWorkspaceContext(options, 'memory retention');
+    const context = await currentWorkspaceContext(options, 'memory retention', { snapshot: action !== 'retention-status' });
     invariant(
       JSON.stringify(context.state) === JSON.stringify(control.state),
       'Workspace state changed after retention control preflight; inspect again.',
@@ -3844,7 +3851,7 @@ async function memory(options = {}) {
   }
   if (reviewActions.includes(action)) {
     await requireUnsealedPrivateAccess(options, 'memory review');
-    const context = await currentWorkspaceContext(options, 'memory review');
+    const context = await currentWorkspaceContext(options, 'memory review', { snapshot: action !== 'review-due' });
     assertSupportedRetentionClasses(context.state, ['profile_memory', 'themes_and_focus', 'client_scene_memories']);
     if (action === 'review-due') {
       invariant(options.id === undefined && options.confirm === undefined, 'Review-due does not accept --id or --confirm.', 'INVALID_ARGUMENT');
@@ -4007,7 +4014,7 @@ async function memory(options = {}) {
   }
   if (['view', 'show', 'export', 'correct', 'forget', 'delete-all'].includes(action)) {
     if (['view', 'show', 'export', 'correct'].includes(action)) await requireUnsealedPrivateAccess(options, 'memory');
-    const context = await currentWorkspaceContext(options, 'memory');
+    const context = await currentWorkspaceContext(options, 'memory', { snapshot: !['view', 'show', 'export'].includes(action) });
     if (action === 'view' || action === 'show') {
       invariant(context.state.consent.memoryPause.state !== 'sealed_pause', 'Memory cannot be read while sealed pause is active.', 'MEMORY_SEALED');
       const categoryRetention = {
@@ -4044,11 +4051,12 @@ async function memory(options = {}) {
     }
     if (action === 'correct') {
       invariant(context.state.consent.continuityMemory === 'on' && context.state.consent.memoryPause.state === 'none', 'Memory correction requires continuity memory on and unpaused.', 'MEMORY_PERSISTENCE_DISABLED');
-      const plan = await planCorrection(context.target, options.id, options.statement);
+      const now = new Date().toISOString();
+      const currentSessionId = context.state.consent.currentSessionId || null;
+      const plan = await planCorrection(context.target, options.id, options.statement, now, { sessionId: currentSessionId });
       assertSupportedRetentionClasses(context.state, [plan.retentionClass]);
       invariant(context.state.consent.retention?.[plan.retentionClass] === 'until_deleted', 'Memory correction is disabled by retention policy.', 'RETENTION_DO_NOT_STORE');
       if (options['dry-run']) return { status: 'dry-run', workspacePath: context.target, workspaceId: context.state.workspaceId, memoryId: plan.id, affectedFiles: plan.affectedPaths.length, nextAction: 'run-memory-correction' };
-      const now = new Date().toISOString();
       context.state.consent.lastOperationalEvent = controlEvent('memory_correction', plan.id, plan.id, now);
       context.state.updatedAt = now;
       const transaction = await applyContentTransaction(context, 'memory-correct', plan, null);

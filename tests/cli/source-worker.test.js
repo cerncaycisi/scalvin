@@ -46,6 +46,12 @@ test('source-worker client commands are ephemeral, exact-MCP, no-user-config lau
     assert.ok(codex.args.includes(flag), flag);
   }
   assert.equal(codex.args.includes('--search'), false);
+  // Codex 0.156: -a is not an exec flag, and filesystem rules must be one
+  // TOML inline table (dotted -c keys fail to parse).
+  assert.equal(codex.args.includes('-a'), false);
+  assert.ok(codex.args.includes('approval_policy="never"'));
+  assert.ok(codex.args.includes('permissions.scalvin-source-worker.filesystem={":minimal"="read",":workspace_roots"={"."="read"}}'));
+  assert.equal(codex.args.some((item) => item.includes('filesystem.":')), false);
   assert.ok(codex.args.some((item) => item === 'features.shell_tool=false'));
   assert.ok(codex.args.some((item) => item === 'features.unified_exec=false'));
   assert.ok(codex.args.some((item) => item === 'features.hooks=false'));
@@ -183,4 +189,78 @@ test('attested source proposals stay separate from live memory and integrate onl
   assert.equal(after.sourceLifecycle.records[0].status, 'integrated');
   assert.deepEqual(after.sourceLifecycle.records[0].derivedMemoryIds, [candidateId]);
   assert.equal((await fsp.readFile(path.join(box.workspace, 'profile.md'), 'utf8')).includes(candidateId), false);
+});
+
+test('non-empty proposals require a complete contiguous read of the assigned source', async (t) => {
+  const box = await sandbox('isolated-source-worker-read-coverage');
+  t.after(box.cleanup);
+  await install({ target: box.workspace, consent: 'granted' });
+  await consent({ target: box.workspace, category: 'imported_sources', value: 'on', retention: 'until_deleted' });
+  const sourcePath = path.join(box.base, 'long-source.txt');
+  // Two chunks: the worker must read both before proposing candidates.
+  await fsp.writeFile(sourcePath, `${'Synthetic walking notes. '.repeat(600)}End.`);
+  const added = await source({ target: box.workspace, action: 'add', path: sourcePath });
+  await ensureSourceWorkerKey(box.workspace);
+  const outputRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'scalvin-worker-coverage-'));
+  if (process.platform !== 'win32') await fsp.chmod(outputRoot, 0o700);
+  t.after(() => fsp.rm(outputRoot, { recursive: true, force: true }));
+  const context = await createWorkerContext({
+    workspace: box.workspace,
+    sourceId: added.sourceId,
+    revision: added.revision,
+    outputRoot,
+    output: path.join(outputRoot, 'proposal.json'),
+    client: 'codex',
+    clientVersion: 'codex-test 1.0.0'
+  });
+  const candidates = [{ category: 'profile', title: 'Walks', statement: 'Walking may help me settle.', kind: 'reported_fact' }];
+
+  await assert.rejects(dispatchWorkerTool(context, 'proposal_submit', { candidates }), { code: 'SOURCE_WORKER_SOURCE_NOT_READ' });
+  const first = await dispatchWorkerTool(context, 'source_read_chunk', { offset: 0 });
+  assert.equal(first.done, false);
+  await assert.rejects(dispatchWorkerTool(context, 'proposal_submit', { candidates }), { code: 'SOURCE_WORKER_SOURCE_NOT_READ' });
+  // Reading only the tail after skipping a range does not complete coverage.
+  const skipped = await createWorkerContext({ ...context, submitted: undefined });
+  await dispatchWorkerTool(skipped, 'source_read_chunk', { offset: first.nextOffset });
+  await assert.rejects(dispatchWorkerTool(skipped, 'proposal_submit', { candidates }), { code: 'SOURCE_WORKER_SOURCE_NOT_READ' });
+
+  const second = await dispatchWorkerTool(context, 'source_read_chunk', { offset: first.nextOffset });
+  assert.equal(second.done, true);
+  const submitted = await dispatchWorkerTool(context, 'proposal_submit', { candidates });
+  assert.equal(submitted.candidateCount, 1);
+
+  const empty = await createWorkerContext({ ...context, output: path.join(outputRoot, 'empty.json') });
+  const none = await dispatchWorkerTool(empty, 'proposal_submit', { candidates: [] });
+  assert.equal(none.candidateCount, 0);
+});
+
+test('worker ignores notifications and accepts MCP params._meta on tool calls', async (t) => {
+  const { handleWorkerMessage } = require('../../cli/source-worker');
+  const box = await sandbox('isolated-source-worker-meta');
+  t.after(box.cleanup);
+  await install({ target: box.workspace, consent: 'granted' });
+  await consent({ target: box.workspace, category: 'imported_sources', value: 'on', retention: 'until_deleted' });
+  const sourcePath = path.join(box.base, 'meta-source.txt');
+  await fsp.writeFile(sourcePath, 'Synthetic note.');
+  const added = await source({ target: box.workspace, action: 'add', path: sourcePath });
+  await ensureSourceWorkerKey(box.workspace);
+  const outputRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'scalvin-worker-meta-'));
+  if (process.platform !== 'win32') await fsp.chmod(outputRoot, 0o700);
+  t.after(() => fsp.rm(outputRoot, { recursive: true, force: true }));
+  const context = await createWorkerContext({
+    workspace: box.workspace, sourceId: added.sourceId, revision: added.revision,
+    outputRoot, output: path.join(outputRoot, 'proposal.json'), client: 'codex', clientVersion: 'codex-test 1.0.0'
+  });
+  assert.equal(await handleWorkerMessage(context, { jsonrpc: '2.0', method: 'notifications/initialized' }), null);
+  const metadata = await handleWorkerMessage(context, {
+    jsonrpc: '2.0', id: 7, method: 'tools/call',
+    params: { _meta: { callId: 'exec-synthetic' }, name: 'source_metadata', arguments: {} }
+  });
+  assert.equal(metadata.id, 7);
+  assert.equal(metadata.result.isError, false);
+  const rejected = await handleWorkerMessage(context, {
+    jsonrpc: '2.0', id: 8, method: 'tools/call',
+    params: { _meta: 'not-an-object', name: 'source_metadata', arguments: {} }
+  });
+  assert.equal(rejected.result.isError, true);
 });

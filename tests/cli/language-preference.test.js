@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { install, preferences, doctor } = require('../../cli/operations');
-const { sandbox, readJson } = require('./helpers');
+const { sandbox, readJson, installedEmergencyResourceHealth, healthyDoctorStatus, hostDoctorWarningCount } = require('./helpers');
 
 test('language preference uses one canonical BCP-47 validator across install and preferences', async () => {
   const box = await sandbox('language-preference');
@@ -29,9 +29,9 @@ test('language preference uses one canonical BCP-47 validator across install and
       assert.equal(state.files[relative].installedHash, crypto.createHash('sha256').update(bytes).digest('hex'));
     }
     const postChangeDoctor = await doctor({ target: box.workspace });
-    assert.equal(postChangeDoctor.status, 'healthy');
+    assert.equal(postChangeDoctor.status, healthyDoctorStatus());
     assert.equal(postChangeDoctor.errors, 0);
-    assert.equal(postChangeDoctor.warnings, 0);
+    assert.equal(postChangeDoctor.warnings, hostDoctorWarningCount());
     assert.equal(
       postChangeDoctor.findings.some((finding) =>
         renderedTargets.includes(finding.target) && ['SIGNED_TARGET_MISMATCH', 'MANAGED_FILE_CUSTOMIZED'].includes(finding.code)),
@@ -42,9 +42,9 @@ test('language preference uses one canonical BCP-47 validator across install and
     const reset = await preferences({ target: box.workspace, language: 'auto' });
     assert.equal(reset.language, 'auto');
     const postResetDoctor = await doctor({ target: box.workspace });
-    assert.equal(postResetDoctor.status, 'healthy');
+    assert.equal(postResetDoctor.status, healthyDoctorStatus());
     assert.equal(postResetDoctor.errors, 0);
-    assert.equal(postResetDoctor.warnings, 0);
+    assert.equal(postResetDoctor.warnings, hostDoctorWarningCount());
   } finally {
     await box.cleanup();
   }
@@ -99,9 +99,9 @@ test('language changes repair a poisoned state baseline only when actual bytes r
     const actual = await fsp.readFile(path.join(box.workspace, 'AGENTS.md'));
     assert.equal(repaired.files['AGENTS.md'].installedHash, crypto.createHash('sha256').update(actual).digest('hex'));
     const report = await doctor({ target: box.workspace });
-    assert.equal(report.status, 'healthy');
+    assert.equal(report.status, healthyDoctorStatus());
     assert.equal(report.errors, 0);
-    assert.equal(report.warnings, 0);
+    assert.equal(report.warnings, hostDoctorWarningCount());
   } finally {
     await box.cleanup();
   }

@@ -19,7 +19,7 @@ const {
   mutationLockPath,
   verifyWindowsPrivateAcl
 } = require('../../cli/lib/fs-safe');
-const { sandbox, readJson } = require('./helpers');
+const { sandbox, readJson, installedEmergencyResourceHealth, healthyDoctorStatus, hostDoctorWarningCount } = require('./helpers');
 
 const MANUAL_LOCK_GUIDANCE = 'Manual recovery only: inspect the lock, confirm no Scalvin mutation is running, then remove this exact lock path manually; never delete it based only on age or PID liveness.';
 
@@ -61,12 +61,13 @@ for (const consent of ['not-decided', 'granted', 'declined']) {
       assert.deepEqual(report.capabilities.mechanicalSafetyBackstop, {
         state: 'available',
         reasonCode: null,
-        evidence: 'doctor-self-test'
+        evidence: 'doctor-self-test',
+        emergencyResources: installedEmergencyResourceHealth()
       });
       assert.ok(report.findings.some((item) => item.code === 'SAFETY_HOOK_HEALTH_AVAILABLE'));
       assert.equal(report.findings.some((item) => item.code === 'CONSENT_PROJECTION_MISMATCH'), false);
       if (consent === 'not-decided') assert.equal(report.status, 'warnings');
-      else assert.equal(report.status, 'healthy');
+      else assert.equal(report.status, healthyDoctorStatus());
     } finally {
       await box.cleanup();
     }
@@ -128,7 +129,8 @@ test('doctor reports content-free available, degraded, and unsupported mechanica
     assert.deepEqual(report.capabilities.mechanicalSafetyBackstop, {
       state: 'available',
       reasonCode: null,
-      evidence: 'doctor-self-test'
+      evidence: 'doctor-self-test',
+      emergencyResources: installedEmergencyResourceHealth()
     });
 
     const privateValue = 'PRIVATE_DOCTOR_HEALTH_VALUE_9f3e2d';
@@ -173,6 +175,27 @@ test('doctor reports content-free available, degraded, and unsupported mechanica
       reasonCode: 'EMERGENCY_RESOURCE_REGISTRY_STALE',
       evidence: 'doctor-self-test'
     });
+
+    const v2StaleProbe = path.join(box.base, 'v2-stale-resource-self-test.cjs');
+    await fsp.writeFile(v2StaleProbe, [
+      "'use strict';",
+      "process.stdout.write(JSON.stringify({schemaVersion:2,capability:'mechanical_safety_backstop',state:'available',reasonCode:null,emergencyResources:{state:'stale',reasonCode:'EMERGENCY_RESOURCE_REGISTRY_STALE'}}) + '\\n');"
+    ].join('\n'), { mode: 0o600 });
+    assert.deepEqual(await probeMechanicalSafetyHook(box.base, path.basename(v2StaleProbe)), {
+      state: 'available',
+      reasonCode: null,
+      evidence: 'doctor-self-test',
+      emergencyResources: { state: 'stale', reasonCode: 'EMERGENCY_RESOURCE_REGISTRY_STALE' }
+    });
+
+    const v2InvalidProbe = path.join(box.base, 'v2-invalid-resource-self-test.cjs');
+    await fsp.writeFile(v2InvalidProbe, [
+      "'use strict';",
+      `process.stdout.write(JSON.stringify({schemaVersion:2,capability:'mechanical_safety_backstop',state:'available',reasonCode:null,emergencyResources:{state:'current',reasonCode:${JSON.stringify(privateValue)}}}) + '\\n');`
+    ].join('\n'), { mode: 0o600 });
+    const v2Invalid = await probeMechanicalSafetyHook(box.base, path.basename(v2InvalidProbe));
+    assert.deepEqual(v2Invalid, { state: 'degraded', reasonCode: 'SELF_TEST_PROTOCOL_INVALID', evidence: 'doctor-self-test' });
+    assert.equal(JSON.stringify(v2Invalid).includes(privateValue), false);
 
     const manifest = JSON.parse(await fsp.readFile(DISTRIBUTION_MANIFEST, 'utf8'));
     manifest.clientIntegrations.claude.hooks = manifest.clientIntegrations.claude.hooks
@@ -275,7 +298,7 @@ test('doctor omits source-checkout pointer findings when local pointers are expl
     await install({ target: box.workspace, consent: 'granted' });
     process.env.SCALVIN_DISABLE_LOCAL_POINTER = '1';
     const report = await doctor({ target: box.workspace });
-    assert.equal(report.status, 'healthy');
+    assert.equal(report.status, healthyDoctorStatus());
     assert.equal(report.findings.some((item) => item.code.startsWith('LOCAL_POINTER_')), false);
   } finally {
     delete process.env.SCALVIN_DISABLE_LOCAL_POINTER;

@@ -7,6 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { ScalvinError, invariant } = require('./lib/errors');
 const { PRIVATE_DIR_MODE, rejectSymlinkPath, readBoundedRegularFile } = require('./lib/fs-safe');
+const { workerEnvironment, terminateChild, missingClaudeSandboxDependencies } = require('./lib/child-process');
 const {
   SERVER_VERSION: SOURCE_WORKER_VERSION,
   ensureSourceWorkerKey,
@@ -32,7 +33,13 @@ const SOURCE_WORKER_PROMPT = [
   'Do not quote or summarize source content in your final response.'
 ].join(' ');
 
+// Codex parses -c values as TOML. JSON strings, numbers, booleans, and arrays
+// are valid TOML; objects need TOML inline-table syntax.
 function jsonConfig(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return `{${Object.entries(value).map(([key, item]) => `${JSON.stringify(key)}=${jsonConfig(item)}`).join(',')}}`;
+  }
+  if (Array.isArray(value)) return `[${value.map(jsonConfig).join(',')}]`;
   return JSON.stringify(value);
 }
 
@@ -51,11 +58,16 @@ function workerServerArgs(input) {
 function buildCodexSourceWorkerCommand(input) {
   const serverArgs = workerServerArgs({ ...input, client: 'codex' });
   const configs = [
+    // Codex 0.156 moved -a/--ask-for-approval off `exec`; the config key works
+    // on every supported version.
+    ['approval_policy', 'never'],
     ['web_search', 'disabled'],
     ['allow_login_shell', false],
     ['default_permissions', 'scalvin-source-worker'],
-    ['permissions.scalvin-source-worker.filesystem.":minimal"', 'read'],
-    ['permissions.scalvin-source-worker.filesystem.":workspace_roots"."."', 'deny'],
+    // Codex 0.156 rejects dotted -c keys for filesystem rules and must read
+    // its working directory to load instructions. The working directory is
+    // the empty private output root; the worker has no shell or file tool.
+    ['permissions.scalvin-source-worker.filesystem', { ':minimal': 'read', ':workspace_roots': { '.': 'read' } }],
     ['permissions.scalvin-source-worker.network.enabled', false],
     ['features.apps', false],
     ['features.browser_use', false],
@@ -86,7 +98,7 @@ function buildCodexSourceWorkerCommand(input) {
   ];
   const args = [
     'exec', '--ephemeral', '--ignore-user-config', '--ignore-rules', '--strict-config',
-    '--skip-git-repo-check', '--json', '-a', 'never', '-C', input.outputRoot
+    '--skip-git-repo-check', '--json', '-C', input.outputRoot
   ];
   for (const [key, value] of configs) args.push('-c', `${key}=${jsonConfig(value)}`);
   args.push(SOURCE_WORKER_PROMPT);
@@ -175,11 +187,11 @@ async function resolveClientExecutable(client, explicit) {
   throw new ScalvinError(`The ${client} client executable is unavailable.`, 'SOURCE_WORKER_CLIENT_UNAVAILABLE');
 }
 
-async function clientVersion(executable) {
+async function clientVersion(executable, client = 'codex') {
   try {
     const { stdout, stderr } = await execFileAsync(executable, ['--version'], {
       encoding: 'utf8', timeout: 10_000, maxBuffer: 16 * 1024,
-      env: cleanEnvironment()
+      env: cleanEnvironment(client)
     });
     const value = `${stdout}${stderr}`.trim().split(/\r?\n/u)[0];
     invariant(value && value.length <= 200 && !/[\0\r\n]/.test(value), 'Client version output is invalid.', 'SOURCE_WORKER_CLIENT_INVALID');
@@ -190,52 +202,87 @@ async function clientVersion(executable) {
   }
 }
 
-function cleanEnvironment() {
-  const env = {};
-  for (const [key, value] of Object.entries(process.env)) {
-    if (!key.startsWith('SCALVIN_')) env[key] = value;
-  }
-  return env;
+// The worker handles untrusted source text: pass only an explicit allowlist.
+function cleanEnvironment(client = 'codex') {
+  return workerEnvironment(client);
 }
 
-async function runBoundedClient(command, timeoutMs = SOURCE_WORKER_TIMEOUT_MS) {
-  await new Promise((resolve, reject) => {
-    const child = spawn(command.command, command.args, {
-      cwd: command.cwd,
-      env: cleanEnvironment(),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true
-    });
-    let bytes = 0;
-    let settled = false;
-    const timer = setTimeout(() => {
-      child.kill('SIGTERM');
-      setTimeout(() => child.kill('SIGKILL'), 2_000).unref();
-      finish(new ScalvinError('The isolated source worker timed out.', 'SOURCE_WORKER_TIMEOUT'));
-    }, timeoutMs);
-    timer.unref();
-    const finish = (error) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      if (error) reject(error);
-      else resolve();
-    };
-    const collect = (chunk) => {
-      bytes += Buffer.byteLength(chunk);
-      if (bytes > MAX_CLIENT_OUTPUT_BYTES) {
-        child.kill('SIGTERM');
-        finish(new ScalvinError('The isolated source-worker client output was too large.', 'SOURCE_WORKER_OUTPUT_TOO_LARGE'));
-      }
-    };
-    child.stdout.on('data', collect);
-    child.stderr.on('data', collect);
-    child.on('error', () => finish(new ScalvinError('The isolated source-worker client could not start.', 'SOURCE_WORKER_CLIENT_UNAVAILABLE')));
-    child.on('close', (code, signal) => {
-      if (code === 0 && signal === null) finish();
-      else finish(new ScalvinError('The isolated source-worker client did not complete successfully.', 'SOURCE_WORKER_CLIENT_FAILED'));
-    });
+async function runBoundedClient(command, timeoutMs = SOURCE_WORKER_TIMEOUT_MS, options = {}) {
+  const group = process.platform !== 'win32';
+  const child = spawn(command.command, command.args, {
+    cwd: command.cwd,
+    env: command.env || cleanEnvironment(command.client),
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
+    detached: group
   });
+  const termination = { graceMs: options.graceMs ?? 2_000, confirmMs: options.confirmMs ?? 2_000, group };
+  // The detached worker no longer receives terminal signals with the parent,
+  // so forward cancellation: kill the worker group, then re-raise the signal
+  // with its default behavior. An uncatchable parent SIGKILL can still orphan
+  // the group.
+  const killWorker = () => {
+    try { if (group && Number.isSafeInteger(child.pid)) process.kill(-child.pid, 'SIGKILL'); else child.kill('SIGKILL'); } catch (_) { /* gone */ }
+  };
+  const forwardedSignals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+  const onParentSignal = (signal) => {
+    killWorker();
+    removeParentHandlers();
+    if (process.listenerCount(signal) === 0) process.kill(process.pid, signal);
+  };
+  const removeParentHandlers = () => {
+    process.removeListener('exit', killWorker);
+    for (const signal of forwardedSignals) process.removeListener(signal, onParentSignal);
+  };
+  process.once('exit', killWorker);
+  if (process.platform !== 'win32') for (const signal of forwardedSignals) process.once(signal, onParentSignal);
+  try {
+    await new Promise((resolve, reject) => {
+      let bytes = 0;
+      let settled = false;
+      const finish = (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (error) reject(error);
+        else resolve();
+      };
+      // Timeout and output overflow share one bounded termination path and
+      // report only after the child's exit is observed.
+      const stop = (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        child.stdout.destroy();
+        child.stderr.destroy();
+        terminateChild(child, termination).then(({ exited }) => {
+          if (!exited) error.details = { ...(error.details || {}), terminationConfirmed: false };
+          reject(error);
+        });
+      };
+      const timer = setTimeout(() => stop(new ScalvinError('The isolated source worker timed out.', 'SOURCE_WORKER_TIMEOUT')), timeoutMs);
+      timer.unref();
+      const collect = (chunk) => {
+        bytes += Buffer.byteLength(chunk);
+        if (bytes > MAX_CLIENT_OUTPUT_BYTES) {
+          stop(new ScalvinError('The isolated source-worker client output was too large.', 'SOURCE_WORKER_OUTPUT_TOO_LARGE'));
+        }
+      };
+      child.stdout.on('data', collect);
+      child.stderr.on('data', collect);
+      child.on('error', () => finish(new ScalvinError('The isolated source-worker client could not start.', 'SOURCE_WORKER_CLIENT_UNAVAILABLE')));
+      child.on('close', (code, signal) => {
+        if (code === 0 && signal === null) finish();
+        else finish(new ScalvinError('The isolated source-worker client did not complete successfully.', 'SOURCE_WORKER_CLIENT_FAILED'));
+      });
+    });
+  } finally {
+    removeParentHandlers();
+    // Sweep helpers left in the worker's process group after a normal exit.
+    if (group && Number.isSafeInteger(child.pid)) {
+      try { process.kill(-child.pid, 'SIGKILL'); } catch (_) { /* group already empty */ }
+    }
+  }
 }
 
 async function runIsolatedSourceWorker(options = {}) {
@@ -245,8 +292,12 @@ async function runIsolatedSourceWorker(options = {}) {
   await rejectSymlinkPath(workspace);
   await ensureSourceWorkerKey(workspace);
   const assigned = await loadSourcePayloadForWorker({ workspace, sourceId: options.sourceId, revision: options.revision });
+  if (client === 'claude') {
+    const missing = missingClaudeSandboxDependencies();
+    invariant(missing.length === 0, `Claude Code's sandbox needs ${missing.join(' and ')} on this Linux host; install them or use --client codex.`, 'SOURCE_WORKER_SANDBOX_DEPENDENCY_MISSING', { missing });
+  }
   const executable = await resolveClientExecutable(client, options.clientExecutable);
-  const version = await clientVersion(executable);
+  const version = await clientVersion(executable, client);
   const outputRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'scalvin-isolated-source-worker-'));
   if (process.platform !== 'win32') await fsp.chmod(outputRoot, PRIVATE_DIR_MODE);
   try {
@@ -260,7 +311,7 @@ async function runIsolatedSourceWorker(options = {}) {
     const command = client === 'codex'
       ? buildCodexSourceWorkerCommand(input)
       : await buildClaudeSourceWorkerCommand(input);
-    await runBoundedClient(command, options.timeoutMs);
+    await runBoundedClient({ ...command, env: cleanEnvironment(client) }, options.timeoutMs);
     const proposalPath = path.join(outputRoot, 'proposal.json');
     await rejectSymlinkPath(proposalPath);
     const raw = await readBoundedRegularFile(proposalPath, MAX_PROPOSAL_BYTES, {

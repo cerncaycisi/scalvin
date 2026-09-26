@@ -1138,3 +1138,60 @@ test('broker startup strips SCALVIN overrides and never prints the rejected abso
   assert.match(stderr.join(''), /^error \[WORKSPACE_SOURCE_OVERLAP\]: Capability broker could not start\.\n$/);
   assert.equal(stderr.join('').includes(workspace), false);
 });
+
+// Recorded request shape from Codex 0.156.0: tools/list and tools/call carry
+// params._meta. The broker previously rejected it with an id-less error, so the
+// client waited for its tool timeout.
+test('broker accepts MCP params._meta over stdio and echoes only validated IDs on invalid requests', async (t) => {
+  // The broker refuses workspaces inside the source checkout.
+  const base = await fsp.mkdtemp(path.join(os.tmpdir(), 'scalvin-broker-meta-'));
+  t.after(() => fsp.rm(base, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }));
+  const workspace = path.join(base, 'workspace');
+  const previousPointer = process.env.SCALVIN_DISABLE_LOCAL_POINTER;
+  process.env.SCALVIN_DISABLE_LOCAL_POINTER = '1';
+  try {
+    await operations.install({ target: workspace, consent: 'granted' });
+  } finally {
+    if (previousPointer === undefined) delete process.env.SCALVIN_DISABLE_LOCAL_POINTER;
+    else process.env.SCALVIN_DISABLE_LOCAL_POINTER = previousPointer;
+  }
+  const messages = [
+    { jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'codex-mcp-client', version: '0.156.0' } } },
+    { jsonrpc: '2.0', method: 'notifications/initialized' },
+    { jsonrpc: '2.0', id: 1, method: 'tools/list', params: { _meta: { progressToken: 0 } } },
+    { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { _meta: { callId: 'exec-synthetic', 'x-codex-turn-metadata': { turn_trigger: 'exec' } }, name: 'capability_status', arguments: {} } },
+    { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'capability_status', arguments: {}, unexpected: true } },
+    { jsonrpc: '2.0', id: { smuggled: 'PRIVATE_ID_CONTENT' }, method: 'tools/call', params: { name: 'capability_status', arguments: {} } },
+    { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { _meta: ['not', 'an', 'object'], name: 'capability_status', arguments: {} } }
+  ];
+  const child = spawn(process.execPath, [path.join(ROOT, 'bin', 'scalvin-mcp.js'), '--workspace', workspace], {
+    cwd: ROOT,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, SCALVIN_DISABLE_LOCAL_POINTER: '1' }
+  });
+  const stdout = [];
+  const stderr = [];
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
+  child.stdout.on('data', (chunk) => stdout.push(chunk));
+  child.stderr.on('data', (chunk) => stderr.push(chunk));
+  child.stdin.end(messages.map((message) => `${JSON.stringify(message)}\n`).join(''));
+  const guard = setTimeout(() => child.kill(), 60_000);
+  const code = await new Promise((resolve, reject) => {
+    child.on('error', reject);
+    child.on('exit', resolve);
+  });
+  clearTimeout(guard);
+  const detail = `exit ${code}; stderr: ${stderr.join('').slice(0, 400)}; stdout: ${stdout.join('').slice(0, 400)}`;
+  const responses = stdout.join('').split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
+  assert.equal(responses.length, 6, detail);
+  const byId = new Map(responses.filter((item) => item.id !== null).map((item) => [item.id, item]));
+  assert.ok(byId.get(1)?.result?.tools?.length > 0, detail);
+  assert.equal(byId.get(2)?.error, undefined, detail);
+  assert.notEqual(byId.get(2).result.isError, true, detail);
+  assert.equal(typeof JSON.parse(byId.get(2).result.content[0].text).status, 'string', detail);
+  assert.deepEqual(byId.get(3)?.error, { code: -32600, message: 'Invalid request.' }, detail);
+  assert.deepEqual(byId.get(4)?.error, { code: -32600, message: 'Invalid request.' }, detail);
+  assert.equal(responses.filter((item) => item.id === null).length, 1, detail);
+  assert.equal(stdout.join('').includes('PRIVATE_ID_CONTENT'), false);
+});

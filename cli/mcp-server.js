@@ -1320,7 +1320,10 @@ async function handleMessage(workspace, message) {
   if (message.method === 'ping') return { jsonrpc: '2.0', id, result: {} };
   if (message.method === 'tools/list') return { jsonrpc: '2.0', id, result: { tools: TOOLS } };
   if (message.method === 'tools/call') {
-    const params = exactKeys(message.params || {}, ['name', 'arguments'], 'tool-call parameters');
+    // MCP clients may attach request metadata in params._meta (Codex sends a
+    // call ID and turn metadata). It is accepted as an object and ignored.
+    const params = exactKeys(message.params || {}, ['name', 'arguments', '_meta'], 'tool-call parameters');
+    invariant(params._meta === undefined || (params._meta && typeof params._meta === 'object' && !Array.isArray(params._meta)), 'Tool-call metadata is invalid.', 'BROKER_PROTOCOL_INVALID');
     const name = boundedString(params.name, 'Tool name', { maximum: 100 });
     try {
       const result = await dispatchTool(workspace, name, params.arguments || {});
@@ -1464,10 +1467,12 @@ async function runServer(options, runtime = {}) {
         }
       }
     } catch (error) {
-      // Invalid requests never echo an unvalidated caller-controlled ID. In
-      // particular, object IDs could otherwise smuggle arbitrary content into
-      // the model-visible stdout channel.
-      writeMessage({ jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid request.' } });
+      // Echo only a validated string/integer request ID so the client can
+      // fail the pending call instead of timing out. Object IDs could smuggle
+      // arbitrary content into the model-visible stdout channel and are never
+      // echoed (writeMessage also re-validates).
+      const requestId = message && typeof message === 'object' && !Array.isArray(message) && validResponseId(message.id) ? message.id : null;
+      writeMessage({ jsonrpc: '2.0', id: requestId, error: { code: -32600, message: 'Invalid request.' } });
     }
   }
 }

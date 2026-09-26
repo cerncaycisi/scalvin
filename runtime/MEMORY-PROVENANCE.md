@@ -1,4 +1,4 @@
-<!-- version: 1.0.0 -->
+<!-- version: 1.1.0 -->
 # Memory Provenance And Review
 
 This is the authority for item-level identity, evidence, revision history, and stale-memory review in `profile.md`, `ACTIVE-THEMES.md`, `CURRENT-FOCUS.md`, and companion-maintained client memories.
@@ -71,6 +71,12 @@ When the user confirms:
 - set `Last live confirmed` to the actual timestamp
 - set `Last confirmed session` to the current session ID
 - append a revision event only if the wording or status changed
+
+A user correction is a live confirmation of the new wording. The deterministic
+correction operation updates the statement, status, `Last live confirmed`,
+`Last confirmed session`, and `Review state: current` together, so a corrected
+item is not immediately re-offered as stale. Outside an active session the
+confirming session is recorded as `null`; a session ID is never invented.
 
 When the user disputes an item, mark it `disputed` immediately and stop using it as an interpretive premise. Resolve, correct, or delete it based on the user's choice.
 

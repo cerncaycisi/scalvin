@@ -780,7 +780,24 @@ async function planForget(root, selection) {
   return planForgetMany(root, [...new Set(ids)], { selectedPaths, selector: selection.scope, canonicalState: selection.canonicalState });
 }
 
-async function planCorrection(root, id, statement, now = new Date().toISOString()) {
+function setMemoryField(body, name, value, { remove = false } = {}) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const expression = new RegExp(`^- ${escaped}:.*(?:\\n|$)`, 'mi');
+  if (remove) return body.replace(expression, '');
+  if (expression.test(body)) return body.replace(expression, () => `- ${name}: ${value}\n`);
+  const history = body.search(/^#### Revision history[ \t]*$/mi);
+  const line = `- ${name}: ${value}\n`;
+  return history === -1 ? `${body.trimEnd()}\n${line}` : `${body.slice(0, history)}${line}\n${body.slice(history)}`;
+}
+
+// A user correction is also a live confirmation of the new wording: the text,
+// confirmation time, confirming session, and review state move together so the
+// corrected item is not immediately re-offered as stale. Outside an active
+// session the confirming session is recorded as null rather than invented.
+async function planCorrection(root, id, statement, now = new Date().toISOString(), options = {}) {
+  invariant(typeof now === 'string' && !Number.isNaN(Date.parse(now)) && new Date(now).toISOString() === now, 'Memory correction time is invalid.', 'INVALID_MEMORY_STATEMENT');
+  const sessionId = options.sessionId === undefined || options.sessionId === null ? null : String(options.sessionId).toLowerCase();
+  invariant(sessionId === null || SESSION_ID.test(sessionId), 'Memory correction session ID is invalid.', 'SESSION_ID_REQUIRED');
   invariant(typeof statement === 'string' && statement.length > 0 && statement === statement.trim(), 'Memory correction requires canonical single-line --statement text.', 'INVALID_MEMORY_STATEMENT');
   invariant(!/[\u0000-\u001f\u007f\u0085\u2028\u2029]/u.test(statement), 'Memory correction requires canonical single-line --statement text.', 'INVALID_MEMORY_STATEMENT');
   invariant(Buffer.byteLength(statement, 'utf8') <= 2_000, 'Memory correction statement is too large.', 'INVALID_MEMORY_STATEMENT');
@@ -793,7 +810,14 @@ async function planCorrection(root, id, statement, now = new Date().toISOString(
   body = body.replace(/^- Status:.*$/mi, '- Status: user_confirmed');
   if (/^- Current revision:/mi.test(body)) body = body.replace(/^- Current revision:.*$/mi, `- Current revision: ${revision + 1}`);
   else body += `\n- Current revision: ${revision + 1}\n`;
-  const revisionLine = `- r${revision + 1} — ${now} — user correction; prior wording retired: ${JSON.stringify(block.statement)}`;
+  body = setMemoryField(body, 'Last live confirmed', now);
+  body = setMemoryField(body, 'Last confirmed session', sessionId || 'null');
+  body = setMemoryField(body, 'Review state', 'current');
+  body = setMemoryField(body, 'Review declined at', '', { remove: true });
+  body = setMemoryField(body, 'Review declined session', '', { remove: true });
+  if (/^- Last revised:/mi.test(body)) body = setMemoryField(body, 'Last revised', now);
+  if (/^- Last revision session:/mi.test(body)) body = setMemoryField(body, 'Last revision session', sessionId || 'null');
+  const revisionLine = `- r${revision + 1} — ${now} — user correction${sessionId ? ` in ${sessionId}` : ''}; prior wording retired: ${JSON.stringify(block.statement)}`;
   if (/^#### Revision history[ \t]*$/mi.test(body)) body = body.replace(/^#### Revision history[ \t]*$/mi, (heading) => `${heading}\n\n${revisionLine}`);
   else body += `\n#### Revision history\n\n${revisionLine}\n`;
   const output = `${markdown.slice(0, block.start)}${body}${markdown.slice(block.end)}`;
@@ -801,7 +825,7 @@ async function planCorrection(root, id, statement, now = new Date().toISOString(
   const afterBlocks = memoryBlocks(output);
   invariant(afterBlocks.length === beforeIds.length && afterBlocks.every((item, index) => item.id === beforeIds[index]), 'Memory correction changed the canonical record structure.', 'MEMORY_FORMAT_UNSUPPORTED');
   const corrected = afterBlocks.filter((item) => item.id === id.toLowerCase());
-  invariant(corrected.length === 1 && corrected[0].statement === statement && corrected[0].status === 'user_confirmed' && corrected[0].currentRevision === String(revision + 1), 'Memory correction canonical round-trip failed.', 'MEMORY_FORMAT_UNSUPPORTED');
+  invariant(corrected.length === 1 && corrected[0].statement === statement && corrected[0].status === 'user_confirmed' && corrected[0].currentRevision === String(revision + 1) && corrected[0].lastLiveConfirmed === now && corrected[0].reviewState === 'current', 'Memory correction canonical round-trip failed.', 'MEMORY_FORMAT_UNSUPPORTED');
   return {
     id: id.toLowerCase(),
     category,

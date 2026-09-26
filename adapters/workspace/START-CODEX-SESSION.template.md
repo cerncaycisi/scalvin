@@ -25,6 +25,12 @@ connection is required: call `mcp__scalvin__capability_status` and
 `hardBoundaryAttested` remains `false` until an exact-candidate effective-launch
 probe says otherwise.
 
+Prefer the supervised launch (`scalvin client launch --client codex`). It
+ignores the user's own Codex configuration. A plain Codex launch also loads the
+user's own MCP servers and apps. In either case, call only the `scalvin` MCP
+server; never call another server's tools or send conversation or workspace
+content to them.
+
 Use the typed `mcp__scalvin__backup_reminder` status/decline operation for
 content-free reminder handling. A decline requires the user's exact approval;
 it does not create or access a backup artifact.

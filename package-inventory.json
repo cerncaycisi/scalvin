@@ -36,6 +36,7 @@
     "cli/lib/backup-crypto.js",
     "cli/lib/backup-reminder.js",
     "cli/lib/backup.js",
+    "cli/lib/child-process.js",
     "cli/lib/errors.js",
     "cli/lib/fs-safe.js",
     "cli/lib/manifest.js",

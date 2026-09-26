@@ -4,7 +4,7 @@
   "product": {
     "name": "scalvin",
     "version": "1.0.0",
-    "minimumNode": ">=20.0.0",
+    "minimumNode": ">=22.0.0",
     "repository": "https://github.com/cerncaycisi/scalvin"
   },
   "release": {
@@ -81,7 +81,7 @@
       "path": "adapters/workspace/AGENTS.template.md",
       "source": "repo:adapters/workspace/AGENTS.template.md",
       "version": "1.0.0",
-      "sha256": "155480a71cb114b0ac6a6ddd52493c4a7c6747fb3676d1cf92cf1244a1327551",
+      "sha256": "6aa7e11e7994a4cbf1d19c0b4a0631db44ff80f154f06e83a8bd9106879c0372",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -114,7 +114,7 @@
       "path": "adapters/workspace/CLAUDE.template.md",
       "source": "repo:adapters/workspace/CLAUDE.template.md",
       "version": "1.0.0",
-      "sha256": "1c6c5a718d0d0f0cb6da0b7c0668b06b3d5dee0fd39e0a617adfdb5aa2899ec9",
+      "sha256": "5d05c43a66d098a1a87849fe34477170e591855c148ecea85b6eebf60ee6e767",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -133,7 +133,7 @@
       "path": "adapters/workspace/START-CLAUDE-SESSION.template.md",
       "source": "repo:adapters/workspace/START-CLAUDE-SESSION.template.md",
       "version": "1.0.0",
-      "sha256": "cd8c37d6aa79ca591d971786b1ce7722bcbb084ffae72f142c8a198173825597",
+      "sha256": "759764a53d9521db4a214e94fb4b4e5752a67c6f3343bfea18b34346fc7b1c75",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -152,7 +152,7 @@
       "path": "adapters/workspace/START-CODEX-SESSION.template.md",
       "source": "repo:adapters/workspace/START-CODEX-SESSION.template.md",
       "version": "1.0.0",
-      "sha256": "67db49f2f44bffcc28af8f7abc849d834dc923f1e6af853f2719efac699d6e44",
+      "sha256": "8a3bb062ed5dc81709a4a8a57fe52412c61842139364c7ee9129059c01338ddf",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -223,7 +223,7 @@
       "path": "bin/scalvin-mcp.js",
       "source": "repo:bin/scalvin-mcp.js",
       "version": "1.0.0",
-      "sha256": "8f74f090e97ac3f229182b0fc681f738ea8d7d6f408040455e860d83220c1068",
+      "sha256": "f2d005e593a54dc032f3fd8a19ad65ec90a0114eb3414f093ee3eecce0e05e41",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -232,7 +232,7 @@
       "path": "bin/scalvin-source-worker.js",
       "source": "repo:bin/scalvin-source-worker.js",
       "version": "1.0.0",
-      "sha256": "31546dfe0a038aa1293ca774a195fd6b9f4cf8a60d68c0b3f9f53e1d30130bc4",
+      "sha256": "6f738dafcd114e1fe57c8373d9128b24c7cdb3a5fc7980a8cda0fc4bff365b86",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -241,7 +241,7 @@
       "path": "bin/scalvin.js",
       "source": "repo:bin/scalvin.js",
       "version": "1.0.0",
-      "sha256": "e62bbaf569f95cf017e534c372d47d09b092590e0bf4478fd934d5ace9e5cf2f",
+      "sha256": "be16cbdea90539380c36072d4f8cd55ae4248004ca8d7f99ec21ba77c61f96a2",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -259,7 +259,7 @@
       "path": "cli/client-launcher.js",
       "source": "repo:cli/client-launcher.js",
       "version": "1.0.0",
-      "sha256": "03af177d00eac962af825738bdbe3e221490176d6e26be02d4911f5c0d706c15",
+      "sha256": "2353db5cc1f5f8b72d63fdf1913cd726981da56e5eaddc553ee64c29997ecce4",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -277,7 +277,7 @@
       "path": "cli/doctor.js",
       "source": "repo:cli/doctor.js",
       "version": "1.0.0",
-      "sha256": "a2897a5109af8164cdf29b95ddaa03f9d44a40a47be5d989e4f7f10e3841b90e",
+      "sha256": "77ba89162468b82932947a7e9cb91cd0f4f499c3fac348e3498b1cd6d6bdf4d8",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -328,6 +328,15 @@
       "targets": []
     },
     {
+      "path": "cli/lib/child-process.js",
+      "source": "repo:cli/lib/child-process.js",
+      "version": "1.0.0",
+      "sha256": "ef8317ef2f873c314b5afa5eebcf35c00674032dee4c0c260c84c07166e97a95",
+      "role": "distribution-code",
+      "protection": "framework",
+      "targets": []
+    },
+    {
       "path": "cli/lib/errors.js",
       "source": "repo:cli/lib/errors.js",
       "version": "1.0.0",
@@ -358,7 +367,7 @@
       "path": "cli/lib/operation-journal.js",
       "source": "repo:cli/lib/operation-journal.js",
       "version": "1.0.0",
-      "sha256": "4b7d73bc9151a447b21f293c5b4e3c44774bbf1d897efc5d10dc83d67e410ca1",
+      "sha256": "1d33623d5b760ce5dc80aadbde0ff080789c349bdbef479d9c33701a048e5f1d",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -385,7 +394,7 @@
       "path": "cli/mcp-server.js",
       "source": "repo:cli/mcp-server.js",
       "version": "1.0.0",
-      "sha256": "d1db295e97ce73a39cc56642f4d3579cab8aa497b9c7f91cf85a67ca4561a29c",
+      "sha256": "b9057fa3c4514ed14fdd1684adbdf0d6d37993b9951f129461bbc5f5ce59f0e3",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -394,7 +403,7 @@
       "path": "cli/memory-data.js",
       "source": "repo:cli/memory-data.js",
       "version": "1.0.0",
-      "sha256": "9bc969e818bbe0702ae3b7a1bfcd16676b88f4d0d0e2c82f15e3ca45459db72d",
+      "sha256": "3fdaa46861ceb66067f7b063d0b5e80449b1c0da78765f3c5377bc4c06dc5cb9",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -412,7 +421,7 @@
       "path": "cli/operations.js",
       "source": "repo:cli/operations.js",
       "version": "1.0.0",
-      "sha256": "f631a449ec20bfe1301df642a409fe4c09e4962b749429388dac1ea3fdc40764",
+      "sha256": "13eda683d26804a7a29ed5d9aa78932a0b0c18c02f2d3b91b6615d396d19b5ed",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -439,7 +448,7 @@
       "path": "cli/session-supervisor.js",
       "source": "repo:cli/session-supervisor.js",
       "version": "1.0.0",
-      "sha256": "f71480acfc216a416fff9d791cb5979c8c6daa54eb38f8d7f94946f1c6e39bad",
+      "sha256": "b16d40eb6d8f08542a189dcd51540b1410b85052b4feba92e4067fcb8cb132fe",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -466,7 +475,7 @@
       "path": "cli/source-worker.js",
       "source": "repo:cli/source-worker.js",
       "version": "1.0.0",
-      "sha256": "c4892ddb8152d26fa6e91679435e82e1048bf9731b54983a7f43155ec2be01c9",
+      "sha256": "56e9d8c026baf705837627091bf17a2e960de5a28be5b71f8799278068660050",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -517,7 +526,7 @@
       "path": "hooks/emergency-resources.json",
       "source": "repo:hooks/emergency-resources.json",
       "version": "1.0.0",
-      "sha256": "7dba36cceabfb02ca5436a3168e9c3512072107bbfc6eeeeff16aaeb70b30f74",
+      "sha256": "11ff9b76e5d9e1b376c09805d3cdeb1982ada84d89665f165fca81a807bcc678",
       "role": "client-hook-data:emergency-resources",
       "protection": "framework",
       "targets": [
@@ -558,8 +567,8 @@
     {
       "path": "hooks/safety-net.cjs",
       "source": "repo:hooks/safety-net.cjs",
-      "version": "1.4.0",
-      "sha256": "29a39c2786e826fc8d98d118b0db4f96baa0f9aaaf484d60063ac7826aa1ddf5",
+      "version": "1.5.0",
+      "sha256": "00f5c6bdfaad09810730dd803c4b49e5995e248c98f1aeab0f564d89ce70c5d4",
       "role": "client-hook:safety-net",
       "protection": "framework",
       "targets": [
@@ -1220,8 +1229,8 @@
     {
       "path": "runtime/MEMORY-PROVENANCE.md",
       "source": "repo:runtime/MEMORY-PROVENANCE.md",
-      "version": "1.0.0",
-      "sha256": "d38090e45da3b91a073978e9a396728c63153e43237472fbe55857d16674d6f3",
+      "version": "1.1.0",
+      "sha256": "06468f944e66e4d44685e27ae93cfacd589b5c98aed9345b933c05e584b0abe8",
       "role": "runtime",
       "protection": "framework",
       "targets": [
@@ -1420,8 +1429,8 @@
     {
       "path": "runtime/START-SESSION.md",
       "source": "repo:runtime/START-SESSION.md",
-      "version": "5.0.0",
-      "sha256": "b76f4d5ba077e4faa06483c2cea466cdb7eac46d180e4bf39e349944677f0e32",
+      "version": "5.1.0",
+      "sha256": "9d870ac9bd28af1f805a13e738c27cb614f9ad9b5d6c912ed26a43c1ef095131",
       "role": "session-entrypoint",
       "protection": "framework",
       "targets": [
@@ -1497,8 +1506,8 @@
     {
       "path": "safety-protocol.md",
       "source": "repo:safety-protocol.md",
-      "version": "2.1.0",
-      "sha256": "385b61baff891ab64d3fe88649c6e6fdef3b9f586c5d1909c040ba0f925321b9",
+      "version": "2.1.1",
+      "sha256": "85c0aa4ef98c0a8cfec9181267b277b82f568819134a551d57fcc08816eee441",
       "role": "safety-protocol",
       "protection": "framework",
       "targets": [

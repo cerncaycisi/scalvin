@@ -12,7 +12,7 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
 
 ### Added
 
-- deterministic Node 20+ CLI for install, doctor, review-due, pinned update,
+- deterministic Node 22+ CLI for install, doctor, review-due, pinned update,
   integrity-checked backup, and traversal-safe restore
 - manifest schema v2 with per-file version, SHA-256, source, role, target, and
   protection metadata
@@ -100,6 +100,49 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
   to `NOTICE.md`
 
 ### Fixed
+
+- a stale or missing emergency-resource registry no longer switches off the
+  mechanical safety scan; registry freshness is reported as a separate
+  `emergencyResources` state (hook self-test schema 2) and doctor warns with
+  `EMERGENCY_RESOURCES_NOT_CURRENT`
+- the CA, TR, and US emergency-resource entries were re-verified against their
+  official sources on 2026-09-25
+- a memory correction now records a live confirmation of the new wording
+  (confirmation time, confirming session or `null`, and `Review state:
+  current`), so corrected items are not re-offered as stale
+- source-worker timeout and output overflow share one bounded termination path
+  that kills the worker's process group and reports only after exit is observed
+- the source worker refuses non-empty proposals until it has served the whole
+  source as one contiguous read
+- the source worker receives an explicit environment allowlist; the interactive
+  client drops `SCALVIN_*` and interpreter-injection variables such as
+  `NODE_OPTIONS`
+- read-only operations (memory view/show/export, review-due, retention status,
+  context status/show, source status/proposals, session status, change
+  history) no longer hash every workspace byte; they keep the tree-wide
+  symlink/hard-link walk. `memory show` on a workspace with 128 MiB of unrelated
+  archive data dropped from about 1.5 s to about 0.14 s in a local measurement
+- the session preflight loads `CONTEXT-GRAPH.md` and `SELF-MODIFICATION.md`
+  only before the first action they govern (or when `context_graph` is on),
+  removing about 15 KB of the ~107 KB default startup instructions; the effect
+  on real conversation quality has not been measured
+- the capability broker and isolated source worker accept the standard MCP
+  `params._meta` request field; Codex 0.156 sends it on every tool call, and
+  the broker rejected each call with an ID-less error, so every Scalvin tool
+  call from Codex timed out. Invalid-request errors now echo a validated
+  string/integer request ID, and the worker no longer answers notifications
+- the isolated Codex source worker launches on Codex 0.156: it no longer passes
+  the removed `exec -a` flag, sends filesystem rules as one TOML inline table,
+  and lets Codex read its empty private working directory to load
+  instructions; `source process` and `source proposals` accept `--json`
+- every client adapter forbids calling MCP servers or connectors other than
+  `scalvin` and recommends the supervised launcher; a plain Claude Code launch
+  was shown to expose the user's own MCP servers inside the private session
+- Claude Code launches on Linux hosts without `bubblewrap`/`socat` now get a
+  clear doctor warning (`CLAUDE_SANDBOX_DEPENDENCY_MISSING`) and a pre-spawn
+  refusal instead of the client's raw sandbox error
+- the supported runtime floor is Node 22 (Node 20 is end of life); CI tests
+  Node 22 and 24 on Linux, macOS, and Windows
 
 - first-session safety protocol could previously be skipped
 - selected modalities, structure, and command behavior could be disconnected

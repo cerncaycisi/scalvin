@@ -16,7 +16,12 @@ test('workspace target guard rejects roots, home, source, and source ancestors',
     assert.throws(() => assertSafeWorkspaceTarget(path.parse(process.cwd()).root), { code: 'UNSAFE_WORKSPACE_TARGET' });
     assert.throws(() => assertSafeWorkspaceTarget(os.homedir()), { code: 'UNSAFE_WORKSPACE_TARGET' });
     assert.throws(() => assertSafeWorkspaceTarget(process.cwd()), { code: 'WORKSPACE_SOURCE_OVERLAP' });
-    assert.throws(() => assertSafeWorkspaceTarget(path.dirname(process.cwd())), { code: 'WORKSPACE_SOURCE_OVERLAP' });
+    // A checkout directly under home has home as its parent, which the
+    // earlier home-directory rule rejects first.
+    const parent = path.dirname(process.cwd());
+    assert.throws(() => assertSafeWorkspaceTarget(parent), {
+      code: path.resolve(parent) === path.resolve(os.homedir()) || parent === path.parse(parent).root ? 'UNSAFE_WORKSPACE_TARGET' : 'WORKSPACE_SOURCE_OVERLAP'
+    });
     assert.throws(() => assertSafeBackupOutput(path.join(process.cwd(), 'private-backup')), { code: 'BACKUP_INSIDE_SOURCE_REPO' });
   } finally {
     if (original === undefined) delete process.env.SCALVIN_ALLOW_REPO_TARGET;

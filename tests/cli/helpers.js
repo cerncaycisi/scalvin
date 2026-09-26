@@ -51,4 +51,25 @@ async function readJson(filename) {
   return JSON.parse(await fsp.readFile(filename, 'utf8'));
 }
 
-module.exports = { ROOT, sandbox, incomingDistribution, readJson };
+// Registry freshness depends on the real date and has its own gate
+// (npm run check:emergency-resources); doctor tests derive it instead.
+function installedEmergencyResourceHealth() {
+  const { loadRegistry, assessRegistry } = require('../../hooks/emergency-resources.cjs');
+  const assessment = assessRegistry(loadRegistry());
+  return assessment.state === 'current'
+    ? { state: 'current', reasonCode: null }
+    : { state: assessment.state, reasonCode: assessment.reasonCode };
+}
+
+// A non-current bundled registry or a host without the Claude Code sandbox
+// dependencies adds a doctor warning; both are host facts, not product state.
+function hostDoctorWarningCount() {
+  const { missingClaudeSandboxDependencies } = require('../../cli/lib/child-process');
+  return Number(installedEmergencyResourceHealth().state !== 'current') + Number(missingClaudeSandboxDependencies().length > 0);
+}
+
+function healthyDoctorStatus() {
+  return hostDoctorWarningCount() > 0 ? 'warnings' : 'healthy';
+}
+
+module.exports = { ROOT, sandbox, incomingDistribution, readJson, installedEmergencyResourceHealth, healthyDoctorStatus, hostDoctorWarningCount };

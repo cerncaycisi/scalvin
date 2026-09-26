@@ -68,6 +68,11 @@ test('START keeps safety first and loads active runtime contracts before first-s
   assert.match(start, /never directly read or write[\s\S]*sessions, context, archive, sources, transcripts/i);
   assert.match(start, /Weekly review[\s\S]*remain unavailable or\s+terminal-only; never open their private files directly/i);
   assert.match(start, /shipped base is immutable/i);
+  // Conditional contracts must load before the first action they govern,
+  // including context-graph forget/deletion that works with consent off.
+  assert.match(start, /CONTEXT-GRAPH\.md` before any context-graph read, write, backfill, correction, merge, forget, or deletion/);
+  assert.match(start, /whenever `control_status` reports `context_graph` on/);
+  assert.match(start, /SELF-MODIFICATION\.md` before proposing, approving, rejecting, or rolling back any durable behavior change/);
   assert.match(start, /Before the fast re-entry pass[\s\S]*continuity is consented[\s\S]*continue\s+ephemerally/i);
   assert.match(start, /Transcript authority is the canonical control state exposed through the local\s+broker\/CLI/i);
   assert.match(start, /`off`, `recording`, `paused`, and `stopped`/i);
@@ -161,4 +166,17 @@ test('safety-sensitive moderate modalities include body safeguards without a req
   assert.match(read('modalities/dbt-skills.md'), /never during active self-harm risk/i);
   assert.match(read('modalities/cbt.md'), /formal (?:graded )?exposure only with a qualified clinician/i);
   assert.match(read('modalities/polyvagal.md'), /do not infer/i);
+});
+
+test('every client adapter forbids foreign MCP servers and connectors', () => {
+  for (const relative of ['adapters/workspace/CLAUDE.template.md', 'adapters/workspace/AGENTS.template.md']) {
+    const text = read(relative);
+    assert.match(text, /Use only the `scalvin` MCP server/, relative);
+    assert.match(text, /never\s+send conversation or workspace content to them/, relative);
+  }
+  for (const relative of ['adapters/workspace/START-CLAUDE-SESSION.template.md', 'adapters/workspace/START-CODEX-SESSION.template.md']) {
+    const text = read(relative);
+    assert.match(text, /Prefer the supervised launch \(`scalvin client launch --client (?:claude|codex)`\)/, relative);
+    assert.match(text, /plain\s+(?:Claude Code|Codex) launch also loads the\s+user's own MCP servers/, relative);
+  }
 });

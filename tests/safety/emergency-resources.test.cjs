@@ -20,6 +20,18 @@ function canonicalRegistry() {
   return JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8'));
 }
 
+// Derive dates from the registry so re-verification stays a pure data edit.
+const DAY_MS = 24 * 60 * 60 * 1000;
+function shiftDay(date, days) {
+  return new Date(Date.parse(`${date}T00:00:00.000Z`) + days * DAY_MS).toISOString().slice(0, 10);
+}
+const REGISTRY_DATES = (() => {
+  const registry = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8'));
+  const verified = registry.jurisdictions.map((entry) => entry.verifiedAt).sort();
+  const expires = registry.jurisdictions.map((entry) => entry.expiresAt).sort();
+  return { latestVerifiedAt: verified.at(-1), earliestVerifiedAt: verified[0], earliestExpiresAt: expires[0] };
+})();
+
 test('registry contains only bounded country-scoped official routes with an exact TTL', () => {
   const registry = loadRegistry();
   assert.equal(registry.schemaVersion, 1);
@@ -27,8 +39,8 @@ test('registry contains only bounded country-scoped official routes with an exac
   assert.deepEqual(registry.jurisdictions.map((entry) => entry.countryCode), ['CA', 'TR', 'US']);
   for (const jurisdiction of registry.jurisdictions) {
     assert.equal(jurisdiction.scope, 'national');
-    assert.equal(jurisdiction.verifiedAt, '2026-07-14');
-    assert.equal(jurisdiction.expiresAt, '2026-08-13');
+    assert.match(jurisdiction.verifiedAt, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(jurisdiction.expiresAt, shiftDay(jurisdiction.verifiedAt, registry.ttlDays));
     for (const resource of jurisdiction.resources) {
       assert.match(resource.contact, /^\d[\d-]*\d$|^\d$/);
       assert.match(resource.officialSource.url, /^https:\/\//);
@@ -40,26 +52,30 @@ test('registry contains only bounded country-scoped official routes with an exac
 
 test('UTC-date assessment is current before the exclusive expiry and stale on it', () => {
   const registry = canonicalRegistry();
-  assert.deepEqual(assessRegistry(registry, '2026-07-17'), {
+  const { latestVerifiedAt, earliestVerifiedAt, earliestExpiresAt } = REGISTRY_DATES;
+  const currentDay = shiftDay(latestVerifiedAt, 3);
+  assert.ok(currentDay < earliestExpiresAt);
+  assert.deepEqual(assessRegistry(registry, currentDay), {
     state: 'current',
     reasonCode: null,
-    checkedOn: '2026-07-17',
-    earliestExpiresAt: '2026-08-13',
+    checkedOn: currentDay,
+    earliestExpiresAt,
     affectedJurisdictions: []
   });
-  assert.deepEqual(assessRegistry(registry, '2026-07-13'), {
+  const beforeDay = shiftDay(earliestVerifiedAt, -1);
+  assert.deepEqual(assessRegistry(registry, beforeDay), {
     state: 'not_yet_valid',
     reasonCode: 'EMERGENCY_RESOURCE_REGISTRY_NOT_YET_VALID',
-    checkedOn: '2026-07-13',
-    earliestExpiresAt: '2026-08-13',
-    affectedJurisdictions: ['CA', 'TR', 'US']
+    checkedOn: beforeDay,
+    earliestExpiresAt,
+    affectedJurisdictions: registry.jurisdictions.filter((entry) => entry.verifiedAt > beforeDay).map((entry) => entry.countryCode)
   });
-  assert.deepEqual(assessRegistry(registry, '2026-08-13'), {
+  assert.deepEqual(assessRegistry(registry, earliestExpiresAt), {
     state: 'stale',
     reasonCode: 'EMERGENCY_RESOURCE_REGISTRY_STALE',
-    checkedOn: '2026-08-13',
-    earliestExpiresAt: '2026-08-13',
-    affectedJurisdictions: ['CA', 'TR', 'US']
+    checkedOn: earliestExpiresAt,
+    earliestExpiresAt,
+    affectedJurisdictions: registry.jurisdictions.filter((entry) => entry.expiresAt <= earliestExpiresAt).map((entry) => entry.countryCode)
   });
 });
 
@@ -103,15 +119,15 @@ test('bounded loader rejects symlinks and oversized registry data', { skip: proc
 });
 
 test('static checker passes current data and fails stale data without leaking a path', () => {
-  const current = spawnSync(process.execPath, [CHECKER, '--now', '2026-07-17'], {
+  const current = spawnSync(process.execPath, [CHECKER, '--now', shiftDay(REGISTRY_DATES.latestVerifiedAt, 3)], {
     cwd: ROOT,
     encoding: 'utf8'
   });
   assert.equal(current.status, 0);
-  assert.match(current.stdout, /3 jurisdictions; earliest expiry 2026-08-13/);
+  assert.match(current.stdout, new RegExp(`3 jurisdictions; earliest expiry ${REGISTRY_DATES.earliestExpiresAt}`));
   assert.equal(current.stderr, '');
 
-  const stale = spawnSync(process.execPath, [CHECKER, '--now', '2026-08-13'], {
+  const stale = spawnSync(process.execPath, [CHECKER, '--now', shiftDay(REGISTRY_DATES.latestVerifiedAt, 90)], {
     cwd: ROOT,
     encoding: 'utf8'
   });

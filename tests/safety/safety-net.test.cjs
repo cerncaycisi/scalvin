@@ -16,10 +16,22 @@ const {
   classify,
   normalize,
   buildNotice,
+  buildResourceNotice,
   buildHealthNotice,
+  emergencyResourceHealth,
   loadLocalePacks,
   runSelfTest
 } = require(HOOK);
+const { loadRegistry, assessRegistry } = require(RESOURCE_LIBRARY);
+
+// Registry freshness depends on the real date and has its own gate
+// (npm run check:emergency-resources); behavior tests derive it instead.
+function installedResourceHealth() {
+  const assessment = assessRegistry(loadRegistry());
+  return assessment.state === 'current'
+    ? { state: 'current', reasonCode: null }
+    : { state: assessment.state, reasonCode: assessment.reasonCode };
+}
 const corpusDocument = JSON.parse(fs.readFileSync(CORPUS_PATH, 'utf8'));
 const corpus = corpusDocument.cases;
 
@@ -150,11 +162,13 @@ function runHookSelfTest(hook = HOOK, env = {}) {
 test('self-test reports one content-free available attestation', async () => {
   const direct = await runSelfTest(500);
   assert.deepEqual(direct, {
-    schemaVersion: 1,
+    schemaVersion: 2,
     capability: 'mechanical_safety_backstop',
     state: 'available',
-    reasonCode: null
+    reasonCode: null,
+    emergencyResources: installedResourceHealth()
   });
+  assert.deepEqual(emergencyResourceHealth(), installedResourceHealth());
 
   const privateValue = 'PRIVATE_SELF_TEST_VALUE_d8d557';
   const result = runHookSelfTest(HOOK, { SCALVIN_PRIVATE_SELF_TEST_VALUE: privateValue });
@@ -190,7 +204,13 @@ test('CLI emits valid UserPromptSubmit JSON only when fired', () => {
 
   const silent = runHook(JSON.stringify({ prompt: silentCase.text }));
   assert.equal(silent.status, 0);
-  assert.equal(silent.stdout, '');
+  if (installedResourceHealth().state === 'current') {
+    assert.equal(silent.stdout, '');
+  } else {
+    const notice = JSON.parse(silent.stdout).hookSpecificOutput.additionalContext;
+    assert.match(notice, /Mechanical screening ran/);
+    assert.doesNotMatch(notice, /flagged possible safety-relevant language/);
+  }
 });
 
 test('CLI preserves fail-open availability and exposes content-free degraded health for malformed, missing, and oversized input', () => {
@@ -283,14 +303,15 @@ test('standalone hook fails open when an installed locale pack is malformed', (t
   const selfTest = runHookSelfTest(fixture);
   assert.equal(selfTest.status, 0);
   assert.deepEqual(JSON.parse(selfTest.stdout), {
-    schemaVersion: 1,
+    schemaVersion: 2,
     capability: 'mechanical_safety_backstop',
     state: 'degraded',
-    reasonCode: 'LOCALE_PACK_LOAD_FAILED'
+    reasonCode: 'LOCALE_PACK_LOAD_FAILED',
+    emergencyResources: installedResourceHealth()
   });
 });
 
-test('standalone hook visibly degrades when emergency resources are stale or missing', async (t) => {
+test('non-current emergency resources are reported separately and never switch off screening', async (t) => {
   const parent = path.join(ROOT, '.test-tmp');
   fs.mkdirSync(parent, { recursive: true });
   const pack = JSON.parse(fs.readFileSync(path.join(ROOT, 'hooks', 'safety-locales', 'en.json'), 'utf8'));
@@ -299,37 +320,68 @@ test('standalone hook visibly degrades when emergency resources are stale or mis
     jurisdiction.verifiedAt = '2000-01-01';
     jurisdiction.expiresAt = '2000-01-31';
   }
+  const futureRegistry = JSON.parse(fs.readFileSync(RESOURCE_REGISTRY, 'utf8'));
+  for (const jurisdiction of futureRegistry.jurisdictions) {
+    jurisdiction.verifiedAt = '2999-01-01';
+    jurisdiction.expiresAt = '2999-01-31';
+  }
   const scenarios = [
-    ['stale', staleRegistry, 'EMERGENCY_RESOURCE_REGISTRY_STALE'],
-    ['missing', null, 'EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED']
+    ['stale', staleRegistry, 'stale', 'EMERGENCY_RESOURCE_REGISTRY_STALE'],
+    ['not yet valid', futureRegistry, 'not_yet_valid', 'EMERGENCY_RESOURCE_REGISTRY_NOT_YET_VALID'],
+    ['missing', null, 'unavailable', 'EMERGENCY_RESOURCE_REGISTRY_LOAD_FAILED']
   ];
-  for (const [label, registry, reasonCode] of scenarios) {
+  for (const [label, registry, resourceState, reasonCode] of scenarios) {
     await t.test(label, () => {
       const fixture = makeHookFixture(parent, pack, registry);
       t.after(() => fs.rmSync(path.dirname(fixture), { recursive: true, force: true }));
       const selfTest = runHookSelfTest(fixture);
       assert.equal(selfTest.status, 0);
       assert.deepEqual(JSON.parse(selfTest.stdout), {
-        schemaVersion: 1,
+        schemaVersion: 2,
         capability: 'mechanical_safety_backstop',
-        state: 'degraded',
-        reasonCode
+        state: 'available',
+        reasonCode: null,
+        emergencyResources: { state: resourceState, reasonCode }
       });
-      const privatePrompt = 'PRIVATE_RESOURCE_PROMPT_42';
-      const result = spawnSync(process.execPath, [fixture], {
-        input: JSON.stringify({ prompt: privatePrompt }),
+
+      const run = (prompt) => spawnSync(process.execPath, [fixture], {
+        input: JSON.stringify({ prompt }),
         encoding: 'utf8',
         timeout: 10000,
-        env: { ...process.env, SCALVIN_HOOK_TIMEOUT_MS: '200' }
+        env: { ...process.env, SCALVIN_HOOK_TIMEOUT_MS: '1500' }
       });
-      assert.equal(result.status, 0);
-      const notice = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
-      assert.match(notice, new RegExp(reasonCode));
-      assert.match(notice, /Do not present bundled contacts as current/i);
-      assert.equal(notice.includes(privatePrompt), false);
-      assert.equal(notice.includes(ROOT), false);
+
+      const privatePrompt = 'PRIVATE_RESOURCE_PROMPT_42';
+      const quiet = run(privatePrompt);
+      assert.equal(quiet.status, 0);
+      const quietNotice = JSON.parse(quiet.stdout).hookSpecificOutput.additionalContext;
+      assert.match(quietNotice, /Mechanical screening ran/);
+      assert.match(quietNotice, /capability state: available/i);
+      assert.match(quietNotice, new RegExp(`registry state: ${resourceState}; reason code: ${reasonCode}`));
+      assert.match(quietNotice, /Do not present bundled contacts as current/i);
+      assert.equal(quietNotice.includes(privatePrompt), false);
+      assert.equal(quietNotice.includes(ROOT), false);
+
+      const crisis = run('I want to die.');
+      assert.equal(crisis.status, 0);
+      const crisisNotice = JSON.parse(crisis.stdout).hookSpecificOutput.additionalContext;
+      assert.match(crisisNotice, /flagged possible safety-relevant language/);
+      assert.match(crisisNotice, /Classifier level: urgent-review; domains: self_harm/);
+      assert.match(crisisNotice, new RegExp(reasonCode));
+      assert.match(crisisNotice, /Do not present bundled contacts as current/i);
+      assert.doesNotMatch(crisisNotice, /Do not claim that mechanical screening ran/);
     });
   }
+});
+
+test('current emergency resources add no resource notice to unflagged prompts', () => {
+  const current = { state: 'current', reasonCode: null };
+  assert.equal(buildResourceNotice(current), null);
+  const notice = buildNotice(classify('I want to die.'), current).hookSpecificOutput.additionalContext;
+  assert.doesNotMatch(notice, /registry state/);
+  const degraded = buildHealthNotice('CLASSIFIER_UNAVAILABLE', { state: 'stale', reasonCode: 'EMERGENCY_RESOURCE_REGISTRY_STALE' });
+  assert.match(degraded.hookSpecificOutput.additionalContext, /Do not claim that mechanical screening ran/);
+  assert.match(degraded.hookSpecificOutput.additionalContext, /registry state: stale/);
 });
 
 test('standalone hook terminates catastrophic locale regex work within its deadline', (t) => {

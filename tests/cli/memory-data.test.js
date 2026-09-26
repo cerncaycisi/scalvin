@@ -428,3 +428,27 @@ test('delete-all resets personal state but preserves the separate backup ledger'
     await box.cleanup();
   }
 });
+
+test('read-only memory views validate the tree without reading unrelated archive bytes', { skip: process.platform === 'win32' || process.getuid?.() === 0 }, async () => {
+  const box = await sandbox('memory-read-no-hash');
+  try {
+    await install({ target: box.workspace, consent: 'granted' });
+    await fsp.appendFile(path.join(box.workspace, 'profile.md'), memoryBlock('Readable profile value.'));
+    const unrelated = path.join(box.workspace, 'archive', 'unrelated-large-archive.bin');
+    await fsp.writeFile(unrelated, 'synthetic archive bytes', { mode: 0o600 });
+    // An unreadable file proves the read path never opens it for hashing.
+    await fsp.chmod(unrelated, 0o000);
+    const result = await memory({ target: box.workspace, action: 'show', scope: 'profile' });
+    assert.equal(result.items[0].statement, 'Readable profile value.');
+    // Structural validation still covers the whole tree.
+    const linked = path.join(box.workspace, 'archive', 'linked.md');
+    await fsp.symlink(path.join(box.workspace, 'profile.md'), linked);
+    await assert.rejects(memory({ target: box.workspace, action: 'show', scope: 'profile' }), { code: 'SYMLINK_REJECTED' });
+    await fsp.rm(linked);
+    // Mutations still bind activation to a hashed snapshot of every file.
+    await assert.rejects(memory({ target: box.workspace, action: 'correct', id: MEMORY_ID, statement: 'Changed.' }), { code: 'EACCES' });
+    await fsp.chmod(unrelated, 0o600);
+  } finally {
+    await box.cleanup();
+  }
+});

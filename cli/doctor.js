@@ -32,6 +32,7 @@ const {
 const { parseBackupLedger, parseBackupOperationReceipts } = require('./lib/backup');
 const { parseReminder } = require('./lib/backup-reminder');
 const { statusSource } = require('./source-lifecycle');
+const { missingClaudeSandboxDependencies } = require('./lib/child-process');
 
 const execFileAsync = promisify(execFile);
 const MAX_CONSENT_PROJECTION_BYTES = 1024 * 1024;
@@ -104,9 +105,22 @@ function finding(severity, code, message, details) {
   return { severity, code, message, ...(details ? { details } : {}) };
 }
 
-function safetyCapability(state, reasonCode, evidence) {
+const EMERGENCY_RESOURCE_HEALTH_STATES = new Set(['current', 'stale', 'not_yet_valid', 'unavailable']);
+
+function safetyCapability(state, reasonCode, evidence, emergencyResources) {
   if (!SAFETY_HEALTH_STATES.has(state)) throw new Error('Invalid mechanical safety capability state');
-  return { state, reasonCode, evidence };
+  return { state, reasonCode, evidence, ...(emergencyResources ? { emergencyResources } : {}) };
+}
+
+function validEmergencyResourceHealth(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const keys = Object.keys(value).sort();
+  if (keys.length !== 2 || keys[0] !== 'reasonCode' || keys[1] !== 'state') return false;
+  if (!EMERGENCY_RESOURCE_HEALTH_STATES.has(value.state)) return false;
+  if (value.state === 'current') return value.reasonCode === null;
+  return typeof value.reasonCode === 'string'
+    && value.reasonCode.startsWith('EMERGENCY_RESOURCE_')
+    && SAFETY_HEALTH_REASON_CODES.has(value.reasonCode);
 }
 
 function capabilityEnvelope(mechanicalSafetyBackstop, brokeredDataBoundary = unavailableBoundaryCapability('DOCTOR_INCOMPLETE')) {
@@ -752,6 +766,10 @@ async function assessBrokeredDataBoundary(workspace, context, manifest, distribu
   } else {
     findings.push(finding('info', 'CLIENT_BROKER_ONLY_PROFILE_OK', 'Installed client artifacts contain the canonical broker-only project policy; direct private continuity access is denied by project configuration.'));
   }
+  const missingSandbox = missingClaudeSandboxDependencies();
+  if (clients.claude.configuration === 'broker_only_unattested' && missingSandbox.length) {
+    findings.push(finding('warning', 'CLAUDE_SANDBOX_DEPENDENCY_MISSING', 'The Claude profile requires the Claude Code sandbox, which is unavailable on this host; Claude Code will refuse to start in this workspace until the listed commands are installed.', { missing: missingSandbox }));
+  }
   findings.push(finding('info', 'BROKER_ONLY_BOUNDARY_UNATTESTED', 'Project configuration denies direct private-file access, but static files cannot attest higher-priority configuration or the effective client runtime. Stable release remains blocked until exact-launch probes pass.'));
   if (sourceWorker.state === 'available') {
     findings.push(finding('info', 'ISOLATED_SOURCE_WORKER_SELF_TEST_OK', 'The bundled isolated source worker passed its content-free self-test; integration accepts only worker-attested prepared proposals.'));
@@ -781,12 +799,17 @@ async function probeMechanicalSafetyHook(workspace, relativeTarget) {
       return safetyCapability('degraded', 'SELF_TEST_PROTOCOL_INVALID', 'doctor-self-test');
     }
     const result = JSON.parse(stdout);
-    const expectedKeys = ['capability', 'reasonCode', 'schemaVersion', 'state'];
+    // Schema 2 reports emergency-resource freshness separately from the
+    // classifier; schema 1 hooks folded registry staleness into `state`.
+    const expectedKeys = result?.schemaVersion === 2
+      ? ['capability', 'emergencyResources', 'reasonCode', 'schemaVersion', 'state']
+      : ['capability', 'reasonCode', 'schemaVersion', 'state'];
     const actualKeys = Object.keys(result || {}).sort();
     if (
       actualKeys.length !== expectedKeys.length
       || actualKeys.some((key, index) => key !== expectedKeys[index])
-      || result.schemaVersion !== 1
+      || ![1, 2].includes(result.schemaVersion)
+      || (result.schemaVersion === 2 && !validEmergencyResourceHealth(result.emergencyResources))
       || result.capability !== SAFETY_CAPABILITY
       || !['available', 'degraded'].includes(result.state)
       || !(result.reasonCode === null || SAFETY_HEALTH_REASON_CODES.has(result.reasonCode))
@@ -795,7 +818,7 @@ async function probeMechanicalSafetyHook(workspace, relativeTarget) {
     ) {
       return safetyCapability('degraded', 'SELF_TEST_PROTOCOL_INVALID', 'doctor-self-test');
     }
-    return safetyCapability(result.state, result.reasonCode, 'doctor-self-test');
+    return safetyCapability(result.state, result.reasonCode, 'doctor-self-test', result.emergencyResources);
   } catch (_) {
     return safetyCapability('degraded', 'SELF_TEST_EXECUTION_FAILED', 'doctor-self-test');
   }
@@ -1289,6 +1312,13 @@ async function runDoctor(workspace, context) {
       mechanicalSafetyBackstop = probe;
     }
 
+    const resources = mechanicalSafetyBackstop.emergencyResources;
+    if (resources && resources.state !== 'current') {
+      findings.push(finding('warning', 'EMERGENCY_RESOURCES_NOT_CURRENT', 'Bundled emergency contacts are not currently verified; mechanical screening still runs, but bundled contacts must not be presented as current without live official verification.', {
+        state: resources.state,
+        reasonCode: resources.reasonCode
+      }));
+    }
     if (mechanicalSafetyBackstop.state === 'available') {
       findings.push(finding('info', 'SAFETY_HOOK_HEALTH_AVAILABLE', 'The installed mechanical safety hook passed its synthetic content-free runtime self-test.'));
     } else {

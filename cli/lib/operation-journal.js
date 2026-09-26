@@ -46,7 +46,11 @@ async function appendOperationFailure(workspace, input) {
         await fsp.mkdir(lockPath, { mode: 0o700 });
         locked = true;
       } catch (error) {
-        if (error.code !== 'EEXIST') throw error;
+        // Windows reports EPERM/EACCES while another holder's lock directory
+        // is pending deletion; treat that as contention within the deadline.
+        const contended = error.code === 'EEXIST'
+          || (process.platform === 'win32' && (error.code === 'EPERM' || error.code === 'EACCES'));
+        if (!contended) throw error;
         const remaining = deadline - Date.now();
         if (remaining <= 0) break;
         const backoff = Math.min(

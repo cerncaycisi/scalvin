@@ -25,7 +25,7 @@ before opening a PR.
 
 ## Development setup
 
-Requirements: Git and Node.js 20 or newer.
+Requirements: Git and Node.js 22 or newer (an active or maintenance LTS line: 22 or 24).
 
 ```bash
 git clone https://github.com/cerncaycisi/scalvin.git
