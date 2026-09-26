@@ -81,7 +81,7 @@
       "path": "adapters/workspace/AGENTS.template.md",
       "source": "repo:adapters/workspace/AGENTS.template.md",
       "version": "1.0.0",
-      "sha256": "155480a71cb114b0ac6a6ddd52493c4a7c6747fb3676d1cf92cf1244a1327551",
+      "sha256": "6aa7e11e7994a4cbf1d19c0b4a0631db44ff80f154f06e83a8bd9106879c0372",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -114,7 +114,7 @@
       "path": "adapters/workspace/CLAUDE.template.md",
       "source": "repo:adapters/workspace/CLAUDE.template.md",
       "version": "1.0.0",
-      "sha256": "1c6c5a718d0d0f0cb6da0b7c0668b06b3d5dee0fd39e0a617adfdb5aa2899ec9",
+      "sha256": "5d05c43a66d098a1a87849fe34477170e591855c148ecea85b6eebf60ee6e767",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -133,7 +133,7 @@
       "path": "adapters/workspace/START-CLAUDE-SESSION.template.md",
       "source": "repo:adapters/workspace/START-CLAUDE-SESSION.template.md",
       "version": "1.0.0",
-      "sha256": "cd8c37d6aa79ca591d971786b1ce7722bcbb084ffae72f142c8a198173825597",
+      "sha256": "759764a53d9521db4a214e94fb4b4e5752a67c6f3343bfea18b34346fc7b1c75",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -152,7 +152,7 @@
       "path": "adapters/workspace/START-CODEX-SESSION.template.md",
       "source": "repo:adapters/workspace/START-CODEX-SESSION.template.md",
       "version": "1.0.0",
-      "sha256": "67db49f2f44bffcc28af8f7abc849d834dc923f1e6af853f2719efac699d6e44",
+      "sha256": "8a3bb062ed5dc81709a4a8a57fe52412c61842139364c7ee9129059c01338ddf",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [

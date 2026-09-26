@@ -89,6 +89,14 @@ workspace directory must also be trusted once in an interactive Claude Code
 session; until then Claude Code reports that it ignores the profile's `allow`
 entries.
 
+Prefer `scalvin client launch --client claude`. It passes
+`--strict-mcp-config` and `--setting-sources project`, so only this workspace's
+broker and settings load. A plain Claude Code launch in the workspace also
+loads the user's own MCP servers and connectors: a probe listed a user-level
+task-manager server next to `scalvin`. The adapter instructs the companion to
+call only the `scalvin` server, but that instruction is model compliance, not
+enforcement.
+
 The installer preserves existing Claude settings, makes a backup before
 changing them, and adds only Scalvin-owned hook entries. It does not overwrite
 an invalid settings file.

@@ -24,6 +24,12 @@ effective client. The local Scalvin connection is required: call
 private continuity request. `hardBoundaryAttested` remains `false` until an
 exact-candidate effective-launch probe says otherwise.
 
+Prefer the supervised launch (`scalvin client launch --client claude`). It
+loads only this workspace's MCP configuration and project settings. A plain
+Claude Code launch also loads the user's own MCP servers and connectors. In
+either case, call only `mcp__scalvin__*` tools; never call another server's
+tools or send conversation or workspace content to them.
+
 Use the typed `mcp__scalvin__backup_reminder` status/decline operation for
 content-free reminder handling. A decline requires the user's exact approval;
 it does not create or access a backup artifact.

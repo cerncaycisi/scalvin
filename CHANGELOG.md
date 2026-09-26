@@ -135,6 +135,9 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
   the removed `exec -a` flag, sends filesystem rules as one TOML inline table,
   and lets Codex read its empty private working directory to load
   instructions; `source process` and `source proposals` accept `--json`
+- every client adapter forbids calling MCP servers or connectors other than
+  `scalvin` and recommends the supervised launcher; a plain Claude Code launch
+  was shown to expose the user's own MCP servers inside the private session
 - Claude Code launches on Linux hosts without `bubblewrap`/`socat` now get a
   clear doctor warning (`CLAUDE_SANDBOX_DEPENDENCY_MISSING`) and a pre-spawn
   refusal instead of the client's raw sandbox error

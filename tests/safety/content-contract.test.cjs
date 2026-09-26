@@ -167,3 +167,16 @@ test('safety-sensitive moderate modalities include body safeguards without a req
   assert.match(read('modalities/cbt.md'), /formal (?:graded )?exposure only with a qualified clinician/i);
   assert.match(read('modalities/polyvagal.md'), /do not infer/i);
 });
+
+test('every client adapter forbids foreign MCP servers and connectors', () => {
+  for (const relative of ['adapters/workspace/CLAUDE.template.md', 'adapters/workspace/AGENTS.template.md']) {
+    const text = read(relative);
+    assert.match(text, /Use only the `scalvin` MCP server/, relative);
+    assert.match(text, /never\s+send conversation or workspace content to them/, relative);
+  }
+  for (const relative of ['adapters/workspace/START-CLAUDE-SESSION.template.md', 'adapters/workspace/START-CODEX-SESSION.template.md']) {
+    const text = read(relative);
+    assert.match(text, /Prefer the supervised launch \(`scalvin client launch --client (?:claude|codex)`\)/, relative);
+    assert.match(text, /plain\s+(?:Claude Code|Codex) launch also loads the\s+user's own MCP servers/, relative);
+  }
+});
