@@ -104,11 +104,19 @@ test("stable-release workflow stages tag creation after required CI and signed-e
   const verifyIndex = workflow.indexOf("node cli/verify-release-evidence.js");
   const artifactIndex = workflow.indexOf('node scripts/build-release-artifacts.mjs');
   const cleanInstallIndex = workflow.indexOf('node scripts/verify-release-package.mjs');
-  const attestAction = 'uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763';
+  // Assert the pinning property, not one literal commit, so legitimate
+  // Dependabot bumps can pass: both attestation steps use one full-SHA pin.
+  const attestPins = [...workflow.matchAll(/uses: actions\/attest@([^\s#]+)/g)].map((match) => match[1]);
+  assert.equal(attestPins.length, 2);
+  assert.match(attestPins[0], /^[0-9a-f]{40}$/);
+  assert.equal(attestPins[1], attestPins[0]);
+  const attestAction = `uses: actions/attest@${attestPins[0]}`;
+  const uploadPin = workflow.match(/uses: actions\/upload-artifact@([^\s#]+)/)?.[1];
+  assert.match(uploadPin || '', /^[0-9a-f]{40}$/);
   const provenanceIndex = workflow.indexOf('id: attest-release-provenance');
   const sbomAttestationIndex = workflow.indexOf('id: attest-release-sbom');
   const preserveIndex = workflow.indexOf('name: Preserve attestation bundles with the release candidates');
-  const uploadIndex = workflow.indexOf('uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a');
+  const uploadIndex = workflow.indexOf(`uses: actions/upload-artifact@${uploadPin}`);
   const tagIndex = workflow.indexOf('git tag -a "$tag" "$GITHUB_SHA"');
   const pushIndex = workflow.indexOf('git push origin "refs/tags/${tag}"');
   assert.ok(verifyIndex >= 0, "signed release evidence must be verified");
