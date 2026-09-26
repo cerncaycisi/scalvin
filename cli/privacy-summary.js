@@ -7,6 +7,7 @@
 // never opens memory, session, source, or transcript content.
 
 const operations = require('./operations');
+const { ScalvinError } = require('./lib/errors');
 
 const CLASS_LABELS = Object.freeze([
   ['profile_memory', 'Profile memory', 'item'],
@@ -33,8 +34,17 @@ function plural(count, noun) {
 }
 
 async function privacySummary(options = {}) {
-  const status = await operations.memory({ target: options.target, action: 'status' });
-  const retention = await operations.memory({ target: options.target, action: 'retention-status' });
+  let status;
+  let retention;
+  try {
+    status = await operations.memory({ target: options.target, action: 'status' });
+    retention = await operations.memory({ target: options.target, action: 'retention-status' });
+  } catch (error) {
+    // Underlying errors can name private files or lock paths; report only a
+    // fixed message and a bounded code.
+    const causeCode = /^[A-Z0-9_]{1,64}$/.test(error?.code || '') ? error.code : 'UNKNOWN';
+    throw new ScalvinError('The privacy summary is unavailable; run doctor for this workspace.', 'PRIVACY_SUMMARY_UNAVAILABLE', { causeCode });
+  }
   const controls = status.consentControls || {};
   const policies = controls.retention || {};
   const byClass = new Map((retention.classes || []).map((item) => [item.dataClass, item]));
@@ -47,7 +57,6 @@ async function privacySummary(options = {}) {
   return {
     status: 'inspected',
     workspacePath: status.workspacePath,
-    workspaceId: status.workspaceId,
     contentIncluded: false,
     memorySaving: status.memoryPause || 'unknown',
     continuityMemory: status.continuityMemory || 'unknown',
@@ -58,20 +67,30 @@ async function privacySummary(options = {}) {
   };
 }
 
+// Quote for pasting into a shell: single quotes on POSIX shells; double quotes
+// on Windows, where the path is shown as given.
+function shellQuote(value, platform = process.platform) {
+  if (platform === 'win32') return `"${String(value).replace(/"/g, '""')}"`;
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
 function renderPrivacySummary(summary) {
-  const workspace = JSON.stringify(summary.workspacePath);
+  const workspace = shellQuote(summary.workspacePath);
   const lines = [
     'Scalvin privacy summary',
     '',
     `Workspace: ${summary.workspacePath}`,
-    `Memory: ${PAUSE_TEXT[summary.memorySaving] || summary.memorySaving}; continuity memory is ${summary.continuityMemory}.`,
+    summary.continuityMemory === 'off' && summary.memorySaving === 'none'
+      ? 'Memory: saving is off (continuity memory is off); earlier data stays until you delete it.'
+      : `Memory: ${PAUSE_TEXT[summary.memorySaving] || summary.memorySaving}; continuity memory is ${summary.continuityMemory}.`,
     '',
     'What is stored on this computer (counts only; no content is shown):'
   ];
   const width = Math.max(...summary.stored.map((item) => item.label.length));
   for (const item of summary.stored) {
     let value;
-    if (item.policy === 'do_not_store') value = 'off (not stored)';
+    if (item.policy === 'do_not_store' && item.count) value = `off for new data; ${plural(item.count, item.noun)} saved earlier still kept`;
+    else if (item.policy === 'do_not_store') value = 'off (not stored)';
     else if (item.count === null) value = 'on (count unavailable while sealed)';
     else value = `${plural(item.count, item.noun)}, kept until you delete them`;
     lines.push(`  ${item.label.padEnd(width)}  ${value}`);
@@ -88,7 +107,7 @@ function renderPrivacySummary(summary) {
     '  conversation history; Scalvin settings do not control that.',
     '',
     'What you can do (from this checkout):',
-    `  See what is remembered   node bin/scalvin.js memory --workspace ${workspace} --action view`,
+    `  See what is remembered   node bin/scalvin.js memory --workspace ${workspace} --action view --json`,
     `  Correct an item          node bin/scalvin.js memory --workspace ${workspace} --action correct --id ID --statement "..."`,
     `  Pause saving             node bin/scalvin.js memory --workspace ${workspace} --action pause`,
     `  Resume saving            node bin/scalvin.js memory --workspace ${workspace} --action resume`,
@@ -101,4 +120,4 @@ function renderPrivacySummary(summary) {
   return `${lines.join('\n')}\n`;
 }
 
-module.exports = { privacySummary, renderPrivacySummary };
+module.exports = { privacySummary, renderPrivacySummary, shellQuote };

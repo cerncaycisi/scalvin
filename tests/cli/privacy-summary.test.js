@@ -57,3 +57,44 @@ test('privacy summary stays content-free and count-free during sealed pause', as
   assert.match(text, /Profile memory\s+on \(count unavailable while sealed\)/);
   assert.equal(text.includes('PRIVATE_SEALED_CANARY'), false);
 });
+
+test('privacy summary reports retained data after persistence is switched off', async (t) => {
+  const { consent } = require('../../cli/operations');
+  const box = await sandbox('privacy-summary-off');
+  t.after(box.cleanup);
+  await install({ target: box.workspace, consent: 'granted' });
+  await fsp.appendFile(path.join(box.workspace, 'profile.md'), memoryBlock('PRIVATE_OFF_CANARY'));
+  await consent({ target: box.workspace, category: 'continuity_memory', value: 'off', retention: 'do_not_store' });
+  const summary = await privacySummary({ target: box.workspace });
+  const profile = summary.stored.find((item) => item.dataClass === 'profile_memory');
+  const text = renderPrivacySummary(summary);
+  assert.equal(profile.policy, 'do_not_store');
+  assert.equal(profile.count, 1);
+  assert.match(text, /Profile memory\s+off for new data; 1 item saved earlier still kept/);
+  assert.match(text, /Memory: saving is off \(continuity memory is off\)/);
+  assert.doesNotMatch(text, /Profile memory\s+off \(not stored\)/);
+  assert.equal(text.includes('PRIVATE_OFF_CANARY'), false);
+});
+
+test('privacy summary omits identifiers and sanitizes failures', { skip: process.platform === 'win32' }, async (t) => {
+  const box = await sandbox('privacy-summary-errors');
+  t.after(box.cleanup);
+  await install({ target: box.workspace, consent: 'granted' });
+  const summary = await privacySummary({ target: box.workspace });
+  assert.equal('workspaceId' in summary, false);
+
+  await fsp.symlink(path.join(box.workspace, 'profile.md'), path.join(box.workspace, 'sessions', 'PRIVATE_FILENAME_CANARY.md'));
+  await assert.rejects(privacySummary({ target: box.workspace }), (error) => {
+    assert.equal(error.code, 'PRIVACY_SUMMARY_UNAVAILABLE');
+    assert.equal(JSON.stringify({ message: error.message, details: error.details }).includes('PRIVATE_FILENAME_CANARY'), false);
+    assert.match(error.details.causeCode, /^[A-Z0-9_]+$/);
+    return true;
+  });
+});
+
+test('suggested commands quote the workspace path for a shell', () => {
+  const { shellQuote } = require('../../cli/privacy-summary');
+  assert.equal(shellQuote("/tmp/a b/$HOME/it's", 'linux'), "'/tmp/a b/$HOME/it'\\''s'");
+  assert.equal(shellQuote('/x/`id`', 'darwin'), "'/x/`id`'");
+  assert.equal(shellQuote('C:\\Users\\a "b"', 'win32'), '"C:\\Users\\a ""b"""');
+});

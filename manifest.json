@@ -430,7 +430,7 @@
       "path": "cli/privacy-summary.js",
       "source": "repo:cli/privacy-summary.js",
       "version": "1.0.0",
-      "sha256": "a8244810da0540360ff8c184221772bb77c11c84a71cc128a08fe32dbb80b37f",
+      "sha256": "c1ab85f2e28a07e01cb91462799ba74c9d6eb1efc783fc5ce775d44665d30b53",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
