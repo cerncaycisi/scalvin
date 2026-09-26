@@ -338,4 +338,12 @@ when they establish a reusable engineering rule.
   Use `codex sandbox` for enforcement evidence, because a compliant model
   refuses denied reads without attempting them. Record the exact Codex version;
   these results are not a stable-release attestation.
+- Peer review (Codex `gpt-6-astra`, read-only) of the resource channel found a
+  hard-link disclosure (the bounded reader did not check `nlink`), service of
+  unregistered or customized Markdown under allowed directories, filename
+  disclosure through a symlinked directory root, and `.therapy/version.json`
+  left readable under the readable root. The broker now serves only managed
+  framework targets recorded in canonical state whose bytes match the
+  installed SHA-256, rejects multi-link files, lists from state instead of
+  walking directories, and the Codex profile denies `.therapy/version.json`.
 

@@ -100,7 +100,7 @@ test('Codex broker-only profile denies every private continuity surface and requ
     'SETUP-NOTES.md', 'profile.md', 'ACTIVE-THEMES.md', 'CURRENT-FOCUS.md',
     'NEXT-PRIMER.md', 'sessions', 'context', 'archive', 'sources',
     '.therapy/user-overrides', '.therapy/state', '.therapy/change-control',
-    '.scalvin', '.codex', '.claude', '.mcp.json', '.git'
+    '.therapy/version.json', '.scalvin', '.codex', '.claude', '.mcp.json', '.git'
   ]) {
     assert.match(workspaceBlock, new RegExp(`^"${privateSurface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" = "deny"$`, 'm'));
   }

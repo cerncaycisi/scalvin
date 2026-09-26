@@ -1233,12 +1233,50 @@ test('broker serves only immutable framework documents as read-only MCP resource
     assert.equal(JSON.stringify(denied).includes(uri), false);
   }
 
+  const readUri = (uri) => handleMessage(box.workspace, { jsonrpc: '2.0', id: 9, method: 'resources/read', params: { uri } });
+  const unavailable = { code: -32602, message: 'Resource unavailable.' };
+
+  // Unregistered Markdown under an allowed directory is neither listed nor served.
+  await fsp.writeFile(path.join(box.workspace, '.therapy', 'library', 'private-note.md'), 'PRIVATE_LIBRARY_CANARY\n', { mode: 0o600 });
+  const relisted = await handleMessage(box.workspace, { jsonrpc: '2.0', id: 6, method: 'resources/list', params: {} });
+  assert.equal(JSON.stringify(relisted).includes('private-note.md'), false);
+  assert.deepEqual((await readUri('scalvin-framework:///.therapy/library/private-note.md')).error, unavailable);
+
+  // A customized managed file no longer matches its installed hash.
+  const personaPath = path.join(box.workspace, '.therapy', 'persona.md');
+  const persona = await fsp.readFile(personaPath);
+  await fsp.appendFile(personaPath, '\nPRIVATE_PERSONA_CANARY\n');
+  const customized = await readUri('scalvin-framework:///.therapy/persona.md');
+  assert.deepEqual(customized.error, unavailable);
+  assert.equal(JSON.stringify(customized).includes('PRIVATE_PERSONA_CANARY'), false);
+  await fsp.writeFile(personaPath, persona);
+  assert.match((await readUri('scalvin-framework:///.therapy/persona.md')).result.contents[0].text, /\S/);
+
   if (process.platform !== 'win32') {
     const target = path.join(box.workspace, '.therapy', 'runtime', 'DATA-AND-CONSENT.md');
+    const original = await fsp.readFile(target);
     await fsp.rm(target);
     await fsp.symlink(path.join(box.workspace, 'profile.md'), target);
-    const linked = await handleMessage(box.workspace, { jsonrpc: '2.0', id: 5, method: 'resources/read', params: { uri: 'scalvin-framework:///.therapy/runtime/DATA-AND-CONSENT.md' } });
-    assert.deepEqual(linked.error, { code: -32602, message: 'Resource unavailable.' });
+    const linked = await readUri('scalvin-framework:///.therapy/runtime/DATA-AND-CONSENT.md');
+    assert.deepEqual(linked.error, unavailable);
     assert.equal(JSON.stringify(linked).includes('PRIVATE_PROFILE_CANARY'), false);
+
+    // A hard link to a private file is refused even though the path is managed.
+    await fsp.rm(target);
+    await fsp.link(path.join(box.workspace, 'profile.md'), target);
+    const hardLinked = await readUri('scalvin-framework:///.therapy/runtime/DATA-AND-CONSENT.md');
+    assert.deepEqual(hardLinked.error, unavailable);
+    assert.equal(JSON.stringify(hardLinked).includes('PRIVATE_PROFILE_CANARY'), false);
+    await fsp.rm(target);
+    await fsp.writeFile(target, original, { mode: 0o600 });
+
+    // A symlinked directory root cannot leak private filenames through listing.
+    const library = path.join(box.workspace, '.therapy', 'library');
+    await fsp.rename(library, `${library}-moved`);
+    await fsp.mkdir(path.join(box.workspace, 'sessions', 'PRIVATE_FILENAME_CANARY'), { recursive: true });
+    await fsp.writeFile(path.join(box.workspace, 'sessions', 'PRIVATE_FILENAME_CANARY', 'note.md'), 'x', { mode: 0o600 });
+    await fsp.symlink(path.join(box.workspace, 'sessions'), library);
+    const symlinkedRoot = await handleMessage(box.workspace, { jsonrpc: '2.0', id: 7, method: 'resources/list', params: {} });
+    assert.equal(JSON.stringify(symlinkedRoot).includes('PRIVATE_FILENAME_CANARY'), false);
   }
 });

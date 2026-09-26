@@ -204,7 +204,7 @@
       "path": "adapters/workspace/codex.config.template.toml",
       "source": "repo:adapters/workspace/codex.config.template.toml",
       "version": "3.0.0",
-      "sha256": "79386875fb0066c0df1ebfa0c99826a372757056d4ecb0637f418ea33774f2f9",
+      "sha256": "20d84db711f2799c85cdc3905331de0a9e78ee6508dd6adc649891dfb11eb055",
       "role": "client-adapter",
       "protection": "framework",
       "targets": [
@@ -277,7 +277,7 @@
       "path": "cli/doctor.js",
       "source": "repo:cli/doctor.js",
       "version": "1.0.0",
-      "sha256": "e8baa537c1314409352ada7621bb7d59969893342287a23e050b975a4233df27",
+      "sha256": "0e5c2de574e7ff8d296e708a0018b6bb780792cdb92bef9b5dd901c69fa3e2f2",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -394,7 +394,7 @@
       "path": "cli/mcp-server.js",
       "source": "repo:cli/mcp-server.js",
       "version": "1.0.0",
-      "sha256": "5a2f1d8a7addecb9f0db9f1af53af68ea3cd19498a8bc66bd3525099d5623bd2",
+      "sha256": "a041f7fb9c991dd9e4e66d59a750d23d99bf11e50511dd8047f6fdcfc81a7803",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []

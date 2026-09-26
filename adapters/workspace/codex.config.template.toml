@@ -70,6 +70,7 @@ ignore_default_excludes = false
 ".therapy/user-overrides" = "deny"
 ".therapy/state" = "deny"
 ".therapy/change-control" = "deny"
+".therapy/version.json" = "deny"
 ".scalvin" = "deny"
 ".codex" = "deny"
 ".claude" = "deny"

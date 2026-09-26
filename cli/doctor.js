@@ -65,7 +65,7 @@ const REQUIRED_CODEX_DENY_TARGETS = new Set([
   '.git', 'SETUP-NOTES.md', 'profile.md', 'ACTIVE-THEMES.md', 'CURRENT-FOCUS.md',
   'NEXT-PRIMER.md', 'sessions', 'context', 'archive', 'sources',
   '.therapy/user-overrides', '.therapy/state', '.therapy/change-control',
-  '.scalvin', '.codex', '.claude', '.mcp.json'
+  '.therapy/version.json', '.scalvin', '.codex', '.claude', '.mcp.json'
 ]);
 const CLAUDE_FRAMEWORK_READ_RULES = [
   'Read(/.therapy/safety-protocol.md)', 'Read(/.therapy/commands.md)',
