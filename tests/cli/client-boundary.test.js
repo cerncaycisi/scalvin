@@ -77,10 +77,13 @@ test('Codex broker-only profile denies every private continuity surface and requ
   const workspaceBlock = rendered
     .split('[permissions.scalvin-broker-only.filesystem.":workspace_roots"]')[1]
     .split('[permissions.scalvin-broker-only.network]')[0];
-  assert.match(workspaceBlock, /^"\." = "deny"$/m);
-  assert.doesNotMatch(workspaceBlock, /^"\." = "read"$/m);
+  // Codex 0.156 cannot start with a denied root, so the root is readable and
+  // every private path is denied explicitly (verified by a sandbox probe).
+  assert.match(workspaceBlock, /^"\." = "read"$/m);
+  assert.doesNotMatch(workspaceBlock, /^"\." = "deny"$/m);
   const readable = [...workspaceBlock.matchAll(/^"([^"]+)" = "read"$/gm)].map((match) => match[1]);
   assert.deepEqual(readable, [
+    '.',
     '.therapy/safety-protocol.md',
     '.therapy/commands.md',
     '.therapy/runtime',
@@ -97,7 +100,7 @@ test('Codex broker-only profile denies every private continuity surface and requ
     'SETUP-NOTES.md', 'profile.md', 'ACTIVE-THEMES.md', 'CURRENT-FOCUS.md',
     'NEXT-PRIMER.md', 'sessions', 'context', 'archive', 'sources',
     '.therapy/user-overrides', '.therapy/state', '.therapy/change-control',
-    '.scalvin', '.codex', '.claude', '.mcp.json'
+    '.scalvin', '.codex', '.claude', '.mcp.json', '.git'
   ]) {
     assert.match(workspaceBlock, new RegExp(`^"${privateSurface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" = "deny"$`, 'm'));
   }

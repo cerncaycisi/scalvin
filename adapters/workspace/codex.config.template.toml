@@ -1,10 +1,14 @@
-# version: 2.0.0
+# version: 3.0.0
 # Scalvin Codex broker-only project profile.
 #
-# Sandboxed model-generated commands may read only the immutable public
-# framework files listed below. All personal continuity, source, transcript,
-# control-state, client-configuration, and user-overlay paths are denied.
-# Private reads and writes must use the typed local Scalvin MCP broker.
+# The companion has no shell or file tool. It reads the immutable framework
+# documents as read-only MCP resources from the Scalvin broker, and all private
+# reads and writes use the typed broker operations. The filesystem rules below
+# bound what Codex itself may read: every personal continuity, source,
+# transcript, control-state, client-configuration, user-overlay, and git-history
+# path is denied. The workspace root is readable because Codex 0.156 must read
+# its working directory to load AGENTS.md and cannot mask denied children
+# inside a denied root; a deny-by-default root stops Codex at startup.
 #
 # This project policy is materially stronger than the former compatibility
 # profile, but a checked-in config file alone is not effective-launch evidence:
@@ -44,7 +48,7 @@ ignore_default_excludes = false
 ":minimal" = "read"
 
 [permissions.scalvin-broker-only.filesystem.":workspace_roots"]
-"." = "deny"
+"." = "read"
 ".therapy/safety-protocol.md" = "read"
 ".therapy/commands.md" = "read"
 ".therapy/runtime" = "read"
@@ -70,6 +74,7 @@ ignore_default_excludes = false
 ".codex" = "deny"
 ".claude" = "deny"
 ".mcp.json" = "deny"
+".git" = "deny"
 
 [permissions.scalvin-broker-only.network]
 enabled = false

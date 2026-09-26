@@ -138,6 +138,16 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
 - every client adapter forbids calling MCP servers or connectors other than
   `scalvin` and recommends the supervised launcher; a plain Claude Code launch
   was shown to expose the user's own MCP servers inside the private session
+- the Codex adapter works end to end on Codex 0.156: the broker serves the
+  immutable framework documents as read-only MCP resources
+  (`scalvin-framework:///<path>`), so a companion without a shell or file tool
+  can read the safety protocol and session contracts, and the generated
+  profile keeps the root readable with explicit denies for every private path
+  (including `.git`) because a denied root stopped Codex at startup. Doctor reports
+  the previous profile as `CODEX_PRIVATE_BOUNDARY_POLICY_INCOMPLETE`. Because
+  these adapter files changed within 1.0.0, an existing workspace needs the
+  forced update path (`scalvin update --force` preview, then `--confirm` with
+  the returned token); it backs the workspace up first and keeps personal data
 - Claude Code launches on Linux hosts without `bubblewrap`/`socat` now get a
   clear doctor warning (`CLAUDE_SANDBOX_DEPENDENCY_MISSING`) and a pre-spawn
   refusal instead of the client's raw sandbox error
