@@ -421,7 +421,7 @@
       "path": "cli/operations.js",
       "source": "repo:cli/operations.js",
       "version": "1.0.0",
-      "sha256": "1f99d564c4813a8e440be048830a620ad62882efc3b9c0c3952231dbb3dc21aa",
+      "sha256": "159d6440ee38f9d344da3a5f147b7761a8709992372891048ee3f19875f33cb2",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []

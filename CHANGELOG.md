@@ -117,6 +117,11 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
 - the source worker receives an explicit environment allowlist; the interactive
   client drops `SCALVIN_*` and interpreter-injection variables such as
   `NODE_OPTIONS`
+- read-only operations (memory view/show/export, review-due, retention status,
+  context status/show, source status/proposals, session status, change
+  history) no longer hash every workspace byte; they keep the tree-wide
+  symlink/hard-link walk. `memory show` on a workspace with 128 MiB of unrelated
+  archive data dropped from about 1.5 s to about 0.14 s in a local measurement
 - the supported runtime floor is Node 22 (Node 20 is end of life); CI tests
   Node 22 and 24 on Linux, macOS, and Windows
 
