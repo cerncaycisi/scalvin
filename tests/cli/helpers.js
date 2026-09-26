@@ -61,9 +61,15 @@ function installedEmergencyResourceHealth() {
     : { state: assessment.state, reasonCode: assessment.reasonCode };
 }
 
-// A non-current bundled registry adds exactly one doctor warning.
-function healthyDoctorStatus() {
-  return installedEmergencyResourceHealth().state === 'current' ? 'healthy' : 'warnings';
+// A non-current bundled registry or a host without the Claude Code sandbox
+// dependencies adds a doctor warning; both are host facts, not product state.
+function hostDoctorWarningCount() {
+  const { missingClaudeSandboxDependencies } = require('../../cli/lib/child-process');
+  return Number(installedEmergencyResourceHealth().state !== 'current') + Number(missingClaudeSandboxDependencies().length > 0);
 }
 
-module.exports = { ROOT, sandbox, incomingDistribution, readJson, installedEmergencyResourceHealth, healthyDoctorStatus };
+function healthyDoctorStatus() {
+  return hostDoctorWarningCount() > 0 ? 'warnings' : 'healthy';
+}
+
+module.exports = { ROOT, sandbox, incomingDistribution, readJson, installedEmergencyResourceHealth, healthyDoctorStatus, hostDoctorWarningCount };

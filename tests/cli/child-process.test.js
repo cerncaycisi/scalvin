@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { workerEnvironment, interactiveEnvironment } = require('../../cli/lib/child-process');
+const { workerEnvironment, interactiveEnvironment, missingClaudeSandboxDependencies } = require('../../cli/lib/child-process');
 const { runBoundedClient, cleanEnvironment } = require('../../cli/client-launcher');
 
 const SYNTHETIC = {
@@ -154,4 +154,16 @@ test('cancelling the parent terminates the detached worker group', { skip: proce
     assert.equal(await exited, signal);
     await assertAllExited(pids);
   }
+});
+
+test('Claude sandbox dependencies are required only on Linux and found on PATH', { skip: process.platform === 'win32' }, async (t) => {
+  const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'scalvin-sandbox-deps-'));
+  t.after(() => fsp.rm(root, { recursive: true, force: true }));
+  assert.deepEqual(missingClaudeSandboxDependencies('darwin', ''), []);
+  assert.deepEqual(missingClaudeSandboxDependencies('linux', root), ['bwrap', 'socat']);
+  await fsp.writeFile(path.join(root, 'bwrap'), '#!/bin/sh\n', { mode: 0o755 });
+  await fsp.writeFile(path.join(root, 'socat'), 'not executable', { mode: 0o644 });
+  assert.deepEqual(missingClaudeSandboxDependencies('linux', root), ['socat']);
+  await fsp.chmod(path.join(root, 'socat'), 0o755);
+  assert.deepEqual(missingClaudeSandboxDependencies('linux', `relative-dir${path.delimiter}${root}`), []);
 });

@@ -122,8 +122,34 @@ function terminateChild(child, { graceMs = 2_000, confirmMs = 2_000, group = fal
   });
 }
 
+// The generated Claude profiles require the Claude Code sandbox and set
+// failIfUnavailable, so a missing Linux dependency stops the client at launch.
+// Report it before spawning instead of surfacing a raw client error.
+const CLAUDE_SANDBOX_LINUX_COMMANDS = ['bwrap', 'socat'];
+
+function commandOnPath(name, searchPath = process.env.PATH || '') {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  for (const directory of searchPath.split(path.delimiter).filter(Boolean)) {
+    if (!path.isAbsolute(directory)) continue;
+    try {
+      const candidate = path.join(directory, name);
+      const stat = fs.statSync(candidate);
+      if (stat.isFile() && (stat.mode & 0o111) !== 0) return true;
+    } catch (_) { /* keep searching */ }
+  }
+  return false;
+}
+
+function missingClaudeSandboxDependencies(platform = process.platform, searchPath = process.env.PATH || '') {
+  if (platform !== 'linux') return [];
+  return CLAUDE_SANDBOX_LINUX_COMMANDS.filter((name) => !commandOnPath(name, searchPath));
+}
+
 module.exports = {
   INJECTION_NAMES,
+  CLAUDE_SANDBOX_LINUX_COMMANDS,
+  missingClaudeSandboxDependencies,
   workerEnvironment,
   interactiveEnvironment,
   terminateChild

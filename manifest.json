@@ -259,7 +259,7 @@
       "path": "cli/client-launcher.js",
       "source": "repo:cli/client-launcher.js",
       "version": "1.0.0",
-      "sha256": "1d6cd43de3c90b11f1aeb474f2b019d8805dfa5940e60d47ee5005f56d35a90c",
+      "sha256": "2d68fefba7e7ad37cccf8a98c57c0f85aa4e2c61d6e327cc0143d55f4a2e88a2",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -277,7 +277,7 @@
       "path": "cli/doctor.js",
       "source": "repo:cli/doctor.js",
       "version": "1.0.0",
-      "sha256": "a6e788b2b5e113014e0093b7b40cf4c71f1a12ea4ca25b259b99bbe6d7a75033",
+      "sha256": "77ba89162468b82932947a7e9cb91cd0f4f499c3fac348e3498b1cd6d6bdf4d8",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -331,7 +331,7 @@
       "path": "cli/lib/child-process.js",
       "source": "repo:cli/lib/child-process.js",
       "version": "1.0.0",
-      "sha256": "020b5731b3cef2e859aaf3272097926160a4cef4efeab2e89b12b92725e6f059",
+      "sha256": "ef8317ef2f873c314b5afa5eebcf35c00674032dee4c0c260c84c07166e97a95",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []
@@ -448,7 +448,7 @@
       "path": "cli/session-supervisor.js",
       "source": "repo:cli/session-supervisor.js",
       "version": "1.0.0",
-      "sha256": "8e78ac009091a3468d23750f3d3ff11d751fb914949ad6a5700d62f0555d3280",
+      "sha256": "b16d40eb6d8f08542a189dcd51540b1410b85052b4feba92e4067fcb8cb132fe",
       "role": "distribution-code",
       "protection": "framework",
       "targets": []

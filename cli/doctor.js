@@ -32,6 +32,7 @@ const {
 const { parseBackupLedger, parseBackupOperationReceipts } = require('./lib/backup');
 const { parseReminder } = require('./lib/backup-reminder');
 const { statusSource } = require('./source-lifecycle');
+const { missingClaudeSandboxDependencies } = require('./lib/child-process');
 
 const execFileAsync = promisify(execFile);
 const MAX_CONSENT_PROJECTION_BYTES = 1024 * 1024;
@@ -764,6 +765,10 @@ async function assessBrokeredDataBoundary(workspace, context, manifest, distribu
     }));
   } else {
     findings.push(finding('info', 'CLIENT_BROKER_ONLY_PROFILE_OK', 'Installed client artifacts contain the canonical broker-only project policy; direct private continuity access is denied by project configuration.'));
+  }
+  const missingSandbox = missingClaudeSandboxDependencies();
+  if (clients.claude.configuration === 'broker_only_unattested' && missingSandbox.length) {
+    findings.push(finding('warning', 'CLAUDE_SANDBOX_DEPENDENCY_MISSING', 'The Claude profile requires the Claude Code sandbox, which is unavailable on this host; Claude Code will refuse to start in this workspace until the listed commands are installed.', { missing: missingSandbox }));
   }
   findings.push(finding('info', 'BROKER_ONLY_BOUNDARY_UNATTESTED', 'Project configuration denies direct private-file access, but static files cannot attest higher-priority configuration or the effective client runtime. Stable release remains blocked until exact-launch probes pass.'));
   if (sourceWorker.state === 'available') {

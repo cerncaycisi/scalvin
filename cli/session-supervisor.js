@@ -9,7 +9,7 @@ const { spawn, execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const { ScalvinError, invariant } = require('./lib/errors');
 const { PRIVATE_DIR_MODE, rejectSymlinkPath } = require('./lib/fs-safe');
-const { interactiveEnvironment, terminateChild } = require('./lib/child-process');
+const { interactiveEnvironment, terminateChild, missingClaudeSandboxDependencies } = require('./lib/child-process');
 const operations = require('./operations');
 
 const execFileAsync = promisify(execFile);
@@ -132,6 +132,10 @@ async function launchSupervisedClient(options = {}) {
   const boundary = doctor.capabilities?.brokeredDataBoundary;
   invariant(boundary?.broker?.available === true, 'The capability broker is unavailable.', 'CLIENT_LAUNCH_BROKER_UNAVAILABLE');
   invariant(boundary.clients?.[client]?.configuration === 'broker_only_unattested', 'The selected client policy is missing or degraded.', 'CLIENT_LAUNCH_POLICY_DEGRADED');
+  if (client === 'claude') {
+    const missing = missingClaudeSandboxDependencies();
+    invariant(missing.length === 0, `Claude Code's sandbox needs ${missing.join(' and ')} on this Linux host; install them (for example the bubblewrap and socat packages) and relaunch.`, 'CLIENT_SANDBOX_DEPENDENCY_MISSING', { missing });
+  }
   const executable = await resolveInteractiveClient(client, options.clientExecutable);
   const version = await verifiedClientVersion(executable);
   const supervisor = await createSealSupervisor();

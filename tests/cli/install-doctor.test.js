@@ -19,7 +19,7 @@ const {
   mutationLockPath,
   verifyWindowsPrivateAcl
 } = require('../../cli/lib/fs-safe');
-const { sandbox, readJson, installedEmergencyResourceHealth, healthyDoctorStatus } = require('./helpers');
+const { sandbox, readJson, installedEmergencyResourceHealth, healthyDoctorStatus, hostDoctorWarningCount } = require('./helpers');
 
 const MANUAL_LOCK_GUIDANCE = 'Manual recovery only: inspect the lock, confirm no Scalvin mutation is running, then remove this exact lock path manually; never delete it based only on age or PID liveness.';
 

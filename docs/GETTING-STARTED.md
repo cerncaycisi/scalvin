@@ -9,7 +9,8 @@ restore do not depend on an AI model improvising shell commands.
 - Node.js 22 or newer (an active or maintenance LTS line: 22 or 24);
 - Git;
 - a repo-aware AI client such as Codex or Claude Code, or another client that
-  can follow `START-SESSION.md`;
+  can follow `START-SESSION.md` (Claude Code on Linux also needs the
+  `bubblewrap` and `socat` packages for its required sandbox);
 - a local directory where private workspace data may be stored.
 
 Scalvin is designed for adults and for self-reflection/emotional support. It is

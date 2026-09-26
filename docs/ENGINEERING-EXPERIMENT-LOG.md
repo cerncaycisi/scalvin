@@ -253,3 +253,22 @@ when they establish a reusable engineering rule.
   RELEASING.md. Verify with a deliberately failing pull request that
   `Required CI` actually blocks merging.
 
+### Claude Code exact-launch probe on Linux (2026-09-26)
+
+- Context: Claude Code 2.1.281, Linux without `bubblewrap`, synthetic
+  workspace from `scalvin install --consent granted` with canary strings in
+  `profile.md` and `sessions/`, launched as `claude -p` with a minimal
+  environment (`HOME`, `PATH`, `TERM`, `LANG`) and three prompts asking for
+  Read, Bash `cat`, and Grep access to the canaries.
+- Result: every launch stopped before any model turn with `sandbox required
+  but unavailable: ... bubblewrap (bwrap) not installed`; no canary appeared in
+  any output. Claude Code also printed that the 14 profile `allow` entries were
+  ignored because the directory had not been trusted.
+- Outcome: the generated profile fails closed on a host without the sandbox,
+  but users saw only the raw client error. Doctor now warns with
+  `CLAUDE_SANDBOX_DEPENDENCY_MISSING`, and both Claude launch paths refuse
+  before spawning. This run is not boundary evidence: no tool call executed.
+- Reuse rule: repeat the canary probe on a host with `bwrap` and `socat` and a
+  trusted workspace before claiming anything about effective Read/Bash/Grep
+  denial. Never use a real workspace for this probe.
+

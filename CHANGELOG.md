@@ -126,6 +126,9 @@ must follow `MIGRATING.md`; do not copy new runtime files over an old workspace.
   only before the first action they govern (or when `context_graph` is on),
   removing about 15 KB of the ~107 KB default startup instructions; the effect
   on real conversation quality has not been measured
+- Claude Code launches on Linux hosts without `bubblewrap`/`socat` now get a
+  clear doctor warning (`CLAUDE_SANDBOX_DEPENDENCY_MISSING`) and a pre-spawn
+  refusal instead of the client's raw sandbox error
 - the supported runtime floor is Node 22 (Node 20 is end of life); CI tests
   Node 22 and 24 on Linux, macOS, and Windows
 

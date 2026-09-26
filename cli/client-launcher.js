@@ -7,7 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { ScalvinError, invariant } = require('./lib/errors');
 const { PRIVATE_DIR_MODE, rejectSymlinkPath, readBoundedRegularFile } = require('./lib/fs-safe');
-const { workerEnvironment, terminateChild } = require('./lib/child-process');
+const { workerEnvironment, terminateChild, missingClaudeSandboxDependencies } = require('./lib/child-process');
 const {
   SERVER_VERSION: SOURCE_WORKER_VERSION,
   ensureSourceWorkerKey,
@@ -281,6 +281,10 @@ async function runIsolatedSourceWorker(options = {}) {
   await rejectSymlinkPath(workspace);
   await ensureSourceWorkerKey(workspace);
   const assigned = await loadSourcePayloadForWorker({ workspace, sourceId: options.sourceId, revision: options.revision });
+  if (client === 'claude') {
+    const missing = missingClaudeSandboxDependencies();
+    invariant(missing.length === 0, `Claude Code's sandbox needs ${missing.join(' and ')} on this Linux host; install them or use --client codex.`, 'SOURCE_WORKER_SANDBOX_DEPENDENCY_MISSING', { missing });
+  }
   const executable = await resolveClientExecutable(client, options.clientExecutable);
   const version = await clientVersion(executable, client);
   const outputRoot = await fsp.mkdtemp(path.join(os.tmpdir(), 'scalvin-isolated-source-worker-'));
