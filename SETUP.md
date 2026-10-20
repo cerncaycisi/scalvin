@@ -4,8 +4,8 @@ This document connects a natural first conversation to Scalvin's deterministic
 installer. It is not a shell recipe and it is not permission to improvise
 filesystem mutations.
 
-Scalvin is a local-first AI companion framework for self-reflection and
-continuity. It is not a therapist, clinician, medical device, crisis service,
+Scalvin is a local-first, therapy-inspired AI companion for self-reflection,
+built around long-term memory that you control. It is not a therapist, clinician, medical device, crisis service,
 or substitute for professional care.
 
 ## Immutable startup order
