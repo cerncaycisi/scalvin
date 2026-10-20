@@ -4,8 +4,13 @@
 [![Security](https://img.shields.io/badge/security-private%20reporting-blue)](https://github.com/cerncaycisi/scalvin/security/advisories/new)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Scalvin is a local-first AI companion framework for self-reflection,
-conversation continuity, and user-controlled memory.
+Scalvin is a local-first, therapy-inspired AI companion for self-reflection,
+built around long-term memory that you control. Conversations pick up where
+the last one ended, and you can inspect, correct, pause, export, or delete
+what it remembers.
+
+The name comes from Susan Calvin, the robopsychologist in Isaac Asimov's
+robot stories.
 
 > **Development status:** the current `1.0.0` line is an unreleased development
 > preview. Independent safety review and release-candidate behavior evaluation

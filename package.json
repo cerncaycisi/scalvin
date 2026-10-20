@@ -1,7 +1,7 @@
 {
   "name": "scalvin",
   "version": "1.0.0",
-  "description": "Local-first AI companion for self-reflection and continuity",
+  "description": "Local-first, therapy-inspired AI companion for self-reflection with long-term, user-controlled memory",
   "license": "MIT",
   "private": true,
   "type": "commonjs",
